@@ -1,13 +1,80 @@
 /**
  * @file ParticleSystem.js
- * @description High-performance visual effects: Magic Sparks, Monster Death Explosions, 
- * directional gravity sparks, floating runes, and procedural screen shake.
+ * @description High-performance visual effects engine utilizing Object Pooling
+ * to eliminate Garbage Collection pauses and achieve consistent 60+ FPS on all refresh rates (60Hz, 120Hz, 144Hz).
+ * Features Magic Sparks, Monster Death Explosions, Ring Shockwaves, and Floating Texts.
  */
 
-export class ParticleSystem {
+class Particle {
   constructor() {
-    this.particles = [];
-    this.floatingTexts = [];
+    this.active = false;
+    this.x = 0;
+    this.y = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.gravity = 0;
+    this.drag = 1.0;
+    this.life = 0;
+    this.decay = 1.0;
+    this.size = 2;
+    this.rotation = 0;
+    this.vRot = 0;
+    this.color = '#ffffff';
+    this.type = 'spark'; // 'ring' | 'magic_spark' | 'gravity_spark' | 'smoke' | 'spark'
+    this.radius = 0;
+    this.maxRadius = 0;
+    this.growth = 0;
+  }
+
+  reset() {
+    this.active = false;
+    this.gravity = 0;
+    this.drag = 1.0;
+    this.vRot = 0;
+    this.rotation = 0;
+    this.growth = 0;
+    this.radius = 0;
+  }
+}
+
+class FloatingText {
+  constructor() {
+    this.active = false;
+    this.text = '';
+    this.x = 0;
+    this.y = 0;
+    this.vy = -55;
+    this.life = 0;
+    this.decay = 1.2;
+    this.color = '#fef08a';
+    this.fontSize = 18;
+  }
+
+  reset() {
+    this.active = false;
+    this.text = '';
+  }
+}
+
+export class ParticleSystem {
+  constructor(maxParticles = 700, maxTexts = 50) {
+    this.maxParticles = maxParticles;
+    this.maxTexts = maxTexts;
+
+    // Pre-allocated Particle Pool
+    this.particlePool = [];
+    for (let i = 0; i < this.maxParticles; i++) {
+      this.particlePool.push(new Particle());
+    }
+    this.activeParticleCount = 0;
+
+    // Pre-allocated Floating Text Pool
+    this.textPool = [];
+    for (let i = 0; i < this.maxTexts; i++) {
+      this.textPool.push(new FloatingText());
+    }
+    this.activeTextCount = 0;
+
     this.screenShake = {
       intensity: 0,
       duration: 0,
@@ -29,12 +96,69 @@ export class ParticleSystem {
   }
 
   /**
+   * Backward-compatible slice of currently active particles
+   * @returns {Array<Particle>}
+   */
+  get particles() {
+    return this.particlePool.slice(0, this.activeParticleCount);
+  }
+
+  /**
+   * Backward-compatible slice of currently active floating texts
+   * @returns {Array<FloatingText>}
+   */
+  get floatingTexts() {
+    return this.textPool.slice(0, this.activeTextCount);
+  }
+
+  /**
+   * Acquire a particle from pool with O(1) efficiency
+   * @private
+   * @returns {Particle|null}
+   */
+  _acquireParticle() {
+    if (this.activeParticleCount < this.maxParticles) {
+      const p = this.particlePool[this.activeParticleCount];
+      this.activeParticleCount++;
+      p.active = true;
+      return p;
+    }
+    // Pool exhausted: recycle the oldest active particle (index 0)
+    const p = this.particlePool[0];
+    // Move it to the end of active pool
+    this.particlePool.copyWithin(0, 1, this.activeParticleCount);
+    this.particlePool[this.activeParticleCount - 1] = p;
+    p.reset();
+    p.active = true;
+    return p;
+  }
+
+  /**
+   * Acquire a text object from pool with O(1) efficiency
+   * @private
+   * @returns {FloatingText|null}
+   */
+  _acquireText() {
+    if (this.activeTextCount < this.maxTexts) {
+      const t = this.textPool[this.activeTextCount];
+      this.activeTextCount++;
+      t.active = true;
+      return t;
+    }
+    const t = this.textPool[0];
+    this.textPool.copyWithin(0, 1, this.activeTextCount);
+    this.textPool[this.activeTextCount - 1] = t;
+    t.reset();
+    t.active = true;
+    return t;
+  }
+
+  /**
    * Trigger procedural screen shake with smooth exponential decay
    * @param {number} intensity Max pixel displacement
    * @param {number} duration Duration in seconds
    */
   triggerShake(intensity = 10, duration = 0.3) {
-    // Retain maximum if a stronger shake occurs during an active one
     if (this.screenShake.timer > 0) {
       this.screenShake.intensity = Math.max(this.screenShake.intensity, intensity);
       this.screenShake.duration = Math.max(this.screenShake.duration, duration);
@@ -46,9 +170,6 @@ export class ParticleSystem {
     }
   }
 
-  /**
-   * Backward-compatible alias for triggerShake
-   */
   shake(intensity = 8, duration = 0.25) {
     this.triggerShake(intensity, duration);
   }
@@ -65,47 +186,52 @@ export class ParticleSystem {
    */
   emitMagicSparks(x, y, count = 2, customColor = null, vx = 0, vy = 0) {
     for (let i = 0; i < count; i++) {
+      const p = this._acquireParticle();
+      if (!p) break;
+
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 55 + 15;
       const color = customColor || this.MAGIC_TRAIL_PALETTE[Math.floor(Math.random() * this.MAGIC_TRAIL_PALETTE.length)];
 
-      this.particles.push({
-        x: x + (Math.random() - 0.5) * 6,
-        y: y + (Math.random() - 0.5) * 6,
-        vx: Math.cos(angle) * speed + vx * 0.2,
-        vy: Math.sin(angle) * speed + vy * 0.2 - 12, // light upward float
-        rotation: Math.random() * Math.PI * 2,
-        vRot: (Math.random() - 0.5) * 9,
-        life: 1.0,
-        decay: Math.random() * 1.8 + 1.4, // lasts 0.4s ~ 0.7s
-        size: Math.random() * 3.5 + 2.5,
-        color,
-        type: 'magic_spark'
-      });
+      p.reset();
+      p.active = true;
+      p.x = x + (Math.random() - 0.5) * 6;
+      p.y = y + (Math.random() - 0.5) * 6;
+      p.vx = Math.cos(angle) * speed + vx * 0.2;
+      p.vy = Math.sin(angle) * speed + vy * 0.2 - 12; // upward float
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 9;
+      p.life = 1.0;
+      p.decay = Math.random() * 1.8 + 1.4;
+      p.size = Math.random() * 3.5 + 2.5;
+      p.color = color;
+      p.type = 'magic_spark';
     }
   }
 
-  /**
-   * Backward-compatible sparkle emitter
-   */
   emitSparkle(x, y, color = '#c084fc', count = 1) {
     this.emitMagicSparks(x, y, count, color);
   }
 
   /**
    * 20 - 30 Particle Monster Death Explosion:
-   * Burst particles colored to match monster type, affected by gravity, drag, and gradual fade.
-   * Includes expanding shockwave ring and ascending spirit motes.
+   * Reused through object pooling to prevent memory churn on enemy elimination.
    * @param {number} x Monster origin X
    * @param {number} y Monster origin Y
+<<<<<<< Updated upstream
    * @param {string} [enemyType='REGULAR'] Archetype ('REGULAR', 'SPEEDSTER', 'ARMORED')
    * @param {number} [count=28] Number of explosion particles (20 - 30)
+=======
+   * @param {string} [enemyType='REGULAR'] Archetype ('REGULAR', 'SPEEDSTER', 'ARMORED', 'BOSS')
+   * @param {number} [count=28] Number of explosion particles
+>>>>>>> Stashed changes
    */
   emitMonsterDeathExplosion(x, y, enemyType = 'REGULAR', count = 28) {
     const palette = this.ENEMY_PALETTES[enemyType] || this.ENEMY_PALETTES.REGULAR;
     const primaryColor = palette[3] || '#c084fc';
 
     // 1. Expanding shockwave ring
+<<<<<<< Updated upstream
     this.particles.push({
       x,
       y,
@@ -117,53 +243,72 @@ export class ParticleSystem {
       color: primaryColor,
       type: 'ring'
     });
+=======
+    const ring = this._acquireParticle();
+    if (ring) {
+      ring.reset();
+      ring.active = true;
+      ring.x = x;
+      ring.y = y;
+      ring.radius = 8;
+      ring.maxRadius = isBoss ? 110 : (isArmored ? 70 : 52);
+      ring.growth = isBoss ? 280 : (isArmored ? 220 : 170);
+      ring.life = 1.0;
+      ring.decay = isBoss ? 2.2 : 3.2;
+      ring.color = primaryColor;
+      ring.type = 'ring';
+    }
+>>>>>>> Stashed changes
 
     // 2. 20 - 30 Gravity-bound explosion sparks
     const particleCount = Math.max(20, Math.min(30, count));
     for (let i = 0; i < particleCount; i++) {
+      const p = this._acquireParticle();
+      if (!p) break;
+
       const angle = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       const speed = Math.random() * 240 + 90;
       const color = palette[Math.floor(Math.random() * palette.length)];
 
-      this.particles.push({
-        x: x + (Math.random() - 0.5) * 8,
-        y: y + (Math.random() - 0.5) * 8,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - Math.random() * 110 - 40, // explosive initial upward pop
-        gravity: 420, // gravity pulling downwards (px/s^2)
-        drag: 0.965,
-        life: 1.0,
-        decay: Math.random() * 1.2 + 0.85, // 0.8s ~ 1.2s lifespan
-        size: Math.random() * 4.2 + 2.8,
-        rotation: Math.random() * Math.PI * 2,
-        vRot: (Math.random() - 0.5) * 10,
-        color,
-        type: 'gravity_spark'
-      });
+      p.reset();
+      p.active = true;
+      p.x = x + (Math.random() - 0.5) * 8;
+      p.y = y + (Math.random() - 0.5) * 8;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed - Math.random() * 110 - 40;
+      p.gravity = 420;
+      p.drag = 0.965;
+      p.life = 1.0;
+      p.decay = Math.random() * 1.2 + 0.85;
+      p.size = Math.random() * 4.2 + 2.8;
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 10;
+      p.color = color;
+      p.type = 'gravity_spark';
     }
 
-    // 3. Ascending ethereal spirit embers (contrast against falling sparks)
-    const spiritCount = 6;
-    for (let i = 0; i < spiritCount; i++) {
+    // 3. Ascending ethereal spirit embers
+    for (let i = 0; i < 6; i++) {
+      const p = this._acquireParticle();
+      if (!p) break;
+
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 60 + 20;
-      this.particles.push({
-        x: x + (Math.random() - 0.5) * 14,
-        y: y + (Math.random() - 0.5) * 14,
-        vx: Math.cos(angle) * speed,
-        vy: -Math.random() * 65 - 25, // floats upwards
-        life: 1.0,
-        decay: Math.random() * 1.3 + 0.9,
-        size: Math.random() * 5 + 3,
-        color: palette[1] || '#ffffff',
-        type: 'smoke'
-      });
+
+      p.reset();
+      p.active = true;
+      p.x = x + (Math.random() - 0.5) * 14;
+      p.y = y + (Math.random() - 0.5) * 14;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = -Math.random() * 65 - 25;
+      p.life = 1.0;
+      p.decay = Math.random() * 1.3 + 0.9;
+      p.size = Math.random() * 5 + 3;
+      p.color = palette[1] || '#ffffff';
+      p.type = 'smoke';
     }
   }
 
-  /**
-   * Backward-compatible death poof (now redirects to high-end death explosion)
-   */
   emitDeathPoof(x, y, color = '#a78bfa', count = 24) {
     let enemyType = 'REGULAR';
     if (color && (color.includes('#f4') || color.includes('#ec') || color.includes('#ef'))) {
@@ -174,53 +319,54 @@ export class ParticleSystem {
     this.emitMonsterDeathExplosion(x, y, enemyType, count);
   }
 
-  /**
-   * Burst on projectile hitting enemy
-   */
   emitHitBurst(x, y, color = '#38bdf8', count = 16) {
     for (let i = 0; i < count; i++) {
+      const p = this._acquireParticle();
+      if (!p) break;
+
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 190 + 70;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1.0,
-        decay: Math.random() * 2.2 + 2.0,
-        size: Math.random() * 3.8 + 2.2,
-        color,
-        type: 'spark'
-      });
+
+      p.reset();
+      p.active = true;
+      p.x = x;
+      p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.life = 1.0;
+      p.decay = Math.random() * 2.2 + 2.0;
+      p.size = Math.random() * 3.8 + 2.2;
+      p.color = color;
+      p.type = 'spark';
     }
   }
 
-  /**
-   * Floating notification text (Score, Combo, Healing)
-   */
   emitFloatingText(text, x, y, color = '#fef08a', fontSize = 18) {
-    this.floatingTexts.push({
-      text,
-      x,
-      y,
-      vy: -55,
-      life: 1.0,
-      decay: 1.2,
-      color,
-      fontSize
-    });
+    const t = this._acquireText();
+    if (!t) return;
+
+    t.reset();
+    t.active = true;
+    t.text = text;
+    t.x = x;
+    t.y = y;
+    t.vy = -55;
+    t.life = 1.0;
+    t.decay = 1.2;
+    t.color = color;
+    t.fontSize = fontSize;
   }
 
   /**
-   * Update particle positions, physics, life decay, and screen shake timer
+   * Update particle physics with accurate deltaTime scaling across 60Hz, 120Hz, 144Hz
+   * Uses O(1) swap-and-pop removal to avoid array splicing!
    * @param {number} dt Delta time in seconds
    */
   update(dt) {
-    // 1. Procedural Screen Shake calculation
+    // 1. Screen Shake decay
     if (this.screenShake.timer > 0) {
       this.screenShake.timer -= dt;
       const progress = Math.max(0, this.screenShake.timer / this.screenShake.duration);
-      // Smooth non-linear exponential decay for cinematic punch
       const currentIntensity = this.screenShake.intensity * Math.pow(progress, 1.6);
       
       this.screenShake.x = (Math.random() - 0.5) * 2 * currentIntensity;
@@ -232,70 +378,96 @@ export class ParticleSystem {
       this.screenShake.rotation = 0;
     }
 
-    // 2. Particles Physics Update
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const p = this.particles[i];
+    // Normalized frame rate factor for drag calculations (base 60 FPS)
+    const rateFactor = dt * 60;
+
+    // 2. Update Active Particles with O(1) in-place swap on death
+    let i = 0;
+    while (i < this.activeParticleCount) {
+      const p = this.particlePool[i];
       p.life -= p.decay * dt;
 
       if (p.life <= 0) {
-        this.particles.splice(i, 1);
-        continue;
+        // Deactivate & swap with the last active particle
+        p.active = false;
+        this.activeParticleCount--;
+        if (i < this.activeParticleCount) {
+          const last = this.particlePool[this.activeParticleCount];
+          this.particlePool[i] = last;
+          this.particlePool[this.activeParticleCount] = p;
+          continue; // Check the particle just swapped into index i
+        }
+        break;
       }
 
       if (p.type === 'ring') {
         p.radius += p.growth * dt;
       } else if (p.type === 'gravity_spark') {
-        // Gravity acceleration
         p.vy += p.gravity * dt;
-        p.vx *= p.drag;
-        p.vy *= p.drag;
+        const dragFactor = Math.pow(p.drag, rateFactor);
+        p.vx *= dragFactor;
+        p.vy *= dragFactor;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.vRot) p.rotation += p.vRot * dt;
       } else if (p.type === 'magic_spark') {
-        // Twinkling spark with slight deceleration
-        p.vx *= 0.94;
-        p.vy *= 0.94;
+        const decayFactor = Math.pow(0.94, rateFactor);
+        p.vx *= decayFactor;
+        p.vy *= decayFactor;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.vRot) p.rotation += p.vRot * dt;
       } else if (p.type === 'smoke') {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.size += 3.5 * dt; // expands as it floats away
-        p.vx *= 0.98;
+        p.size += 3.5 * dt;
+        p.vx *= Math.pow(0.98, rateFactor);
       } else {
         // Standard spark
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.vx *= 0.95;
-        p.vy *= 0.95;
+        const standardDecay = Math.pow(0.95, rateFactor);
+        p.vx *= standardDecay;
+        p.vy *= standardDecay;
       }
+
+      i++;
     }
 
-    // 3. Floating Texts Update
-    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-      const t = this.floatingTexts[i];
+    // 3. Update Active Floating Texts with O(1) in-place swap on death
+    let j = 0;
+    while (j < this.activeTextCount) {
+      const t = this.textPool[j];
       t.life -= t.decay * dt;
       t.y += t.vy * dt;
 
       if (t.life <= 0) {
-        this.floatingTexts.splice(i, 1);
+        t.active = false;
+        this.activeTextCount--;
+        if (j < this.activeTextCount) {
+          const lastText = this.textPool[this.activeTextCount];
+          this.textPool[j] = lastText;
+          this.textPool[this.activeTextCount] = t;
+          continue;
+        }
+        break;
       }
+
+      j++;
     }
   }
 
   /**
-   * Render all particles and floating texts with additive blending layers
+   * Render all pooled active particles and floating texts
    * @param {CanvasRenderingContext2D} ctx 
    */
   render(ctx) {
-    if (this.particles.length === 0 && this.floatingTexts.length === 0) return;
+    if (this.activeParticleCount === 0 && this.activeTextCount === 0) return;
 
     ctx.save();
 
-    for (let i = 0; i < this.particles.length; i++) {
-      const p = this.particles[i];
+    for (let i = 0; i < this.activeParticleCount; i++) {
+      const p = this.particlePool[i];
       const alpha = Math.max(0, Math.min(1, p.life));
       ctx.globalAlpha = alpha;
 
@@ -308,7 +480,6 @@ export class ParticleSystem {
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.stroke();
       } else if (p.type === 'magic_spark') {
-        // Render 4-point star magic sparkle
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation || 0);
@@ -318,7 +489,6 @@ export class ParticleSystem {
         ctx.shadowColor = p.color;
         ctx.shadowBlur = 10;
 
-        // 4-pointed cross star
         ctx.beginPath();
         ctx.moveTo(0, -s * 1.8);
         ctx.quadraticCurveTo(0, 0, s * 1.8, 0);
@@ -327,7 +497,6 @@ export class ParticleSystem {
         ctx.quadraticCurveTo(0, 0, 0, -s * 1.8);
         ctx.fill();
 
-        // White core glint
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(0, 0, Math.max(0.8, s * 0.45), 0, Math.PI * 2);
@@ -335,7 +504,6 @@ export class ParticleSystem {
 
         ctx.restore();
       } else if (p.type === 'gravity_spark') {
-        // High energy death burst particle
         ctx.fillStyle = p.color;
         ctx.shadowColor = p.color;
         ctx.shadowBlur = 9;
@@ -345,7 +513,6 @@ export class ParticleSystem {
         ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
         ctx.fill();
 
-        // White center for brightest sparks
         if (p.life > 0.4) {
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
@@ -353,7 +520,6 @@ export class ParticleSystem {
           ctx.fill();
         }
       } else if (p.type === 'smoke') {
-        // Soft ethereal spirit smoke
         ctx.fillStyle = p.color;
         ctx.shadowColor = p.color;
         ctx.shadowBlur = 14;
@@ -371,9 +537,9 @@ export class ParticleSystem {
       }
     }
 
-    // Floating text rendering with neon glow backdrop
-    for (let i = 0; i < this.floatingTexts.length; i++) {
-      const t = this.floatingTexts[i];
+    // Render floating texts with fallback system fonts
+    for (let i = 0; i < this.activeTextCount; i++) {
+      const t = this.textPool[i];
       ctx.globalAlpha = Math.max(0, Math.min(1, t.life));
       ctx.font = `800 ${t.fontSize}px Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
       ctx.fillStyle = t.color;
@@ -382,7 +548,6 @@ export class ParticleSystem {
       ctx.textAlign = 'center';
       ctx.fillText(t.text, t.x, t.y);
 
-      // Inner crisp text overlay
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(t.text, t.x, t.y);
@@ -392,8 +557,16 @@ export class ParticleSystem {
   }
 
   clear() {
-    this.particles = [];
-    this.floatingTexts = [];
+    for (let i = 0; i < this.activeParticleCount; i++) {
+      this.particlePool[i].reset();
+    }
+    this.activeParticleCount = 0;
+
+    for (let i = 0; i < this.activeTextCount; i++) {
+      this.textPool[i].reset();
+    }
+    this.activeTextCount = 0;
+
     this.screenShake.timer = 0;
     this.screenShake.x = 0;
     this.screenShake.y = 0;
