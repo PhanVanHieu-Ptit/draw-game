@@ -21,7 +21,8 @@ export class ParticleSystem {
     this.ENEMY_PALETTES = {
       REGULAR: ['#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#c084fc', '#ffffff'],
       SPEEDSTER: ['#ffe4e6', '#fda4af', '#fb7185', '#f43f5e', '#f97316', '#fde047'],
-      ARMORED: ['#f3e8ff', '#ddd6fe', '#c084fc', '#a855f7', '#7c3aed', '#fbbf24', '#f59e0b']
+      ARMORED: ['#f3e8ff', '#ddd6fe', '#c084fc', '#a855f7', '#7c3aed', '#fbbf24', '#f59e0b'],
+      BOSS: ['#ffe4e6', '#fda4af', '#fb7185', '#f43f5e', '#e11d48', '#881337', '#fbbf24', '#ffffff']
     };
 
     // Sparkle magic palette for player drawing trail
@@ -98,22 +99,24 @@ export class ParticleSystem {
    * Includes expanding shockwave ring and ascending spirit motes.
    * @param {number} x Monster origin X
    * @param {number} y Monster origin Y
-   * @param {string} [enemyType='REGULAR'] Archetype ('REGULAR', 'SPEEDSTER', 'ARMORED')
+   * @param {string} [enemyType='REGULAR'] Archetype ('REGULAR', 'SPEEDSTER', 'ARMORED', 'BOSS')
    * @param {number} [count=28] Number of explosion particles (20 - 30)
    */
   emitMonsterDeathExplosion(x, y, enemyType = 'REGULAR', count = 28) {
     const palette = this.ENEMY_PALETTES[enemyType] || this.ENEMY_PALETTES.REGULAR;
     const primaryColor = palette[3] || '#c084fc';
+    const isBoss = enemyType === 'BOSS';
+    const isArmored = enemyType === 'ARMORED';
 
     // 1. Expanding shockwave ring
     this.particles.push({
       x,
       y,
       radius: 8,
-      maxRadius: enemyType === 'ARMORED' ? 70 : 52,
-      growth: enemyType === 'ARMORED' ? 220 : 170,
+      maxRadius: isBoss ? 110 : (isArmored ? 70 : 52),
+      growth: isBoss ? 280 : (isArmored ? 220 : 170),
       life: 1.0,
-      decay: 3.2,
+      decay: isBoss ? 2.2 : 3.2,
       color: primaryColor,
       type: 'ring'
     });

@@ -72,6 +72,14 @@ assert(armoredSparks.length === 28, 'Armored emits 28 particles');
 const armorPalette = psArmored.ENEMY_PALETTES.ARMORED;
 assert(armorPalette.includes(armoredSparks[0].color), 'Armored sparks use dark violet/gold palette');
 
+// Boss monster
+const psBoss = new ParticleSystem();
+psBoss.emitMonsterDeathExplosion(400, 300, 'BOSS', 30);
+const bossSparks = psBoss.particles.filter(p => p.type === 'gravity_spark');
+assert(bossSparks.length === 30, 'Boss emits 30 particles (max in 20-30 range)');
+const bossPalette = psBoss.ENEMY_PALETTES.BOSS;
+assert(bossPalette.includes(bossSparks[0].color), 'Boss sparks use crimson/ruby/gold palette');
+
 // Gravity update verification
 const initialVy = speedsterSparks[0].vy;
 psSpeedster.update(0.1); // 0.1s

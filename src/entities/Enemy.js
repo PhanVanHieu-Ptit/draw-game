@@ -44,8 +44,8 @@ export class Enemy extends Entity {
     this.isBlinking = false;
 
     // Movement angle & sine oscillation offset
-    this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : 2.5;
-    this.oscillationAmplitude = this.type === 'ARMORED' ? 0.3 : 0.8;
+    this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : (this.type === 'BOSS' ? 1.8 : 2.5);
+    this.oscillationAmplitude = (this.type === 'ARMORED' || this.type === 'BOSS') ? 0.25 : 0.8;
   }
 
   /**
@@ -239,7 +239,7 @@ export class Enemy extends Entity {
     ctx.closePath();
     ctx.fill();
 
-    // 3. Armored details if Armored archetype
+    // 3. Armored / Boss details
     if (this.type === 'ARMORED') {
       ctx.strokeStyle = '#4c1d95';
       ctx.lineWidth = 3.5;
@@ -263,6 +263,42 @@ export class Enemy extends Entity {
       ctx.moveTo(r * 0.8, -r * 0.4);
       ctx.lineTo(r * 1.35, -r * 1.15);
       ctx.lineTo(r * 0.35, -r * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    } else if (this.type === 'BOSS') {
+      // Boss Demon Lord Crown & Dark Plate Armor
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.2, r + 6, Math.PI * 0.85, Math.PI * 0.15, true);
+      ctx.stroke();
+
+      // Fiery Crown / Horns
+      ctx.fillStyle = '#be123c';
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 18;
+
+      // Left Horn
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.85, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 1.5, -r * 0.9, -r * 1.45, -r * 1.45);
+      ctx.quadraticCurveTo(-r * 0.9, -r * 1.05, -r * 0.35, -r * 0.75);
+      ctx.closePath();
+      ctx.fill();
+
+      // Center Spire
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.25, -r * 0.9);
+      ctx.lineTo(0, -r * 1.6);
+      ctx.lineTo(r * 0.25, -r * 0.9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Horn
+      ctx.beginPath();
+      ctx.moveTo(r * 0.85, -r * 0.3);
+      ctx.quadraticCurveTo(r * 1.5, -r * 0.9, r * 1.45, -r * 1.45);
+      ctx.quadraticCurveTo(r * 0.9, -r * 1.05, r * 0.35, -r * 0.75);
       ctx.closePath();
       ctx.fill();
     }
@@ -306,7 +342,7 @@ export class Enemy extends Entity {
 
     // Eyeball background (sclera)
     ctx.shadowBlur = 0;
-    ctx.fillStyle = this.type === 'SPEEDSTER' ? '#ffe4e6' : '#ffffff';
+    ctx.fillStyle = this.type === 'SPEEDSTER' ? '#ffe4e6' : (this.type === 'BOSS' ? '#fef2f2' : '#ffffff');
     ctx.beginPath();
     ctx.ellipse(-eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
     ctx.ellipse(eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
@@ -320,12 +356,12 @@ export class Enemy extends Entity {
 
       const pupilColor = this.type === 'SPEEDSTER' 
         ? '#dc2626' 
-        : (this.type === 'ARMORED' ? '#581c87' : '#1e1b4b');
+        : (this.type === 'BOSS' ? '#991b1b' : (this.type === 'ARMORED' ? '#581c87' : '#1e1b4b'));
 
       ctx.fillStyle = pupilColor;
-      if (this.type === 'SPEEDSTER') {
+      if (this.type === 'SPEEDSTER' || this.type === 'BOSS') {
         ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = this.type === 'BOSS' ? 14 : 8;
       }
 
       ctx.beginPath();

@@ -118,9 +118,16 @@ export class WaveSystem {
       else if (rand < 0.38) archetype = 'ARMORED';
       else archetype = 'REGULAR';
     } else {
-      if (rand < 0.35) archetype = 'SPEEDSTER';
-      else if (rand < 0.60) archetype = 'ARMORED';
-      else archetype = 'REGULAR';
+      // Wave 5+ has Boss climaxes!
+      if (this.enemiesSpawnedInWave === this.totalEnemiesInWave || (W % 5 === 0 && rand < 0.2)) {
+        archetype = 'BOSS';
+      } else if (rand < 0.30) {
+        archetype = 'SPEEDSTER';
+      } else if (rand < 0.55) {
+        archetype = 'ARMORED';
+      } else {
+        archetype = 'REGULAR';
+      }
     }
 
     // Available standard symbols
@@ -136,6 +143,8 @@ export class WaveSystem {
       count = 1;
     } else if (archetype === 'ARMORED') {
       count = Math.min(4, Math.floor(Math.random() * 2) + 3); // 3 or 4
+    } else if (archetype === 'BOSS') {
+      count = Math.min(6, Math.floor(Math.random() * 2) + 4); // 4 or 5
     }
 
     for (let i = 0; i < count; i++) {

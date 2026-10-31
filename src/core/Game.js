@@ -279,7 +279,20 @@ export class Game {
       this.enemies.push(newEnemy);
 
       // Boss / Armored entrance screen shake
-      if (enemyConfig.archetype === 'ARMORED') {
+      if (enemyConfig.archetype === 'BOSS') {
+        // Boss appearance: heavy screen shake + ominous siren alarm
+        this.triggerShake(20, 0.75);
+        if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
+          this.audioSystem.soundBossCast();
+        }
+        this.particleSystem.emitFloatingText(
+          '⚡ CHÚA TỂ HẮC ÁM XUẤT HIỆN! ⚡',
+          this.width / 2,
+          this.height * 0.22,
+          '#f43f5e',
+          28
+        );
+      } else if (enemyConfig.archetype === 'ARMORED') {
         this.triggerShake(11, 0.55);
         this.particleSystem.emitFloatingText(
           '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
@@ -347,12 +360,17 @@ export class Game {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
               
+              const isBoss = proj.targetEnemy.type === 'BOSS';
+              if (isBoss) {
+                this.triggerShake(16, 0.5);
+              }
+
               // 20 - 30 particles monster death explosion matching archetype
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
                 proj.targetEnemy.y,
                 proj.targetEnemy.type,
-                28
+                isBoss ? 30 : 28
               );
 
               // Add defeat score
@@ -362,8 +380,8 @@ export class Game {
                 `+${reward}`,
                 proj.targetEnemy.x,
                 proj.targetEnemy.y - 20,
-                '#fde047',
-                22
+                isBoss ? '#f43f5e' : '#fde047',
+                isBoss ? 28 : 22
               );
             }
           }
@@ -538,13 +556,14 @@ export class Game {
     // 3. Eerie Phosphor Glow around Monsters
     for (let i = 0; i < this.enemies.length; i++) {
       const enemy = this.enemies[i];
-      const eRadius = enemy.radius * 2.5;
+      const isBoss = enemy.type === 'BOSS';
+      const eRadius = isBoss ? enemy.radius * 3.2 : enemy.radius * 2.5;
       const enemyLight = lCtx.createRadialGradient(
         enemy.x, enemy.y, 4,
         enemy.x, enemy.y, eRadius
       );
-      enemyLight.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
-      enemyLight.addColorStop(0.6, 'rgba(0, 0, 0, 0.3)');
+      enemyLight.addColorStop(0, isBoss ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.65)');
+      enemyLight.addColorStop(0.6, isBoss ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.3)');
       enemyLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       lCtx.fillStyle = enemyLight;
@@ -603,6 +622,20 @@ export class Game {
       ctx.beginPath();
       ctx.arc(proj.x, proj.y, 70, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Boss demonic aura bloom
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy = this.enemies[i];
+      if (enemy.type === 'BOSS') {
+        const bossBloom = ctx.createRadialGradient(enemy.x, enemy.y, 10, enemy.x, enemy.y, 120);
+        bossBloom.addColorStop(0, 'rgba(244, 63, 94, 0.35)');
+        bossBloom.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = bossBloom;
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, 120, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.restore();

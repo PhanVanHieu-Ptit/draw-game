@@ -106,6 +106,17 @@ export const ENEMY_TYPES = {
     color: '#a78bfa',
     glowColor: '#7c3aed',
     score: 500
+  },
+  BOSS: {
+    type: 'BOSS',
+    name: 'Chúa Tể Hắc Ám',
+    baseSpeed: 38,
+    minSymbols: 4,
+    maxSymbols: 6,
+    radius: 52,
+    color: '#831843',
+    glowColor: '#f43f5e',
+    score: 1500
   }
 };
 
