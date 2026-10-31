@@ -2,6 +2,7 @@
  * @file InputHandler.js
  * @description Pointer event listener capturing stroke points, rendering neon glow trail,
  * emitting Magic Sparks along the drawn path, and dispatching recognition to GestureEngine upon release.
+ * Built for rock-solid cross-platform mobile/touch support with Retina DPR precision and default gesture blocking.
  */
 
 export class InputHandler {
@@ -11,13 +12,15 @@ export class InputHandler {
    * @param {import('./ParticleSystem.js').ParticleSystem} particleSystem 
    * @param {Function} onGestureRecognized Callback when gesture is recognized
    * @param {import('./SoundSystem.js').SoundSystem} [soundSystem=null]
+   * @param {Function} [getLogicalDimensions=null] Callback returning { width, height }
    */
-  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized, soundSystem = null) {
+  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized, soundSystem = null, getLogicalDimensions = null) {
     this.canvas = canvas;
     this.engine = gestureEngine;
     this.particleSystem = particleSystem;
     this.onGestureRecognized = onGestureRecognized;
     this.soundSystem = soundSystem;
+    this.getLogicalDimensions = getLogicalDimensions;
 
     this.currentPoints = [];
     this.lastPoint = null;
@@ -28,6 +31,7 @@ export class InputHandler {
     this.fadingStrokes = [];
 
     this._bindEvents();
+    this._preventMobileGestures();
   }
 
   setEnabled(enabled) {
@@ -42,13 +46,60 @@ export class InputHandler {
     }
   }
 
+  /**
+   * Calculate precise canvas coordinate taking into account devicePixelRatio,
+   * CSS letterboxing, responsive scaling, and iframe environments.
+   * @param {PointerEvent|MouseEvent|TouchEvent} e 
+   * @returns {{x: number, y: number, timestamp: number}}
+   */
   _getCanvasPoint(e) {
     const rect = this.canvas.getBoundingClientRect();
+    let logicalW = rect.width || window.innerWidth;
+    let logicalH = rect.height || window.innerHeight;
+
+    if (this.getLogicalDimensions) {
+      const dims = this.getLogicalDimensions();
+      if (dims && dims.width && dims.height) {
+        logicalW = dims.width;
+        logicalH = dims.height;
+      }
+    }
+
+    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
+    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
       timestamp: performance.now()
     };
+  }
+
+  /**
+   * Block default touch gestures (pull-to-refresh, swipe-nav, pinch zoom) on mobile browsers
+   */
+  _preventMobileGestures() {
+    const preventDefaultTouch = (e) => {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    // Non-passive touch listeners to guarantee preventDefault succeeds
+    this.canvas.addEventListener('touchstart', preventDefaultTouch, { passive: false });
+    this.canvas.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+    this.canvas.addEventListener('touchend', preventDefaultTouch, { passive: false });
+    this.canvas.addEventListener('touchcancel', preventDefaultTouch, { passive: false });
+
+    // Block long-press context menu on canvas
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Block iOS Safari page zoom gestures
+    if (typeof document !== 'undefined') {
+      document.addEventListener('gesturestart', preventDefaultTouch, { passive: false });
+      document.addEventListener('gesturechange', preventDefaultTouch, { passive: false });
+      document.addEventListener('gestureend', preventDefaultTouch, { passive: false });
+    }
   }
 
   _bindEvents() {
@@ -57,7 +108,7 @@ export class InputHandler {
       try {
         this.canvas.setPointerCapture(e.pointerId);
       } catch (err) {
-        // Fallback if not supported
+        // Fallback for browsers without pointer capture
       }
       this.isDrawing = true;
       const pt = this._getCanvasPoint(e);
@@ -95,7 +146,6 @@ export class InputHandler {
             const t = s / steps;
             const interpX = this.lastPoint.x + dx * t;
             const interpY = this.lastPoint.y + dy * t;
-            // Emit sparkling fairy dust particles along line
             this.particleSystem.emitMagicSparks(interpX, interpY, 1, null, dx * 0.4, dy * 0.4);
           }
         }
@@ -107,6 +157,12 @@ export class InputHandler {
     const handlePointerUp = (e) => {
       if (!this.isEnabled || !this.isDrawing) return;
       this.isDrawing = false;
+
+      try {
+        if (e.pointerId !== undefined && this.canvas.hasPointerCapture && this.canvas.hasPointerCapture(e.pointerId)) {
+          this.canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
 
       if (this.soundSystem && typeof this.soundSystem.stopDraw === 'function') {
         this.soundSystem.stopDraw();
@@ -145,13 +201,13 @@ export class InputHandler {
   }
 
   /**
-   * Update fading stroke animations
+   * Update fading stroke animations with deltaTime
    * @param {number} dt 
    */
   update(dt) {
     for (let i = this.fadingStrokes.length - 1; i >= 0; i--) {
       const stroke = this.fadingStrokes[i];
-      stroke.alpha -= dt * 4.2; // Quick, smooth fadeout
+      stroke.alpha -= dt * 4.2;
       if (stroke.alpha <= 0) {
         this.fadingStrokes.splice(i, 1);
       }

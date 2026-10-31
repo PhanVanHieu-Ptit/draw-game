@@ -2,10 +2,13 @@
  * @file Game.js
  * @description Master Game Coordinator implementing Core Loop, Clean Architecture, 
  * Dynamic Lighting with Vignette, Screen Shake, and Particle integrations.
+ * Upgraded with Object Pooling for Enemies, Projectiles, and Particles to guarantee stable 60+ FPS,
+ * exact deltaTime scaling across high-refresh monitors (60Hz, 120Hz, 144Hz), and Retina DPR calibration.
  */
 
 import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS } from './Constants.js';
 import { StateMachine } from './StateMachine.js';
+import { ObjectPool } from './ObjectPool.js';
 import { GestureEngine } from '../GestureEngine.js';
 import { Player } from '../entities/Player.js';
 import { Enemy } from '../entities/Enemy.js';
@@ -20,7 +23,10 @@ export class Game {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.dpr = window.devicePixelRatio || 1;
+
+    // Cap DPR at 2.0 to balance Retina clarity with mobile GPU fillrate efficiency
+    const rawDpr = window.devicePixelRatio || 1;
+    this.dpr = Math.min(rawDpr, 2.0);
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
@@ -37,10 +43,25 @@ export class Game {
       boxSize: 100
     });
     this.audioSystem = new AudioSystem();
-    this.particleSystem = new ParticleSystem();
+    this.particleSystem = new ParticleSystem(800, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
 
-    // Player and Entity collections
+    // Object Pools for Projectile and Enemy entities
+    this.projectilePool = new ObjectPool(
+      () => new Projectile(),
+      (proj) => proj.reset(),
+      50,
+      250
+    );
+
+    this.enemyPool = new ObjectPool(
+      () => new Enemy(),
+      (enemy) => enemy.reset(),
+      40,
+      150
+    );
+
+    // Active Entity Collections
     this.player = new Player(this.width, this.height);
     this.enemies = [];
     this.projectiles = [];
@@ -61,13 +82,14 @@ export class Game {
       enemiesDefeated: 0
     };
 
-    // Input Handler
+    // Input Handler with exact logical dimension callback
     this.inputHandler = new InputHandler(
       this.canvas,
       this.gestureEngine,
       this.particleSystem,
       (result, stroke) => this.onGestureRecognized(result, stroke),
-      this.audioSystem
+      this.audioSystem,
+      () => ({ width: this.width, height: this.height })
     );
 
     // UI Manager
@@ -90,7 +112,6 @@ export class Game {
     // Hook Wave System events with Screen Shake & Visual Announcements
     this.waveSystem.onWaveStart = (waveNum) => {
       this.uiManager.updateWave(waveNum);
-      // Screen rumble when wave begins
       this.triggerShake(7, 0.4);
       this.particleSystem.emitFloatingText(
         `WAVE ${waveNum}`,
@@ -126,20 +147,34 @@ export class Game {
 
   _bindResize() {
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.resize(), 100);
+    });
   }
 
+  /**
+   * Responsive canvas resolution scaling calibrated to window.devicePixelRatio
+   * Guarantees crystal-clear Retina graphics while locking logical coordinates
+   */
   resize() {
-    this.dpr = window.devicePixelRatio || 1;
+    const rawDpr = window.devicePixelRatio || 1;
+    this.dpr = Math.min(rawDpr, 2.0);
+
     const rect = this.canvas.getBoundingClientRect();
     this.width = rect.width || window.innerWidth;
     this.height = rect.height || window.innerHeight;
 
-    this.canvas.width = this.width * this.dpr;
-    this.canvas.height = this.height * this.dpr;
+    // Internal pixel buffer scaled by DPR
+    this.canvas.width = Math.round(this.width * this.dpr);
+    this.canvas.height = Math.round(this.height * this.dpr);
 
-    // Resize lightmap canvas
-    this.lightCanvas.width = this.width;
-    this.lightCanvas.height = this.height;
+    // Explicit CSS display size matching viewport
+    this.canvas.style.width = `${this.width}px`;
+    this.canvas.style.height = `${this.height}px`;
+
+    // Resize lightmap canvas at logical size for maximum GPU fillrate performance
+    this.lightCanvas.width = Math.round(this.width);
+    this.lightCanvas.height = Math.round(this.height);
 
     this.player.resize(this.width, this.height);
   }
@@ -193,8 +228,11 @@ export class Game {
     };
 
     this.player.reset();
-    this.enemies = [];
-    this.projectiles = [];
+
+    // Release all active entities back to object pools
+    this.enemyPool.releaseAll(this.enemies);
+    this.projectilePool.releaseAll(this.projectiles);
+
     this.particleSystem.clear();
     this.inputHandler.clear();
     this.waveSystem.reset();
@@ -212,10 +250,22 @@ export class Game {
     requestAnimationFrame((ts) => this.loop(ts));
   }
 
+  /**
+   * Main Game Loop with accurate deltaTime calculation
+   * Ensures identical physics across 60Hz, 120Hz, 144Hz, and 240Hz monitors
+   * @param {DOMHighResTimeStamp} timestamp 
+   */
   loop(timestamp) {
     if (!this.isRunning) return;
 
-    const dt = Math.min(0.1, (timestamp - this.lastTime) / 1000);
+    if (!this.lastTime) {
+      this.lastTime = timestamp;
+    }
+
+    // Normalized delta time clamped to [0.001, 0.05] (20 FPS floor)
+    // Prevents spiraling tunneling or jump lag when tab is backgrounded
+    const rawDt = (timestamp - this.lastTime) / 1000;
+    const dt = Math.min(0.05, Math.max(0.001, rawDt));
     this.lastTime = timestamp;
 
     this.update(dt);
@@ -245,7 +295,6 @@ export class Game {
   }
 
   _renderBackground(ctx) {
-    // Subtle twinkling stars
     const time = performance.now() / 1000;
     for (let i = 0; i < this.stars.length; i++) {
       const s = this.stars[i];
@@ -258,28 +307,46 @@ export class Game {
   }
 
   /**
-   * Main Playing State Physics & Logic Update
+   * Main Playing State Physics & Logic Update with Object Pooling
    * @param {number} dt 
    */
   updatePlaying(dt) {
     // 1. Update Player
     this.player.update(dt, this.enemies);
 
-    // 2. Wave System Spawner
+    // 2. Wave System Spawner with Pooled Enemy
     const enemyConfig = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
     if (enemyConfig) {
-      const newEnemy = Enemy.spawnFromRandomEdge(
-        this.width,
-        this.height,
-        this.player,
-        enemyConfig.archetype,
-        enemyConfig.symbolQueue,
-        enemyConfig.speedMultiplier
-      );
+      const spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+      const newEnemy = this.enemyPool.acquire();
+      newEnemy.init({
+        type: enemyConfig.archetype,
+        x: spawnPos.x,
+        y: spawnPos.y,
+        symbolQueue: enemyConfig.symbolQueue,
+        speedMultiplier: enemyConfig.speedMultiplier,
+        targetPlayerPos: this.player
+      });
       this.enemies.push(newEnemy);
 
       // Boss / Armored entrance screen shake
+<<<<<<< Updated upstream
       if (enemyConfig.archetype === 'ARMORED') {
+=======
+      if (enemyConfig.archetype === 'BOSS') {
+        this.triggerShake(20, 0.75);
+        if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
+          this.audioSystem.soundBossCast();
+        }
+        this.particleSystem.emitFloatingText(
+          '⚡ CHÚA TỂ HẮC ÁM XUẤT HIỆN! ⚡',
+          this.width / 2,
+          this.height * 0.22,
+          '#f43f5e',
+          28
+        );
+      } else if (enemyConfig.archetype === 'ARMORED') {
+>>>>>>> Stashed changes
         this.triggerShake(11, 0.55);
         this.particleSystem.emitFloatingText(
           '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
@@ -303,10 +370,7 @@ export class Game {
           this.metrics.damageTaken++;
           this.audioSystem.playHurt();
           
-          // Heavy Screen Shake when player receives damage
           this.triggerShake(18, 0.45);
-          
-          // 20 - 30 particle death explosion
           this.particleSystem.emitMonsterDeathExplosion(enemy.x, enemy.y, enemy.type, 26);
           this.particleSystem.emitFloatingText('-1 HP', this.player.x, this.player.y - 40, '#ef4444', 24);
 
@@ -317,14 +381,16 @@ export class Game {
 
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
 
-          // Check GameOver
           if (this.player.hp <= 0) {
             this.stateMachine.changeState(GAME_STATES.GAMEOVER);
             return;
           }
         }
-        // Enemy dissipates on crashing into player
-        this.enemies.splice(i, 1);
+
+        // Return crashed enemy to pool with O(1) swap-and-pop removal
+        this.enemyPool.release(enemy);
+        this.enemies[i] = this.enemies[this.enemies.length - 1];
+        this.enemies.pop();
         continue;
       }
     }
@@ -342,12 +408,19 @@ export class Game {
             this.particleSystem.emitHitBurst(proj.x, proj.y, rune.color, 16);
             this.audioSystem.playHit();
 
-            // Check if enemy is completely destroyed
             if (hitResult.destroyed) {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
               
+<<<<<<< Updated upstream
               // 20 - 30 particles monster death explosion matching archetype
+=======
+              const isBoss = proj.targetEnemy.type === 'BOSS';
+              if (isBoss) {
+                this.triggerShake(16, 0.5);
+              }
+
+>>>>>>> Stashed changes
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
                 proj.targetEnemy.y,
@@ -355,7 +428,6 @@ export class Game {
                 28
               );
 
-              // Add defeat score
               const reward = proj.targetEnemy.scoreValue * this.comboMultiplier;
               this.score += reward;
               this.particleSystem.emitFloatingText(
@@ -368,14 +440,20 @@ export class Game {
             }
           }
         }
-        this.projectiles.splice(i, 1);
+
+        // Return impacted projectile to pool with O(1) swap-and-pop removal
+        this.projectilePool.release(proj);
+        this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
+        this.projectiles.pop();
       }
     }
 
-    // Remove dead enemies
+    // Remove dead enemies using pool release and O(1) swap-and-pop
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       if (this.enemies[i].isDead) {
-        this.enemies.splice(i, 1);
+        this.enemyPool.release(this.enemies[i]);
+        this.enemies[i] = this.enemies[this.enemies.length - 1];
+        this.enemies.pop();
       }
     }
 
@@ -389,7 +467,7 @@ export class Game {
       }
     }
 
-    // 6. Smooth Lerp Score Display
+    // 6. Smooth Lerp Score Display (frame-rate independent)
     if (this.displayedScore < this.score) {
       this.displayedScore += (this.score - this.displayedScore) * Math.min(1, dt * 10);
       if (Math.abs(this.score - this.displayedScore) < 1) {
@@ -441,16 +519,15 @@ export class Game {
     // 6. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
     this._renderDynamicLighting(ctx);
 
-    // 7. Render Neon Drawing Trail (rendered on top of lighting for maximum crispness)
+    // 7. Render Neon Drawing Trail
     this.inputHandler.render(ctx);
 
     ctx.restore();
   }
 
   /**
-   * Technical Artist: Dynamic Lighting & Atmospheric Fog Vignette.
+   * Dynamic Lighting & Atmospheric Fog Vignette
    * Uses an offscreen lightmap canvas with destination-out blending to punch luminous holes
-   * around the player cat, glowing spell projectiles, and drawn strokes, bordered by dark cinematic vignette.
    * @param {CanvasRenderingContext2D} ctx 
    */
   _renderDynamicLighting(ctx) {
@@ -516,7 +593,7 @@ export class Game {
       lCtx.fill();
     }
 
-    // 2. Local Light around Spell Projectiles (Tia phép phát ra ánh sáng cục bộ)
+    // 2. Local Light around Spell Projectiles
     for (let i = 0; i < this.projectiles.length; i++) {
       const proj = this.projectiles[i];
       const projRadius = 125;
@@ -620,7 +697,6 @@ export class Game {
 
     const gesture = result.gesture;
     if (!gesture || !RUNES[gesture]) {
-      // Unrecognized stroke
       this.audioSystem.playFizzle();
       this.uiManager.showGestureFeedback(null, 0, false);
       this._fizzleCombo();
@@ -631,15 +707,12 @@ export class Game {
     const matchingEnemies = this.enemies.filter(e => e.matchesActiveSymbol(gesture));
 
     if (matchingEnemies.length > 0) {
-      // Success! Player casts wand towards the nearest target
       this.metrics.spellsHit++;
       this.player.castSpell(matchingEnemies[0]);
       this.audioSystem.playSpell(gesture);
 
-      // Subtle feedback shake on successful spell cast
       this.triggerShake(3.5, 0.15);
 
-      // Handle Heart Gesture Healing
       if (gesture === 'heart') {
         const healed = this.player.heal(1);
         if (healed) {
@@ -649,10 +722,12 @@ export class Game {
         }
       }
 
-      // Fire projectile to each matching enemy
+      // Fire pooled projectile to each matching enemy
       const wandTip = this.player.getWandTip();
-      for (const enemy of matchingEnemies) {
-        const projectile = new Projectile({
+      for (let i = 0; i < matchingEnemies.length; i++) {
+        const enemy = matchingEnemies[i];
+        const projectile = this.projectilePool.acquire();
+        projectile.init({
           startX: wandTip.x,
           startY: wandTip.y,
           targetEnemy: enemy,
@@ -668,7 +743,6 @@ export class Game {
       this.comboMultiplier = this._calculateComboMultiplier(this.comboCount);
       this.audioSystem.playCombo(this.comboCount);
 
-      // Add rune base points
       const runeData = RUNES[gesture];
       const points = (runeData.baseScore || 100) * this.comboMultiplier;
       this.score += points;
@@ -683,7 +757,6 @@ export class Game {
 
       this.uiManager.showGestureFeedback(gesture, result.score, true);
     } else {
-      // Valid gesture drawn, but no current enemy needs it
       this.audioSystem.playFizzle();
       this.uiManager.showGestureFeedback(gesture, result.score, false);
       this._fizzleCombo();

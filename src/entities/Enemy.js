@@ -1,7 +1,7 @@
 /**
  * @file Enemy.js
- * @description Enemy entity - Spawns from edges and moves towards Player, displaying symbol queue.
- * Features multi-harmonic sine wave floating animations and player-tracking blinking eyes.
+ * @description Pooled Enemy entity - Spawns from edges and moves towards Player, displaying symbol queue.
+ * Optimized with Object Pooling and frame-rate independent multi-harmonic sine wave animations.
  */
 
 import { Entity } from './Entity.js';
@@ -9,15 +9,36 @@ import { RUNES, ENEMY_TYPES } from '../core/Constants.js';
 
 export class Enemy extends Entity {
   /**
-   * @param {Object} config
-   * @param {string} config.type 'REGULAR' | 'SPEEDSTER' | 'ARMORED'
-   * @param {number} config.x Spawn X
-   * @param {number} config.y Spawn Y
-   * @param {Array<string>} config.symbolQueue Array of rune IDs (e.g. ['horizontal', 'caret'])
-   * @param {number} [config.speedMultiplier=1.0]
+   * @param {Object} [config]
    */
-  constructor(config) {
-    super(config.x, config.y);
+  constructor(config = {}) {
+    super(config.x || 0, config.y || 0);
+
+    this.symbolQueue = [];
+    this.targetPlayerPos = { x: 0, y: 0 };
+    this.time = Math.random() * 10;
+    this.phase = Math.random() * Math.PI * 2;
+    this.hitTimer = 0;
+    this.isDead = false;
+
+    this.blinkTimer = Math.random() * 2.5 + 2.0;
+    this.blinkDuration = 0.16;
+    this.isBlinking = false;
+
+    if (config.type) {
+      this.init(config);
+    }
+  }
+
+  /**
+   * Initialize or reuse enemy instance from object pool
+   * @param {Object} config 
+   */
+  init(config) {
+    this.x = config.x || 0;
+    this.y = config.y || 0;
+    this.vx = 0;
+    this.vy = 0;
 
     const archetype = ENEMY_TYPES[config.type] || ENEMY_TYPES.REGULAR;
     this.type = archetype.type;
@@ -29,36 +50,59 @@ export class Enemy extends Entity {
     this.glowColor = archetype.glowColor;
     this.scoreValue = archetype.score;
 
-    this.symbolQueue = [...config.symbolQueue];
+    // Fast copy symbol queue without re-allocating array reference
+    this.symbolQueue.length = 0;
+    if (config.symbolQueue) {
+      for (let i = 0; i < config.symbolQueue.length; i++) {
+        this.symbolQueue.push(config.symbolQueue[i]);
+      }
+    }
+
     this.time = Math.random() * 10;
-    this.phase = Math.random() * Math.PI * 2; // unique harmonic phase
+    this.phase = Math.random() * Math.PI * 2;
     this.hitTimer = 0;
     this.isDead = false;
 
-    // Player position tracking for eyes gaze
-    this.targetPlayerPos = { x: 0, y: 0 };
+    if (config.targetPlayerPos) {
+      this.targetPlayerPos.x = config.targetPlayerPos.x;
+      this.targetPlayerPos.y = config.targetPlayerPos.y;
+    } else {
+      this.targetPlayerPos.x = 0;
+      this.targetPlayerPos.y = 0;
+    }
 
-    // Eye blinking dynamics
     this.blinkTimer = Math.random() * 2.5 + 2.0;
     this.blinkDuration = 0.16;
     this.isBlinking = false;
 
+<<<<<<< Updated upstream
     // Movement angle & sine oscillation offset
     this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : 2.5;
     this.oscillationAmplitude = this.type === 'ARMORED' ? 0.3 : 0.8;
+=======
+    this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : (this.type === 'BOSS' ? 1.8 : 2.5);
+    this.oscillationAmplitude = (this.type === 'ARMORED' || this.type === 'BOSS') ? 0.25 : 0.8;
+>>>>>>> Stashed changes
   }
 
   /**
-   * Static factory to create an enemy spawning from random edges directed towards player
+   * Reset enemy state for object pool release
+   */
+  reset() {
+    this.isDead = true;
+    this.symbolQueue.length = 0;
+    this.hitTimer = 0;
+    this.targetPlayerPos.x = 0;
+    this.targetPlayerPos.y = 0;
+  }
+
+  /**
+   * Calculate random edge spawn position
    * @param {number} canvasWidth 
    * @param {number} canvasHeight 
-   * @param {{x: number, y: number}} playerPos 
-   * @param {string} enemyType 'REGULAR' | 'SPEEDSTER' | 'ARMORED'
-   * @param {Array<string>} symbolQueue 
-   * @param {number} speedMultiplier 
-   * @returns {Enemy}
+   * @returns {{x: number, y: number}}
    */
-  static spawnFromRandomEdge(canvasWidth, canvasHeight, playerPos, enemyType, symbolQueue, speedMultiplier = 1.0) {
+  static getRandomEdgePosition(canvasWidth, canvasHeight) {
     const margin = 50;
     const edge = Math.floor(Math.random() * 3); // 0: Top, 1: Left, 2: Right
     let x, y;
@@ -79,18 +123,22 @@ export class Enemy extends Entity {
         break;
     }
 
+    return { x, y };
+  }
+
+  /**
+   * Legacy factory for backward compatibility
+   */
+  static spawnFromRandomEdge(canvasWidth, canvasHeight, playerPos, enemyType, symbolQueue, speedMultiplier = 1.0) {
+    const pos = Enemy.getRandomEdgePosition(canvasWidth, canvasHeight);
     const enemy = new Enemy({
       type: enemyType,
-      x,
-      y,
+      x: pos.x,
+      y: pos.y,
       symbolQueue,
-      speedMultiplier
+      speedMultiplier,
+      targetPlayerPos: playerPos ? { x: playerPos.x, y: playerPos.y } : null
     });
-
-    if (playerPos) {
-      enemy.targetPlayerPos = { x: playerPos.x, y: playerPos.y };
-    }
-
     return enemy;
   }
 
@@ -133,7 +181,7 @@ export class Enemy extends Entity {
   }
 
   /**
-   * Update enemy movement and animation timers towards player
+   * Update enemy movement and animation timers with delta-time
    * @param {number} dt 
    * @param {{x: number, y: number}} playerPos 
    */
@@ -157,12 +205,11 @@ export class Enemy extends Entity {
         this.blinkTimer = this.blinkDuration;
       } else {
         this.isBlinking = false;
-        // Schedule next blink in 2.5s ~ 5.5s
         this.blinkTimer = Math.random() * 3.0 + 2.5;
       }
     }
 
-    // Calculate heading vector to player
+    // Heading vector to player
     const dx = this.targetPlayerPos.x - this.x;
     const dy = this.targetPlayerPos.y - this.y;
     const dist = Math.hypot(dx, dy);
@@ -183,25 +230,22 @@ export class Enemy extends Entity {
 
   /**
    * Render enemy body with sine-wave hovering and player-tracking eyes
+   * Synchronized to entity's delta-time driven clock for jitter-free 60Hz/120Hz/144Hz displays
    * @param {CanvasRenderingContext2D} ctx 
    */
   render(ctx) {
     ctx.save();
 
     const isHit = this.hitTimer > 0;
-    const now = Date.now();
+    const animTime = this.time * 1000;
 
     // 1. Procedural sine-wave floating dynamics
-    // Vertical bobbing oscillation
-    const bob = Math.sin(now * 0.0035 + this.phase) * (this.type === 'SPEEDSTER' ? 5 : 8);
-    // Sway tilt angle (rolling left and right gently)
-    const sway = Math.cos(now * 0.0022 + this.phase) * 0.08;
-    // Breathing squash & stretch
-    const breath = Math.sin(now * 0.004 + this.phase) * 0.045;
+    const bob = Math.sin(animTime * 0.0035 + this.phase) * (this.type === 'SPEEDSTER' ? 5 : 8);
+    const sway = Math.cos(animTime * 0.0022 + this.phase) * 0.08;
+    const breath = Math.sin(animTime * 0.004 + this.phase) * 0.045;
     const scaleX = 1 - breath;
     const scaleY = 1 + breath;
 
-    // Apply translation to enemy position + bobbing
     ctx.translate(this.x, this.y + bob);
 
     // 2. Ghost Body
@@ -222,15 +266,12 @@ export class Enemy extends Entity {
     // Ghost body shape with multi-harmonic flowing wavy bottom
     const r = this.radius;
     ctx.beginPath();
-    // Head dome
     ctx.arc(0, -r * 0.2, r, Math.PI, 0, false);
-    // Right side down to skirt
     ctx.lineTo(r, r * 0.8);
 
-    // Wavy ghost skirt driven by Date.now() harmonics
-    const wave1 = Math.sin(now * 0.007 + this.phase) * 3.5;
-    const wave2 = Math.cos(now * 0.005 + this.phase) * 3.5;
-    const wave3 = Math.sin(now * 0.009 + this.phase + 1) * 3.0;
+    const wave1 = Math.sin(animTime * 0.007 + this.phase) * 3.5;
+    const wave2 = Math.cos(animTime * 0.005 + this.phase) * 3.5;
+    const wave3 = Math.sin(animTime * 0.009 + this.phase + 1) * 3.0;
 
     ctx.quadraticCurveTo(r * 0.55, r * 0.65 + wave1, r * 0.15, r * 0.88 + wave2);
     ctx.quadraticCurveTo(-r * 0.2, r * 0.88 + wave3, -r * 0.55, r * 0.65 - wave1);
@@ -247,7 +288,6 @@ export class Enemy extends Entity {
       ctx.arc(0, -r * 0.2, r + 4, Math.PI * 0.85, Math.PI * 0.15, true);
       ctx.stroke();
 
-      // Spectral horns / spikes
       ctx.fillStyle = '#6d28d9';
       ctx.shadowColor = '#a855f7';
       ctx.shadowBlur = 8;
@@ -265,14 +305,48 @@ export class Enemy extends Entity {
       ctx.lineTo(r * 0.35, -r * 0.7);
       ctx.closePath();
       ctx.fill();
+<<<<<<< Updated upstream
+=======
+    } else if (this.type === 'BOSS') {
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.2, r + 6, Math.PI * 0.85, Math.PI * 0.15, true);
+      ctx.stroke();
+
+      ctx.fillStyle = '#be123c';
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 18;
+
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.85, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 1.5, -r * 0.9, -r * 1.45, -r * 1.45);
+      ctx.quadraticCurveTo(-r * 0.9, -r * 1.05, -r * 0.35, -r * 0.75);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.25, -r * 0.9);
+      ctx.lineTo(0, -r * 1.6);
+      ctx.lineTo(r * 0.25, -r * 0.9);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(r * 0.85, -r * 0.3);
+      ctx.quadraticCurveTo(r * 1.5, -r * 0.9, r * 1.45, -r * 1.45);
+      ctx.quadraticCurveTo(r * 0.9, -r * 1.05, r * 0.35, -r * 0.75);
+      ctx.closePath();
+      ctx.fill();
+>>>>>>> Stashed changes
     }
 
     // 4. Ghost Eyes (Gazing at Player + Blinking)
     this._renderEyes(ctx, r, isHit);
 
-    ctx.restore(); // restore body rotate/scale
+    ctx.restore();
 
-    // 5. Floating Symbol Queue Header (stable, doesn't tilt with sway)
+    // 5. Floating Symbol Queue Header
     this._renderSymbols(ctx);
 
     ctx.restore();
@@ -284,19 +358,17 @@ export class Enemy extends Entity {
   _renderEyes(ctx, r, isHit) {
     ctx.save();
 
-    // Calculate angle towards player
     const dx = this.targetPlayerPos.x - this.x;
     const dy = this.targetPlayerPos.y - this.y;
     const angleToPlayer = Math.atan2(dy, dx);
 
-    // Eye blinking scale calculation
     let eyeScaleY = 1.0;
     if (this.isBlinking) {
       const progress = Math.max(0, Math.min(1, this.blinkTimer / this.blinkDuration));
       eyeScaleY = Math.max(0.08, Math.sin(progress * Math.PI));
     }
     if (isHit) {
-      eyeScaleY = 0.12; // closed in pain
+      eyeScaleY = 0.12;
     }
 
     const eyeOffsetX = r * 0.35;
@@ -304,7 +376,6 @@ export class Enemy extends Entity {
     const eyeRadiusX = r * 0.20;
     const eyeRadiusY = Math.max(1, (r * 0.24) * eyeScaleY);
 
-    // Eyeball background (sclera)
     ctx.shadowBlur = 0;
     ctx.fillStyle = this.type === 'SPEEDSTER' ? '#ffe4e6' : '#ffffff';
     ctx.beginPath();
@@ -312,7 +383,6 @@ export class Enemy extends Entity {
     ctx.ellipse(eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Pupils tracking the player
     if (eyeScaleY > 0.25) {
       const maxPupilShift = r * 0.08;
       const pupilX = Math.cos(angleToPlayer) * maxPupilShift;
@@ -333,7 +403,6 @@ export class Enemy extends Entity {
       ctx.ellipse(eyeOffsetX + pupilX, eyeOffsetY + pupilY, eyeRadiusX * 0.65, eyeRadiusY * 0.65, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Catchlight sparkle (glint)
       ctx.fillStyle = '#ffffff';
       ctx.shadowBlur = 0;
       ctx.beginPath();
@@ -362,10 +431,9 @@ export class Enemy extends Entity {
     for (let i = 0; i < this.symbolQueue.length; i++) {
       const runeId = this.symbolQueue[i];
       const rune = RUNES[runeId] || { symbol: '?', color: '#ffffff', glow: '#ffffff' };
-      const isActive = i === 0; // The active symbol to be drawn first
+      const isActive = i === 0;
       const x = startX + i * (badgeWidth + spacing);
 
-      // Badge pill background
       ctx.save();
       const scale = isActive ? 1.15 : 0.95;
       const bx = x + badgeWidth / 2;
@@ -374,7 +442,6 @@ export class Enemy extends Entity {
       ctx.translate(bx, by);
       ctx.scale(scale, scale);
 
-      // Active pulsing shadow
       if (isActive) {
         const pulse = (Math.sin(this.time * 8) + 1) * 0.5;
         ctx.shadowColor = rune.glow;
@@ -394,7 +461,6 @@ export class Enemy extends Entity {
       ctx.fill();
       ctx.stroke();
 
-      // Symbol Icon
       ctx.fillStyle = rune.color;
       ctx.font = `bold ${isActive ? 15 : 13}px sans-serif`;
       ctx.textAlign = 'center';
