@@ -1,0 +1,200 @@
+/**
+ * @file StateMachine.js
+ * @description Finite State Machine managing MENU, PLAYING, PAUSE, and GAMEOVER states.
+ */
+
+import { GAME_STATES } from './Constants.js';
+
+export class State {
+  constructor(name, game) {
+    this.name = name;
+    this.game = game;
+  }
+
+  enter(previousState, payload = {}) {}
+  exit(nextState) {}
+  update(dt) {}
+  render(ctx) {}
+}
+
+export class MenuState extends State {
+  constructor(game) {
+    super(GAME_STATES.MENU, game);
+  }
+
+  enter() {
+    this.game.inputHandler.setEnabled(false);
+    this.game.uiManager.showScreen(GAME_STATES.MENU);
+  }
+
+  exit() {
+    this.game.uiManager.hideScreen(GAME_STATES.MENU);
+  }
+
+  update(dt) {
+    // Background idle particles
+    this.game.particleSystem.update(dt);
+  }
+
+  render(ctx) {
+    // Render idle player and background particles
+    this.game.player.render(ctx);
+    this.game.particleSystem.render(ctx);
+  }
+}
+
+export class PlayingState extends State {
+  constructor(game) {
+    super(GAME_STATES.PLAYING, game);
+  }
+
+  enter(previousState) {
+    this.game.inputHandler.setEnabled(true);
+    this.game.uiManager.showScreen(GAME_STATES.PLAYING);
+
+    // If starting fresh (not resuming from pause)
+    if (previousState !== GAME_STATES.PAUSE) {
+      this.game.resetGameData();
+    }
+  }
+
+  exit(nextState) {
+    this.game.inputHandler.setEnabled(false);
+    if (nextState !== GAME_STATES.PAUSE) {
+      this.game.uiManager.hideScreen(GAME_STATES.PLAYING);
+    }
+  }
+
+  update(dt) {
+    this.game.updatePlaying(dt);
+  }
+
+  render(ctx) {
+    this.game.renderPlaying(ctx);
+  }
+}
+
+export class PauseState extends State {
+  constructor(game) {
+    super(GAME_STATES.PAUSE, game);
+  }
+
+  enter() {
+    this.game.inputHandler.setEnabled(false);
+    this.game.uiManager.showScreen(GAME_STATES.PAUSE);
+  }
+
+  exit() {
+    this.game.uiManager.hideScreen(GAME_STATES.PAUSE);
+  }
+
+  update(dt) {
+    // Do not advance game world physics, but keep particle decay if any
+  }
+
+  render(ctx) {
+    // Render current scene under a dim overlay
+    this.game.renderPlaying(ctx);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 8, 24, 0.65)';
+    ctx.fillRect(0, 0, this.game.width, this.game.height);
+    ctx.restore();
+  }
+}
+
+export class GameOverState extends State {
+  constructor(game) {
+    super(GAME_STATES.GAMEOVER, game);
+  }
+
+  enter(previousState, payload = {}) {
+    this.game.inputHandler.setEnabled(false);
+    this.game.audioSystem.playGameOver();
+
+    // Check & save High Score
+    const finalScore = this.game.score;
+    const isNewHighScore = this.game.saveHighScore(finalScore);
+
+    this.game.uiManager.showScreen(GAME_STATES.GAMEOVER, {
+      score: finalScore,
+      highScore: this.game.highScore,
+      isNewHighScore,
+      wave: this.game.waveSystem.currentWave,
+      spellsCast: this.game.metrics.spellsCast,
+      accuracy: this.game.metrics.spellsCast > 0
+        ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
+        : 100
+    });
+  }
+
+  exit() {
+    this.game.uiManager.hideScreen(GAME_STATES.GAMEOVER);
+  }
+
+  update(dt) {
+    this.game.particleSystem.update(dt);
+  }
+
+  render(ctx) {
+    this.game.renderPlaying(ctx);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 10, 30, 0.75)';
+    ctx.fillRect(0, 0, this.game.width, this.game.height);
+    ctx.restore();
+
+    this.game.particleSystem.render(ctx);
+  }
+}
+
+export class StateMachine {
+  constructor(game) {
+    this.game = game;
+    this.states = new Map();
+    this.currentState = null;
+
+    // Register all states
+    this.registerState(new MenuState(game));
+    this.registerState(new PlayingState(game));
+    this.registerState(new PauseState(game));
+    this.registerState(new GameOverState(game));
+  }
+
+  registerState(stateInstance) {
+    this.states.set(stateInstance.name, stateInstance);
+  }
+
+  changeState(stateName, payload = {}) {
+    const nextState = this.states.get(stateName);
+    if (!nextState) {
+      console.error(`State "${stateName}" is not registered.`);
+      return;
+    }
+
+    const previousStateName = this.currentState ? this.currentState.name : null;
+
+    if (this.currentState) {
+      this.currentState.exit(stateName);
+    }
+
+    this.currentState = nextState;
+    this.currentState.enter(previousStateName, payload);
+  }
+
+  update(dt) {
+    if (this.currentState) {
+      this.currentState.update(dt);
+    }
+  }
+
+  render(ctx) {
+    if (this.currentState) {
+      this.currentState.render(ctx);
+    }
+  }
+
+  getCurrentStateName() {
+    return this.currentState ? this.currentState.name : null;
+  }
+}
