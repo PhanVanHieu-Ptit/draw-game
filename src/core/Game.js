@@ -61,7 +61,8 @@ export class Game {
       this.canvas,
       this.gestureEngine,
       this.particleSystem,
-      (result, stroke) => this.onGestureRecognized(result, stroke)
+      (result, stroke) => this.onGestureRecognized(result, stroke),
+      this.audioSystem
     );
 
     // UI Manager

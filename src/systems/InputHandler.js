@@ -10,12 +10,14 @@ export class InputHandler {
    * @param {import('../GestureEngine.js').GestureEngine} gestureEngine 
    * @param {import('./ParticleSystem.js').ParticleSystem} particleSystem 
    * @param {Function} onGestureRecognized Callback when gesture is recognized
+   * @param {import('./SoundSystem.js').SoundSystem} [soundSystem=null]
    */
-  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized) {
+  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized, soundSystem = null) {
     this.canvas = canvas;
     this.engine = gestureEngine;
     this.particleSystem = particleSystem;
     this.onGestureRecognized = onGestureRecognized;
+    this.soundSystem = soundSystem;
 
     this.currentPoints = [];
     this.isDrawing = false;
@@ -32,6 +34,9 @@ export class InputHandler {
     if (!enabled) {
       this.isDrawing = false;
       this.currentPoints = [];
+      if (this.soundSystem && typeof this.soundSystem.stopDraw === 'function') {
+        this.soundSystem.stopDraw();
+      }
     }
   }
 
@@ -56,6 +61,10 @@ export class InputHandler {
       const pt = this._getCanvasPoint(e);
       this.currentPoints = [pt];
 
+      if (this.soundSystem && typeof this.soundSystem.soundDraw === 'function') {
+        this.soundSystem.soundDraw(120);
+      }
+
       if (this.particleSystem) {
         this.particleSystem.emitSparkle(pt.x, pt.y, '#f472b6', 3);
       }
@@ -66,6 +75,10 @@ export class InputHandler {
       const pt = this._getCanvasPoint(e);
       this.currentPoints.push(pt);
 
+      if (this.soundSystem && typeof this.soundSystem.feedDrawCoord === 'function') {
+        this.soundSystem.feedDrawCoord(pt.x, pt.y);
+      }
+
       if (this.particleSystem && Math.random() < 0.75) {
         this.particleSystem.emitSparkle(pt.x, pt.y, '#e879f9', 2);
       }
@@ -74,6 +87,10 @@ export class InputHandler {
     const handlePointerUp = (e) => {
       if (!this.isEnabled || !this.isDrawing) return;
       this.isDrawing = false;
+
+      if (this.soundSystem && typeof this.soundSystem.stopDraw === 'function') {
+        this.soundSystem.stopDraw();
+      }
 
       const rawStroke = [...this.currentPoints];
 
