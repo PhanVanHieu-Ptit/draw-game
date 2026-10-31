@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Arcane Paws: Spellscribe | Magic Cat Gesture Defense</title>
+  <meta name="description" content="Trò chơi vẽ cử chỉ ma pháp Arcade phòng thủ phong cách Magic Cat Academy. Sử dụng Canvas 2D API và thuật toán Dollar Recognizer.">
+  <script type="module" crossorigin src="/assets/index-BVbBHQhy.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BSNNMwW0.css">
+</head>
+<body>
+  <div id="game-wrapper">
+    <!-- Main HTML5 Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay: PLAYING HUD -->
+    <div id="hud-playing" class="ui-screen">
+      <div class="hud-top-bar">
+        <!-- Player Hearts -->
+        <div class="hud-hearts-panel" id="hearts-container">
+          <span class="heart-icon filled">❤️</span>
+          <span class="heart-icon filled">❤️</span>
+          <span class="heart-icon filled">❤️</span>
+          <span class="heart-icon filled">❤️</span>
+          <span class="heart-icon filled">❤️</span>
+        </div>
+
+        <!-- Center Score & Wave -->
+        <div class="hud-center-panel">
+          <div class="score-counter" id="score-val">0</div>
+          <div class="wave-badge" id="wave-badge">WAVE 1</div>
+        </div>
+
+        <!-- Right Controls & Combo -->
+        <div class="hud-right-panel">
+          <div class="combo-container" id="combo-badge">
+            <span class="combo-mult" id="combo-mult">x1</span>
+            <div class="combo-bar-wrap">
+              <div class="combo-bar" id="combo-bar"></div>
+            </div>
+          </div>
+          <button class="icon-btn" id="btn-mute" title="Bật/Tắt âm thanh">🔊</button>
+          <button class="icon-btn" id="btn-pause" title="Tạm dừng trận đấu (ESC)">⏸️</button>
+        </div>
+      </div>
+
+      <!-- Bottom Gesture Feedback Pill -->
+      <div class="hud-bottom-bar">
+        <div class="gesture-pill" id="gesture-feedback">ARCANE SLASH</div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: MENU SCREEN -->
+    <div id="menu-screen" class="ui-screen modal-overlay active">
+      <div class="glass-card">
+        <h1 class="game-title">ARCANE PAWS</h1>
+        <p class="game-subtitle">Vẽ các ấn ký cử chỉ ma pháp để thanh tẩy đợt u linh!</p>
+
+        <!-- Rune Guide Grid -->
+        <div class="rune-guide-grid">
+          <div class="guide-item" style="border-color: rgba(251, 191, 36, 0.4);">
+            <span class="guide-symbol" style="color: #fbbf24;">—</span>
+            <span class="guide-name">Ngang</span>
+          </div>
+          <div class="guide-item" style="border-color: rgba(56, 189, 248, 0.4);">
+            <span class="guide-symbol" style="color: #38bdf8;">|</span>
+            <span class="guide-name">Dọc</span>
+          </div>
+          <div class="guide-item" style="border-color: rgba(249, 115, 22, 0.4);">
+            <span class="guide-symbol" style="color: #f97316;">∧</span>
+            <span class="guide-name">Caret</span>
+          </div>
+          <div class="guide-item" style="border-color: rgba(192, 132, 252, 0.4);">
+            <span class="guide-symbol" style="color: #c084fc;">∨</span>
+            <span class="guide-name">V-Shape</span>
+          </div>
+          <div class="guide-item" style="border-color: rgba(52, 211, 153, 0.4);">
+            <span class="guide-symbol" style="color: #34d399;">⚡</span>
+            <span class="guide-name">Sét</span>
+          </div>
+          <div class="guide-item" style="border-color: rgba(244, 63, 94, 0.4);">
+            <span class="guide-symbol" style="color: #f43f5e;">❤️</span>
+            <span class="guide-name">Hồi Máu</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-start-game">
+          <span>BẮT ĐẦU CHƠI</span>
+          <span>⚡</span>
+        </button>
+
+        <div class="high-score-tag">
+          <span>🏆 Kỷ lục:</span>
+          <span id="menu-high-score">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: PAUSE SCREEN -->
+    <div id="pause-screen" class="ui-screen modal-overlay">
+      <div class="glass-card">
+        <h2 class="game-title" style="font-size: 2rem;">TẠM DỪNG</h2>
+        <p class="game-subtitle">Trận đấu đang tạm dừng. Hãy sẵn sàng đũa phép!</p>
+
+        <div class="button-group">
+          <button class="btn-primary" id="btn-resume">TIẾP TỤC</button>
+          <button class="btn-secondary" id="btn-restart">CHƠI LẠI</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: GAMEOVER SCREEN -->
+    <div id="gameover-screen" class="ui-screen modal-overlay">
+      <div class="glass-card">
+        <div class="new-record-badge" id="go-new-record">🎉 KỶ LỤC MỚI! 🎉</div>
+        <h2 class="game-title" style="color: #f43f5e; font-size: 2.2rem;">GAME OVER</h2>
+        <p class="game-subtitle">Chú mèo phù thủy đã kiệt sức trước đợt tấn công.</p>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">Điểm số</span>
+            <span class="stat-value" id="go-score" style="color: #fbbf24;">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Kỷ lục</span>
+            <span class="stat-value" id="go-high-score">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Đợt sống sót</span>
+            <span class="stat-value" id="go-wave" style="color: #ec4899;">1</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Độ chính xác</span>
+            <span class="stat-value" id="go-accuracy" style="color: #38bdf8;">100%</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-play-again">
+          <span>CHƠI LẠI</span>
+          <span>✨</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Script as ES Module -->
+</body>
+</html>
