@@ -1,6 +1,7 @@
 /**
  * @file Game.js
- * @description Master Game Coordinator implementing Core Loop, Clean Architecture, and State Machine integration.
+ * @description Master Game Coordinator implementing Core Loop, Clean Architecture, 
+ * Dynamic Lighting with Vignette, Screen Shake, and Particle integrations.
  */
 
 import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS } from './Constants.js';
@@ -23,6 +24,10 @@ export class Game {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
+
+    // Offscreen Lightmap Canvas for Dynamic Lighting & Vignette Masking
+    this.lightCanvas = document.createElement('canvas');
+    this.lightCtx = this.lightCanvas.getContext('2d');
 
     // Subsystems
     this.gestureEngine = new GestureEngine({
@@ -76,15 +81,17 @@ export class Game {
     this.isRunning = false;
 
     // Background stars / ambient dust
-    this.stars = this._createAmbientStars(60);
+    this.stars = this._createAmbientStars(65);
 
     // Setup events
     this._bindResize();
     this.resize();
 
-    // Hook Wave System events
+    // Hook Wave System events with Screen Shake & Visual Announcements
     this.waveSystem.onWaveStart = (waveNum) => {
       this.uiManager.updateWave(waveNum);
+      // Screen rumble when wave begins
+      this.triggerShake(7, 0.4);
       this.particleSystem.emitFloatingText(
         `WAVE ${waveNum}`,
         this.width / 2,
@@ -95,6 +102,7 @@ export class Game {
     };
 
     this.waveSystem.onWaveComplete = (waveNum) => {
+      this.triggerShake(5, 0.3);
       this.particleSystem.emitFloatingText(
         `WAVE ${waveNum} HOÀN THÀNH!`,
         this.width / 2,
@@ -103,6 +111,17 @@ export class Game {
         30
       );
     };
+  }
+
+  /**
+   * Trigger screen shake directly on the game canvas
+   * @param {number} intensity Max displacement amplitude
+   * @param {number} duration Duration in seconds
+   */
+  triggerShake(intensity = 10, duration = 0.3) {
+    if (this.particleSystem) {
+      this.particleSystem.triggerShake(intensity, duration);
+    }
   }
 
   _bindResize() {
@@ -117,6 +136,10 @@ export class Game {
 
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
+
+    // Resize lightmap canvas
+    this.lightCanvas.width = this.width;
+    this.lightCanvas.height = this.height;
 
     this.player.resize(this.width, this.height);
   }
@@ -254,6 +277,18 @@ export class Game {
         enemyConfig.speedMultiplier
       );
       this.enemies.push(newEnemy);
+
+      // Boss / Armored entrance screen shake
+      if (enemyConfig.archetype === 'ARMORED') {
+        this.triggerShake(11, 0.55);
+        this.particleSystem.emitFloatingText(
+          '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
+          this.width / 2,
+          this.height * 0.22,
+          '#a855f7',
+          22
+        );
+      }
     }
 
     // 3. Update Enemies
@@ -267,8 +302,12 @@ export class Game {
         if (damageTaken) {
           this.metrics.damageTaken++;
           this.audioSystem.playHurt();
-          this.particleSystem.shake(12, 0.35);
-          this.particleSystem.emitDeathPoof(enemy.x, enemy.y, '#ef4444', 20);
+          
+          // Heavy Screen Shake when player receives damage
+          this.triggerShake(18, 0.45);
+          
+          // 20 - 30 particle death explosion
+          this.particleSystem.emitMonsterDeathExplosion(enemy.x, enemy.y, enemy.type, 26);
           this.particleSystem.emitFloatingText('-1 HP', this.player.x, this.player.y - 40, '#ef4444', 24);
 
           // Break combo
@@ -307,7 +346,14 @@ export class Game {
             if (hitResult.destroyed) {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
-              this.particleSystem.emitDeathPoof(proj.targetEnemy.x, proj.targetEnemy.y, proj.targetEnemy.glowColor, 24);
+              
+              // 20 - 30 particles monster death explosion matching archetype
+              this.particleSystem.emitMonsterDeathExplosion(
+                proj.targetEnemy.x,
+                proj.targetEnemy.y,
+                proj.targetEnemy.type,
+                28
+              );
 
               // Add defeat score
               const reward = proj.targetEnemy.scoreValue * this.comboMultiplier;
@@ -362,33 +408,202 @@ export class Game {
   }
 
   /**
-   * Render Playing Scene
+   * Render Playing Scene with Screen Shake & Dynamic Lighting
    * @param {CanvasRenderingContext2D} ctx 
    */
   renderPlaying(ctx) {
     ctx.save();
 
-    // Screen Shake offset
-    ctx.translate(this.particleSystem.screenShake.x, this.particleSystem.screenShake.y);
+    // 1. Screen Shake with translational displacement and subtle camera roll
+    const shake = this.particleSystem.screenShake;
+    if (shake.timer > 0) {
+      ctx.translate(this.width / 2, this.height / 2);
+      ctx.rotate(shake.rotation);
+      ctx.translate(-this.width / 2 + shake.x, -this.height / 2 + shake.y);
+    }
 
-    // 1. Render Player
+    // 2. Render Player Momo
     this.player.render(ctx);
 
-    // 2. Render Enemies
+    // 3. Render Enemies
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].render(ctx);
     }
 
-    // 3. Render Projectiles
+    // 4. Render Projectiles
     for (let i = 0; i < this.projectiles.length; i++) {
       this.projectiles[i].render(ctx);
     }
 
-    // 4. Render Particles & Floating texts
+    // 5. Render Particles & Floating texts
     this.particleSystem.render(ctx);
 
-    // 5. Render Neon Drawing Trail
+    // 6. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
+    this._renderDynamicLighting(ctx);
+
+    // 7. Render Neon Drawing Trail (rendered on top of lighting for maximum crispness)
     this.inputHandler.render(ctx);
+
+    ctx.restore();
+  }
+
+  /**
+   * Technical Artist: Dynamic Lighting & Atmospheric Fog Vignette.
+   * Uses an offscreen lightmap canvas with destination-out blending to punch luminous holes
+   * around the player cat, glowing spell projectiles, and drawn strokes, bordered by dark cinematic vignette.
+   * @param {CanvasRenderingContext2D} ctx 
+   */
+  _renderDynamicLighting(ctx) {
+    const lCanvas = this.lightCanvas;
+    const lCtx = this.lightCtx;
+    const w = this.width;
+    const h = this.height;
+
+    if (!lCanvas || w <= 0 || h <= 0) return;
+
+    lCtx.save();
+    lCtx.clearRect(0, 0, w, h);
+
+    // Step A: Base Ambient Darkness
+    lCtx.fillStyle = 'rgba(6, 4, 16, 0.78)';
+    lCtx.fillRect(0, 0, w, h);
+
+    // Step B: Heavy Vignette Gradient towards canvas borders
+    const maxDim = Math.max(w, h);
+    const vignette = lCtx.createRadialGradient(
+      w / 2, h / 2, maxDim * 0.22,
+      w / 2, h / 2, maxDim * 0.75
+    );
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.6, 'rgba(3, 2, 8, 0.55)');
+    vignette.addColorStop(1, 'rgba(2, 1, 5, 0.95)');
+    lCtx.fillStyle = vignette;
+    lCtx.fillRect(0, 0, w, h);
+
+    // Step C: Carve out light sources using destination-out
+    lCtx.globalCompositeOperation = 'destination-out';
+
+    // 1. Local Light around Player Momo
+    const isCasting = this.player.castTimer > 0;
+    const isHurt = this.player.hurtTimer > 0;
+    const breatheLight = Math.sin(this.lastTime * 0.003) * 14;
+    const playerLightRadius = isCasting ? 270 : (isHurt ? 165 : 215 + breatheLight);
+
+    const playerGlow = lCtx.createRadialGradient(
+      this.player.x, this.player.y, 8,
+      this.player.x, this.player.y, playerLightRadius
+    );
+    playerGlow.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+    playerGlow.addColorStop(0.4, 'rgba(0, 0, 0, 0.88)');
+    playerGlow.addColorStop(0.75, 'rgba(0, 0, 0, 0.45)');
+    playerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    lCtx.fillStyle = playerGlow;
+    lCtx.beginPath();
+    lCtx.arc(this.player.x, this.player.y, playerLightRadius, 0, Math.PI * 2);
+    lCtx.fill();
+
+    // Wand tip extra flare when casting
+    if (isCasting) {
+      const tip = this.player.getWandTip();
+      const tipGlow = lCtx.createRadialGradient(tip.x, tip.y, 2, tip.x, tip.y, 140);
+      tipGlow.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+      tipGlow.addColorStop(0.6, 'rgba(0, 0, 0, 0.75)');
+      tipGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      lCtx.fillStyle = tipGlow;
+      lCtx.beginPath();
+      lCtx.arc(tip.x, tip.y, 140, 0, Math.PI * 2);
+      lCtx.fill();
+    }
+
+    // 2. Local Light around Spell Projectiles (Tia phép phát ra ánh sáng cục bộ)
+    for (let i = 0; i < this.projectiles.length; i++) {
+      const proj = this.projectiles[i];
+      const projRadius = 125;
+      const projLight = lCtx.createRadialGradient(
+        proj.x, proj.y, 6,
+        proj.x, proj.y, projRadius
+      );
+      projLight.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+      projLight.addColorStop(0.45, 'rgba(0, 0, 0, 0.82)');
+      projLight.addColorStop(0.8, 'rgba(0, 0, 0, 0.35)');
+      projLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      lCtx.fillStyle = projLight;
+      lCtx.beginPath();
+      lCtx.arc(proj.x, proj.y, projRadius, 0, Math.PI * 2);
+      lCtx.fill();
+    }
+
+    // 3. Eerie Phosphor Glow around Monsters
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy = this.enemies[i];
+      const eRadius = enemy.radius * 2.5;
+      const enemyLight = lCtx.createRadialGradient(
+        enemy.x, enemy.y, 4,
+        enemy.x, enemy.y, eRadius
+      );
+      enemyLight.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
+      enemyLight.addColorStop(0.6, 'rgba(0, 0, 0, 0.3)');
+      enemyLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      lCtx.fillStyle = enemyLight;
+      lCtx.beginPath();
+      lCtx.arc(enemy.x, enemy.y, eRadius, 0, Math.PI * 2);
+      lCtx.fill();
+    }
+
+    // 4. Subtle Trail Glow along Player's current active drawing path
+    if (this.inputHandler.isDrawing && this.inputHandler.currentPoints.length > 0) {
+      const pts = this.inputHandler.currentPoints;
+      const step = Math.max(1, Math.floor(pts.length / 10));
+      for (let i = 0; i < pts.length; i += step) {
+        const pt = pts[i];
+        const strokeLight = lCtx.createRadialGradient(pt.x, pt.y, 2, pt.x, pt.y, 50);
+        strokeLight.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+        strokeLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        lCtx.fillStyle = strokeLight;
+        lCtx.beginPath();
+        lCtx.arc(pt.x, pt.y, 50, 0, Math.PI * 2);
+        lCtx.fill();
+      }
+    }
+
+    lCtx.restore();
+
+    // Step D: Composite the darkness lightmap over the main canvas
+    ctx.drawImage(lCanvas, 0, 0);
+
+    // Step E: Additive Glow Halos (Atmospheric Bloom)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Player warmth halo
+    const haloColor = isHurt 
+      ? 'rgba(239, 68, 68, 0.32)' 
+      : (isCasting ? 'rgba(236, 72, 153, 0.28)' : 'rgba(192, 132, 252, 0.18)');
+    const playerHalo = ctx.createRadialGradient(
+      this.player.x, this.player.y, 5,
+      this.player.x, this.player.y, 160
+    );
+    playerHalo.addColorStop(0, haloColor);
+    playerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = playerHalo;
+    ctx.beginPath();
+    ctx.arc(this.player.x, this.player.y, 160, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Spell projectile color bloom
+    for (let i = 0; i < this.projectiles.length; i++) {
+      const proj = this.projectiles[i];
+      const halo = ctx.createRadialGradient(proj.x, proj.y, 4, proj.x, proj.y, 70);
+      halo.addColorStop(0, `${proj.color}50`);
+      halo.addColorStop(1, 'transparent');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(proj.x, proj.y, 70, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -420,6 +635,9 @@ export class Game {
       this.metrics.spellsHit++;
       this.player.castSpell(matchingEnemies[0]);
       this.audioSystem.playSpell(gesture);
+
+      // Subtle feedback shake on successful spell cast
+      this.triggerShake(3.5, 0.15);
 
       // Handle Heart Gesture Healing
       if (gesture === 'heart') {
