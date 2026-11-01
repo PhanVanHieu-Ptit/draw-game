@@ -26,6 +26,16 @@ export class Player extends Entity {
     this.castTargetAngle = -Math.PI / 2; // Default facing up
     this.hurtTimer = 0;
     this.dangerPulse = 0;
+
+    // Drawing gesture tracking states
+    this.isDrawing = false;
+    this.drawPoint = null;
+    this.currentWandAngle = -Math.PI / 2 - 0.2;
+    this.targetWandAngle = -Math.PI / 2 - 0.2;
+    this.wandArmX = 14;
+    this.wandArmY = 2;
+    this.targetArmX = 14;
+    this.targetArmY = 2;
   }
 
   resize(width, height) {
@@ -41,6 +51,22 @@ export class Player extends Entity {
     this.isInvulnerable = false;
     this.castTimer = 0;
     this.hurtTimer = 0;
+    this.isDrawing = false;
+    this.drawPoint = null;
+    this.currentWandAngle = -Math.PI / 2 - 0.2;
+    this.targetWandAngle = -Math.PI / 2 - 0.2;
+    this.wandArmX = 14;
+    this.wandArmY = 2;
+  }
+
+  /**
+   * Update active gesture drawing state from InputHandler
+   * @param {boolean} isDrawing 
+   * @param {{x: number, y: number}|null} drawPoint 
+   */
+  setDrawing(isDrawing, drawPoint = null) {
+    this.isDrawing = isDrawing;
+    this.drawPoint = drawPoint;
   }
 
   /**
@@ -90,15 +116,57 @@ export class Player extends Entity {
    */
   getWandTip() {
     const wandLength = 36;
-    const angle = this.castTimer > 0 ? this.castTargetAngle : -Math.PI / 2 - 0.2;
+    const angle = this.currentWandAngle;
     return {
-      x: this.x + Math.cos(angle) * wandLength,
-      y: this.y - 15 + Math.sin(angle) * wandLength
+      x: this.x + this.wandArmX + Math.cos(angle) * wandLength,
+      y: this.y + this.wandArmY - 15 + Math.sin(angle) * wandLength
     };
   }
 
   update(dt, enemies = []) {
     this.time += dt;
+
+    // Update wand angle and arm positioning:
+    if (this.isDrawing && this.drawPoint) {
+      // Calculate angle and displacement from cat to drawing point
+      const dx = this.drawPoint.x - (this.x + 14);
+      const dy = this.drawPoint.y - (this.y - 12);
+      this.targetWandAngle = Math.atan2(dy, dx);
+
+      // Dynamically move cat's paw / arm in real-time matching stroke displacement
+      const dist = Math.hypot(dx, dy);
+      const nx = dx / Math.max(1, dist);
+      const ny = dy / Math.max(1, dist);
+
+      // Relative shift based on stroke offset from player
+      const reachX = Math.max(-12, Math.min(20, (this.drawPoint.x - this.x) * 0.05));
+      const reachY = Math.max(-15, Math.min(12, (this.drawPoint.y - (this.y - 50)) * 0.04));
+
+      this.targetArmX = 14 + nx * 8 + reachX;
+      this.targetArmY = 2 + ny * 7 + reachY;
+    } else if (this.castTimer > 0) {
+      this.targetWandAngle = this.castTargetAngle;
+      this.targetArmX = 14 + Math.cos(this.castTargetAngle) * 10;
+      this.targetArmY = 2 + Math.sin(this.castTargetAngle) * 8;
+    } else {
+      // Idle breathing sway
+      this.targetWandAngle = -Math.PI / 2 - 0.2 + Math.sin(this.time * 2.5) * 0.08;
+      this.targetArmX = 14;
+      this.targetArmY = 2;
+    }
+
+    // Delta-time smooth interpolation (snappy tracking when drawing)
+    const lerpRate = this.isDrawing ? 28 : (this.castTimer > 0 ? 32 : 12);
+    const alpha = Math.min(1, dt * lerpRate);
+
+    // Angle interpolation handling wrap-around
+    let angleDiff = this.targetWandAngle - this.currentWandAngle;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    this.currentWandAngle += angleDiff * alpha;
+
+    this.wandArmX += (this.targetArmX - this.wandArmX) * alpha;
+    this.wandArmY += (this.targetArmY - this.wandArmY) * alpha;
 
     // Check danger zone
     let hasEnemyInDanger = false;
@@ -256,7 +324,20 @@ export class Player extends Entity {
     ctx.closePath();
     ctx.fill();
 
-    // 6. Eyes (Big luminous magical eyes)
+    // 6. Eyes (Big luminous magical eyes tracking wand/stroke)
+    let pupilShiftX = 0;
+    let pupilShiftY = 0;
+    if (this.isDrawing && this.drawPoint) {
+      const pdx = this.drawPoint.x - this.x;
+      const pdy = this.drawPoint.y - (this.y - 12);
+      const pdist = Math.hypot(pdx, pdy) || 1;
+      pupilShiftX = (pdx / pdist) * 2.4;
+      pupilShiftY = (pdy / pdist) * 2.2;
+    } else if (this.castTimer > 0) {
+      pupilShiftX = Math.cos(this.castTargetAngle) * 2.5;
+      pupilShiftY = Math.sin(this.castTargetAngle) * 2.2;
+    }
+
     ctx.fillStyle = '#38bdf8';
     ctx.shadowColor = '#38bdf8';
     ctx.shadowBlur = 8;
@@ -265,12 +346,19 @@ export class Player extends Entity {
     ctx.ellipse(7, -12, 4, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eye highlights
+    // Eye highlights with dynamic gaze shift
     ctx.fillStyle = '#ffffff';
     ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.arc(-8, -14, 1.5, 0, Math.PI * 2);
-    ctx.arc(6, -14, 1.5, 0, Math.PI * 2);
+    ctx.arc(-8 + pupilShiftX * 0.4, -14 + pupilShiftY * 0.4, 1.5, 0, Math.PI * 2);
+    ctx.arc(6 + pupilShiftX * 0.4, -14 + pupilShiftY * 0.4, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark pupils looking dynamically
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(-7 + pupilShiftX, -12 + pupilShiftY, 2.2, 0, Math.PI * 2);
+    ctx.arc(7 + pupilShiftX, -12 + pupilShiftY, 2.2, 0, Math.PI * 2);
     ctx.fill();
 
     // Tiny pink nose
@@ -315,11 +403,24 @@ export class Player extends Entity {
     ctx.rect(-6, -30, 12, 5);
     ctx.fill();
 
-    // 8. Wizard Wand & Casting Paw
+    // 8. Wizard Wand & Casting Paw (Follows drawing stroke dynamically)
     ctx.save();
-    const wandAngle = this.castTimer > 0 ? this.castTargetAngle : -Math.PI / 2 - 0.2;
-    ctx.translate(14, 2);
-    ctx.rotate(wandAngle + Math.PI / 2);
+    ctx.translate(this.wandArmX, this.wandArmY);
+
+    // Cute Furry Cat Paw holding wand
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 6, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Paw claws/pads
+    ctx.fillStyle = '#312e81';
+    ctx.beginPath();
+    ctx.arc(2, 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rotate wand according to current dynamic wand angle
+    ctx.rotate(this.currentWandAngle + Math.PI / 2);
 
     // Wand stick
     ctx.strokeStyle = '#78350f';
@@ -330,23 +431,36 @@ export class Player extends Entity {
     ctx.lineTo(0, -28);
     ctx.stroke();
 
-    // Wand tip crystal
-    const isCasting = this.castTimer > 0;
-    ctx.fillStyle = isCasting ? '#ffffff' : '#ec4899';
-    ctx.shadowColor = '#ec4899';
-    ctx.shadowBlur = isCasting ? 22 : 8;
+    // Wand gold ring collar
+    ctx.fillStyle = '#fbbf24';
     ctx.beginPath();
-    ctx.arc(0, -30, isCasting ? 6 : 4, 0, Math.PI * 2);
+    ctx.rect(-2.5, -27, 5, 2.5);
     ctx.fill();
 
-    if (isCasting) {
-      // Magic flare rays
-      ctx.strokeStyle = '#f43f5e';
+    // Wand tip crystal
+    const isCasting = this.castTimer > 0;
+    const isDrawing = this.isDrawing;
+    const isEmpowered = isCasting || isDrawing;
+
+    ctx.fillStyle = isEmpowered ? '#ffffff' : '#ec4899';
+    ctx.shadowColor = isDrawing ? '#38bdf8' : '#ec4899';
+    ctx.shadowBlur = isEmpowered ? 24 : 8;
+    ctx.beginPath();
+    ctx.arc(0, -30, isEmpowered ? 6 : 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (isEmpowered) {
+      // Magic flare rays dancing at the tip
+      const rayColor = isDrawing ? '#67e8f9' : '#f43f5e';
+      ctx.strokeStyle = rayColor;
       ctx.lineWidth = 2;
+      const rayLen = isDrawing ? 11 : 14;
+      const rayPhase = this.time * 9;
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+        const curA = a + rayPhase;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 5, -30 + Math.sin(a) * 5);
-        ctx.lineTo(Math.cos(a) * 12, -30 + Math.sin(a) * 12);
+        ctx.moveTo(Math.cos(curA) * 5, -30 + Math.sin(curA) * 5);
+        ctx.lineTo(Math.cos(curA) * rayLen, -30 + Math.sin(curA) * rayLen);
         ctx.stroke();
       }
     }
