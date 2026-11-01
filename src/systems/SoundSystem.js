@@ -19,27 +19,43 @@
  * Extracted directly from official Google Doodle audio sheets (main.mp3, victory.mp3, initial.mp3, end.mp3).
  */
 export const AUDIO_SPRITES = {
-  // main.mp3 sprites
-  bgm: { file: 'main', start: 31.308549, duration: 25.263175, loop: true },
-  spell_slash: { file: 'main', start: 70.241565, duration: 0.98356 },     // Kb: basic spell slash
-  combo_1: { file: 'main', start: 72.225125, duration: 1.160 },           // Wb: combo level 1
-  combo_2: { file: 'main', start: 74.385125, duration: 1.248 },           // Dc: combo level 2
-  combo_3: { file: 'main', start: 76.633129, duration: 1.387 },           // Ec: combo level 3
-  combo_4: { file: 'main', start: 79.019796, duration: 1.483 },           // Fc: combo level 4
-  spell_heart: { file: 'main', start: 86.341088, duration: 1.625397 },   // Ic: heart heal spell
-  spell_lightning: { file: 'main', start: 88.966485, duration: 2.066576 }, // Jc: lightning storm spell
-  cat_hurt: { file: 'main', start: 18.89415, duration: 1.984014 },        // tc: cat hurt meow
-  ghost_vanish: { file: 'main', start: 60.31322, duration: 1.335147 },   // wc: ghost defeated/dissolves
-  combo_fizzle: { file: 'main', start: 57.571723, duration: 1.741497 },   // Tb: combo lost/fizzle
-  level_start: { file: 'main', start: 68.073311, duration: 1.168254 },   // Bc: level start ready
-  level_clear: { file: 'main', start: 65.500159, duration: 1.573152 },   // Vb: wave/stage clear
-  boss_intro: { file: 'main', start: 0, duration: 3.160816 },             // kc: boss apparition
-  // victory.mp3
-  victory: { file: 'victory', start: 0, duration: 18.413424 },            // Ib: grand victory fanfare
-  // initial.mp3
-  intro: { file: 'initial', start: 0, duration: 16.921542 },              // vb: spooky intro cutscene
-  // end.mp3
-  game_over: { file: 'end', start: 0, duration: 1.933333 }                // Ob: game over chime
+  // --- BGM Tracks ---
+  bgm: { file: 'main', start: 31.308549, duration: 25.263175, loop: true },     // Sb: Main gameplay BGM theme
+  bgm_boss_5: { file: 'end', start: 21.909342, duration: 30.000, loop: true },  // vc: Final Boss battle theme
+
+  // --- Player (Momo) Spells & Combos ---
+  spell_slash: { file: 'main', start: 70.241565, duration: 0.98356 },            // Kb: Wand spell slash
+  combo_1: { file: 'main', start: 72.225125, duration: 1.160 },                  // Wb: Combo 1 chime
+  combo_2: { file: 'main', start: 74.385125, duration: 1.248 },                  // Dc: Combo 2 chime
+  combo_3: { file: 'main', start: 76.633129, duration: 1.387 },                  // Ec: Combo 3 chime
+  combo_4: { file: 'main', start: 79.019796, duration: 1.483 },                  // Fc: Combo 4 chime
+  spell_heart: { file: 'main', start: 86.341088, duration: 1.625397 },          // Ic: Heart heal spell chime
+  spell_lightning: { file: 'main', start: 88.966485, duration: 2.066576 },        // Jc: Lightning strike spell
+  cat_hurt: { file: 'main', start: 18.89415, duration: 1.984014 },               // tc: Momo cat hurt meow
+
+  // --- Monster / Ghost Audio Sprites (Google Doodle Authentic) ---
+  ghost_vanish: { file: 'main', start: 60.31322, duration: 1.335147 },          // wc: Ghost defeated / poof dissolve
+  ghost_attack: { file: 'main', start: 57.571723, duration: 1.741497 },          // Tb: Ghost aggressive attack lunge / screech
+  boss_roar: { file: 'end', start: 8.400, duration: 5.233333 },                  // Pb: Boss apparition / terrifying entrance roar
+  boss_intro: { file: 'end', start: 8.400, duration: 5.233333 },                 // Pb: Alias for boss entrance
+  boss_defeat_1: { file: 'main', start: 0.000, duration: 3.160816 },             // kc: Level 1 Boss (Librarian) defeat groan
+  boss_defeat_2: { file: 'main', start: 4.160816, duration: 3.233333 },          // lc: Level 2 Boss (Chef) defeat scream
+  boss_defeat_3: { file: 'main', start: 8.39415, duration: 3.533333 },           // mc: Level 3 Boss (Planetarium) defeat roar
+  boss_defeat_4: { file: 'main', start: 12.927483, duration: 4.966667 },         // nc: Level 4 Boss (Coach) defeat roar
+  boss_defeat_5: { file: 'main', start: 21.878163, duration: 4.95746 },          // uc: Level 5 Master Boss defeat roar
+  boss_cutscene_whoosh: { file: 'end', start: 17.942676, duration: 2.966667 },   // Qb: Ghost flight / whoosh
+  boss_cutscene_laugh: { file: 'end', start: 2.933333, duration: 4.466667 },     // qc: Eerie ghost presence
+
+  // --- Story & UI Sprites ---
+  level_start: { file: 'main', start: 68.073311, duration: 1.168254 },          // Bc: Level start ready gong
+  level_clear: { file: 'main', start: 65.500159, duration: 1.573152 },          // Vb: Wave / Stage clear fanfare
+  star_1: { file: 'main', start: 81.502449, duration: 1.271293 },               // Gc: Score star 1
+  star_2: { file: 'main', start: 83.773741, duration: 1.567347 },               // Hc: Score star 2
+  game_over_jingle: { file: 'main', start: 27.835624, duration: 2.472925 },      // Rb: Game over jingle
+  game_over: { file: 'end', start: 0.000, duration: 1.933333 },                  // Ob: Game over chime
+  victory: { file: 'victory', start: 0.000, duration: 18.413424 },               // Ib: Grand victory fanfare
+  intro: { file: 'initial', start: 0.000, duration: 16.921542 },                 // vb: Spooky intro cutscene
+  combo_fizzle: { file: 'main', start: 57.571723, duration: 1.741497 }           // Legacy alias for combo fizzle
 };
 
 export class SoundSystem {
@@ -136,6 +152,9 @@ export class SoundSystem {
       this.bgmGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.bgmVolume, this.ctx.currentTime);
       this.bgmGain.connect(this.masterGain);
 
+      // Preload audio immediately without waiting for user gesture
+      this.preloadAudio();
+
       if (this.ctx.state === 'suspended') {
         this.ctx.resume().then(() => {
           this._unlocked = true;
@@ -194,12 +213,14 @@ export class SoundSystem {
       } else if (this.ctx.state === 'suspended') {
         this.ctx.resume().then(() => {
           this._unlocked = true;
+          this.preloadAudio();
           if (this.isBGMPlaying && !this.isBGMPaused) {
             this.resumeBGM();
           }
         }).catch(() => {});
       } else {
         this._unlocked = true;
+        this.preloadAudio();
       }
 
       if (this._unlocked && this.ctx && this.ctx.state === 'running') {
@@ -585,6 +606,218 @@ export class SoundSystem {
     osc2.start(now);
     osc1.stop(now + duration);
     osc2.stop(now + duration);
+  }
+
+  /* -------------------------------------------------------------------------
+   * 3B. Monster Sounds: Ghost Attack, Boss Roar, Boss Defeat & Rune Impact
+   * ------------------------------------------------------------------------- */
+
+  /**
+   * Plays the aggressive lunging attack screech of a ghost when striking the player.
+   * Google Doodle authentic audio sprite Tb (57.571723s - 59.31322s in main.mp3).
+   */
+  soundGhostAttack() {
+    if (!this._ensureReady()) return;
+
+    if (this.playAudioSprite('ghost_attack', 1.0)) {
+      return;
+    }
+
+    // Realistic procedural ghost screech / attack hiss fallback
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const dur = 0.36;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(860, now);
+    osc1.frequency.exponentialRampToValueAtTime(170, now + dur);
+
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(1216, now); // Tritone dissonant hiss
+    osc2.frequency.exponentialRampToValueAtTime(240, now + dur);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1250, now);
+    filter.frequency.exponentialRampToValueAtTime(280, now + dur);
+    filter.Q.setValueAtTime(3.4, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + dur);
+    osc2.stop(now + dur);
+  }
+
+  /**
+   * Plays the terrifying, echoing Boss apparition / entrance roar.
+   * Google Doodle authentic audio sprite Pb (8.400s - 13.633s in end.mp3).
+   */
+  soundBossRoar() {
+    if (!this._ensureReady()) return;
+
+    if (this.playAudioSprite('boss_roar', 1.0) || this.playAudioSprite('boss_intro', 1.0)) {
+      return;
+    }
+
+    // Procedural Fallback to apocalyptic drone & alarm
+    this.soundBossCast();
+  }
+
+  /**
+   * Alias for backward compatibility
+   */
+  soundBossIntro() {
+    this.soundBossRoar();
+  }
+
+  /**
+   * Plays the unique Boss defeat death roar corresponding to story level (1..5).
+   * Level 1 (Librarian): kc (main.mp3, 0 - 3.16s)
+   * Level 2 (Chef): lc (main.mp3, 4.16 - 7.39s)
+   * Level 3 (Planetarium): mc (main.mp3, 8.39 - 11.93s)
+   * Level 4 (Coach): nc (main.mp3, 12.93 - 17.89s)
+   * Level 5 (Master Boss): uc (main.mp3, 21.88 - 26.84s)
+   * Also overlays the ghost dissolution pop (wc) matching Google Doodle halloween16.js.
+   * 
+   * @param {number} [level=1] Level index (1 to 5)
+   */
+  soundBossDefeat(level = 1) {
+    if (!this._ensureReady()) return;
+
+    const clampedLevel = Math.max(1, Math.min(5, Math.floor(level) || 1));
+    const spriteKey = `boss_defeat_${clampedLevel}`;
+
+    const playedRoar = this.playAudioSprite(spriteKey, 1.0);
+    this.playAudioSprite('ghost_vanish', 0.85);
+
+    if (playedRoar) return;
+
+    // Procedural Cataclysmic Boss Defeat Roar Fallback
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const dur = 1.1;
+
+    // Sub-bass quake
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sawtooth';
+    subOsc.frequency.setValueAtTime(115, now);
+    subOsc.frequency.exponentialRampToValueAtTime(26, now + dur);
+
+    subGain.gain.setValueAtTime(0.001, now);
+    subGain.gain.linearRampToValueAtTime(0.55, now + 0.04);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(now);
+    subOsc.stop(now + dur);
+
+    // Resonant monster death howl
+    const roarOsc = ctx.createOscillator();
+    const roarFilter = ctx.createBiquadFilter();
+    const roarGain = ctx.createGain();
+
+    roarOsc.type = 'sawtooth';
+    roarOsc.frequency.setValueAtTime(320, now);
+    roarOsc.frequency.exponentialRampToValueAtTime(55, now + dur * 0.8);
+
+    roarFilter.type = 'lowpass';
+    roarFilter.frequency.setValueAtTime(1100, now);
+    roarFilter.frequency.exponentialRampToValueAtTime(80, now + dur * 0.8);
+    roarFilter.Q.setValueAtTime(4.2, now);
+
+    roarGain.gain.setValueAtTime(0.38, now);
+    roarGain.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.8);
+
+    roarOsc.connect(roarFilter);
+    roarFilter.connect(roarGain);
+    roarGain.connect(this.masterGain);
+
+    roarOsc.start(now);
+    roarOsc.stop(now + dur * 0.8);
+  }
+
+  /**
+   * Plays a crisp magical rune impact transient when an enemy takes damage (loses a symbol),
+   * distinctly different from full ghost death dissolution.
+   * 
+   * @param {string} [gesture='default']
+   */
+  soundEnemyHit(gesture = 'default') {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1150, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.045);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1350, now);
+    filter.Q.setValueAtTime(2.6, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.055);
+  }
+
+  /**
+   * Plays an ethereal spooky formant whoosh when a ghost manifests / spawns.
+   */
+  soundGhostSpawn() {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const dur = 0.26;
+
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(240, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(200, now + dur);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(620, now);
+    filter.Q.setValueAtTime(3.6, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.09, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + dur);
   }
 
   /* -------------------------------------------------------------------------
@@ -1061,15 +1294,20 @@ export class SoundSystem {
   async _loadAudioTrack(name) {
     if (this._audioBuffers[name]) return this._audioBuffers[name];
     if (this._loadingTracks[name]) return this._loadingTracks[name];
+    if (!this.ctx) {
+      this.init();
+    }
     if (!this.ctx) return null;
 
     const promise = (async () => {
       const candidates = [
-        `./assets/audio/${name}.mp3`,
-        `assets/audio/${name}.mp3`,
         `/audio/${name}.mp3`,
+        `./audio/${name}.mp3`,
         `audio/${name}.mp3`,
         `/${name}.mp3`,
+        `./assets/audio/${name}.mp3`,
+        `assets/audio/${name}.mp3`,
+        `/assets/audio/${name}.mp3`,
         `https://www.google.com/logos/2016/halloween16/r4/${name}.mp3`
       ];
 
@@ -1085,7 +1323,9 @@ export class SoundSystem {
 
               // If BGM is playing and we just loaded 'main', switch to buffer
               if (name === 'main' && this.isBGMPlaying && !this.isBGMPaused && !this._currentBGMSource) {
-                this._startBufferBGM();
+                this._startBufferBGM('main');
+              } else if (name === 'end' && this.isBGMPlaying && !this.isBGMPaused && this._activeBGMTrack === 'boss') {
+                this._startBufferBGM('boss');
               }
               return audioBuf;
             }
@@ -1175,10 +1415,12 @@ export class SoundSystem {
 
   /**
    * Start looping background music (Google Doodle OST with eerie procedural fallback)
+   * @param {string} [track='main'] 'main' | 'boss'
    */
-  startBGM() {
+  startBGM(track = 'main') {
     this.isBGMPlaying = true;
     this.isBGMPaused = false;
+    this._activeBGMTrack = track;
 
     if (!this.ctx) {
       this.init();
@@ -1191,16 +1433,18 @@ export class SoundSystem {
       this.bgmGain.connect(this.masterGain);
     }
 
-    // If authentic Google Halloween main.mp3 buffer is ready, play it!
-    if (this._audioBuffers['main']) {
-      this._startBufferBGM();
+    const neededBuffer = track === 'boss' ? 'end' : 'main';
+
+    // If authentic Google Halloween audio buffer is ready, play it!
+    if (this._audioBuffers[neededBuffer]) {
+      this._startBufferBGM(track);
       return;
     }
 
-    // Try loading main.mp3 asynchronously
-    this._loadAudioTrack('main').then(buf => {
+    // Try loading track asynchronously
+    this._loadAudioTrack(neededBuffer).then(buf => {
       if (buf && this.isBGMPlaying && !this.isBGMPaused && !this._currentBGMSource) {
-        this._startBufferBGM();
+        this._startBufferBGM(track);
       }
     }).catch(() => {});
 
@@ -1218,12 +1462,18 @@ export class SoundSystem {
   }
 
   /**
-   * Play the authentic Google Doodle main.mp3 buffer on seamless loop
-   * Google Doodle Halloween 2016 BGM theme is slice Sb (31.308549s - 56.571724s)
+   * Play the authentic Google Doodle buffer on seamless loop
+   * Google Doodle Halloween 2016 BGM: main theme Sb (31.308549s - 56.571724s)
+   * Final Boss BGM: end.mp3 vc (21.909342s - 51.909342s)
    * @private
+   * @param {string} [track='main']
    */
-  _startBufferBGM() {
-    if (!this._audioBuffers['main'] || !this.ctx || this.isMuted || !this.isBGMPlaying || this.isBGMPaused) return;
+  _startBufferBGM(track = 'main') {
+    if (!this.ctx || this.isMuted || !this.isBGMPlaying || this.isBGMPaused) return;
+
+    const bufferKey = track === 'boss' ? 'end' : 'main';
+    const buf = this._audioBuffers[bufferKey];
+    if (!buf) return;
 
     if (this._currentBGMSource) {
       try { this._currentBGMSource.stop(0); } catch (e) {}
@@ -1238,12 +1488,20 @@ export class SoundSystem {
 
     try {
       const src = this.ctx.createBufferSource();
-      src.buffer = this._audioBuffers['main'];
+      src.buffer = buf;
       src.loop = true;
-      src.loopStart = 31.308549;
-      src.loopEnd = 31.308549 + 25.263175;
+
+      if (track === 'boss') {
+        src.loopStart = 21.909342;
+        src.loopEnd = 21.909342 + 30.000;
+        src.start(0, 21.909342);
+      } else {
+        src.loopStart = 31.308549;
+        src.loopEnd = 31.308549 + 25.263175;
+        src.start(0, 31.308549);
+      }
+
       src.connect(this.bgmGain);
-      src.start(0, 31.308549);
       this._currentBGMSource = src;
     } catch (err) {
       console.warn('[SoundSystem] Failed to start buffer BGM:', err);

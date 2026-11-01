@@ -130,8 +130,12 @@ export class Game {
 
     this.waveSystem.onBossSpawn = (bossType, bossName) => {
       this.triggerShake(22, 0.85);
-      if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
-        this.audioSystem.soundBossCast();
+      if (this.audioSystem) {
+        if (typeof this.audioSystem.playBossRoar === 'function') {
+          this.audioSystem.playBossRoar();
+        } else if (typeof this.audioSystem.soundBossCast === 'function') {
+          this.audioSystem.soundBossCast();
+        }
       }
       this.particleSystem.emitFloatingText(
         `⚡ TRÙM XUẤT HIỆN: ${bossName ? bossName.toUpperCase() : 'CHÚA TỂ BÓNG MA'} ⚡`,
@@ -394,8 +398,12 @@ export class Game {
       // Boss / Armored entrance screen shake
       if (isBoss) {
         this.triggerShake(20, 0.75);
-        if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
-          this.audioSystem.soundBossCast();
+        if (this.audioSystem) {
+          if (typeof this.audioSystem.playBossRoar === 'function') {
+            this.audioSystem.playBossRoar();
+          } else if (typeof this.audioSystem.soundBossCast === 'function') {
+            this.audioSystem.soundBossCast();
+          }
         }
       } else if (enemyConfig.archetype === 'ARMORED') {
         this.triggerShake(11, 0.55);
@@ -419,6 +427,11 @@ export class Game {
         const damageTaken = this.player.takeDamage(1);
         if (damageTaken) {
           this.metrics.damageTaken++;
+          
+          // Google Doodle authentic: Ghost screeching attack (Tb) + Momo hurt cry (tc)
+          if (this.audioSystem && typeof this.audioSystem.playEnemyAttack === 'function') {
+            this.audioSystem.playEnemyAttack();
+          }
           this.audioSystem.playHurt();
           
           this.triggerShake(18, 0.45);
@@ -457,15 +470,20 @@ export class Game {
           if (hitResult.matched) {
             const rune = RUNES[proj.gesture] || { color: '#38bdf8' };
             this.particleSystem.emitHitBurst(proj.x, proj.y, rune.color, 16);
-            this.audioSystem.playHit();
+            this.audioSystem.playHit(proj.gesture);
 
             if (hitResult.destroyed) {
               this.metrics.enemiesDefeated++;
-              this.audioSystem.playEnemyDeath();
-              
               const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
               if (isTargetBoss) {
+                if (typeof this.audioSystem.playBossDeath === 'function') {
+                  this.audioSystem.playBossDeath(this.waveSystem.currentLevelIndex);
+                } else {
+                  this.audioSystem.playEnemyDeath();
+                }
                 this.triggerShake(22, 0.75);
+              } else {
+                this.audioSystem.playEnemyDeath();
               }
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,

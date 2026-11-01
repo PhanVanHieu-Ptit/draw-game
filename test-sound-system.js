@@ -241,6 +241,32 @@ async function runTests() {
   soundSys.stopBGM();
   assert(soundSys.isBGMPlaying === false, 'stopBGM sets isBGMPlaying to false');
 
+  // Test 11: Monster Audio Synthesizer Fallbacks
+  const preGhostAtkCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundGhostAttack();
+  const ghostAtkNodes = soundSys.ctx.createdNodes.slice(preGhostAtkCount);
+  assert(ghostAtkNodes.length >= 2, 'soundGhostAttack creates synthesizer nodes');
+
+  const preBossRoarCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundBossRoar();
+  const bossRoarNodes = soundSys.ctx.createdNodes.slice(preBossRoarCount);
+  assert(bossRoarNodes.length >= 2, 'soundBossRoar creates synthesizer nodes');
+
+  const preBossDefeatCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundBossDefeat(1);
+  const bossDefeatNodes = soundSys.ctx.createdNodes.slice(preBossDefeatCount);
+  assert(bossDefeatNodes.length >= 2, 'soundBossDefeat creates synthesizer nodes');
+
+  const preHitCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundEnemyHit('horizontal');
+  const hitNodes = soundSys.ctx.createdNodes.slice(preHitCount);
+  assert(hitNodes.length >= 2, 'soundEnemyHit creates quick impact transient');
+
+  const preSpawnCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundGhostSpawn();
+  const spawnNodes = soundSys.ctx.createdNodes.slice(preSpawnCount);
+  assert(spawnNodes.length >= 2, 'soundGhostSpawn creates ethereal formant');
+
   console.log(`\n========================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);

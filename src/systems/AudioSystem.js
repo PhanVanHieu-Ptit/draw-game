@@ -20,21 +20,58 @@ export class AudioSystem extends SoundSystem {
   }
 
   /**
-   * Sound when projectile impacts an enemy
+   * Sound when projectile impacts an enemy (crisp magical strike / rune break)
+   * @param {string} [gesture='default']
    */
-  playHit() {
-    this.soundGhostVanish();
+  playHit(gesture = 'default') {
+    this.soundEnemyHit(gesture);
   }
 
   /**
-   * Sound when an enemy is completely eliminated
+   * Sound when a regular enemy is completely eliminated (Google Doodle ghost_vanish wc)
    */
   playEnemyDeath() {
     this.soundGhostVanish();
   }
 
   /**
-   * Player takes damage (maps to soundDamage)
+   * Sound when a ghost lunges and strikes the player (Google Doodle ghost_attack Tb)
+   */
+  playEnemyAttack() {
+    this.soundGhostAttack();
+  }
+
+  /**
+   * Terrifying Boss apparition / entrance roar (Google Doodle boss_roar Pb)
+   */
+  playBossRoar() {
+    this.soundBossRoar();
+  }
+
+  /**
+   * Alias for boss entrance
+   */
+  playBossIntro() {
+    this.soundBossRoar();
+  }
+
+  /**
+   * Unique Boss defeat roar corresponding to story level (1..5)
+   * @param {number} [level=1]
+   */
+  playBossDeath(level = 1) {
+    this.soundBossDefeat(level);
+  }
+
+  /**
+   * Subtle ethereal formant whoosh when a ghost spawns
+   */
+  playGhostSpawn() {
+    this.soundGhostSpawn();
+  }
+
+  /**
+   * Player takes damage (Google Doodle cat_hurt tc + concussive thump)
    */
   playHurt() {
     this.soundDamage();
@@ -63,7 +100,7 @@ export class AudioSystem extends SoundSystem {
   }
 
   /**
-   * Game Start fanfare
+   * Game Start fanfare (Google Doodle level_start Bc)
    */
   playStart() {
     this.soundStart();
@@ -77,7 +114,7 @@ export class AudioSystem extends SoundSystem {
   }
 
   /**
-   * Stage / Wave Cleared fanfare (Google Doodle level_clear sprite)
+   * Stage / Wave Cleared fanfare (Google Doodle level_clear sprite Vb)
    */
   playWaveComplete() {
     this.soundWaveComplete();
