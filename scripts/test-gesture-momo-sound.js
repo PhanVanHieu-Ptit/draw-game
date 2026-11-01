@@ -102,6 +102,14 @@ assert(AUDIO_SPRITES.bgm.loop === true, 'BGM is flagged as looping');
 assert(AUDIO_SPRITES.spell_slash.start === 70.241565, 'Wand slash sprite Kb starts at 70.241565s');
 assert(AUDIO_SPRITES.cat_hurt.start === 18.89415, 'Cat hurt sprite tc starts at 18.89415s');
 assert(AUDIO_SPRITES.ghost_vanish.start === 60.31322, 'Ghost vanish sprite wc starts at 60.31322s');
+assert(AUDIO_SPRITES.ghost_attack.start === 57.571723, 'Ghost attack sprite Tb starts at 57.571723s');
+assert(AUDIO_SPRITES.boss_roar.start === 8.400, 'Boss roar sprite Pb starts at 8.400s in end.mp3');
+assert(AUDIO_SPRITES.boss_defeat_1.start === 0.000, 'Boss 1 defeat sprite kc starts at 0.000s');
+assert(AUDIO_SPRITES.boss_defeat_2.start === 4.160816, 'Boss 2 defeat sprite lc starts at 4.160816s');
+assert(AUDIO_SPRITES.boss_defeat_3.start === 8.39415, 'Boss 3 defeat sprite mc starts at 8.39415s');
+assert(AUDIO_SPRITES.boss_defeat_4.start === 12.927483, 'Boss 4 defeat sprite nc starts at 12.927483s');
+assert(AUDIO_SPRITES.boss_defeat_5.start === 21.878163, 'Boss 5 defeat sprite uc starts at 21.878163s');
+assert(AUDIO_SPRITES.bgm_boss_5.start === 21.909342, 'Boss 5 battle BGM sprite vc starts at 21.909342s in end.mp3');
 assert(AUDIO_SPRITES.combo_1.start === 72.225125, 'Combo 1 sprite Wb starts at 72.225125s');
 assert(AUDIO_SPRITES.combo_2.start === 74.385125, 'Combo 2 sprite Dc starts at 74.385125s');
 assert(AUDIO_SPRITES.combo_3.start === 76.633129, 'Combo 3 sprite Ec starts at 76.633129s');
@@ -114,6 +122,12 @@ assert(AUDIO_SPRITES.level_clear.start === 65.500159, 'Level clear sprite Vb sta
 // Test AudioSystem facade methods
 const audioSys = new AudioSystem({ autoUnlock: false });
 assert(typeof audioSys.playSpell === 'function', 'AudioSystem has playSpell method');
+assert(typeof audioSys.playHit === 'function', 'AudioSystem has playHit method');
+assert(typeof audioSys.playEnemyAttack === 'function', 'AudioSystem has playEnemyAttack method');
+assert(typeof audioSys.playEnemyDeath === 'function', 'AudioSystem has playEnemyDeath method');
+assert(typeof audioSys.playBossRoar === 'function', 'AudioSystem has playBossRoar method');
+assert(typeof audioSys.playBossDeath === 'function', 'AudioSystem has playBossDeath method');
+assert(typeof audioSys.playGhostSpawn === 'function', 'AudioSystem has playGhostSpawn method');
 assert(typeof audioSys.playCombo === 'function', 'AudioSystem has playCombo method');
 assert(typeof audioSys.playWaveComplete === 'function', 'AudioSystem has playWaveComplete method');
 assert(typeof audioSys.playAudioSprite === 'function', 'AudioSystem has playAudioSprite method');
