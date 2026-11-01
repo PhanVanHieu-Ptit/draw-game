@@ -13,7 +13,7 @@ import { MOMO_SPRITES } from './momoSprites.js';
 
 export class Player extends Entity {
   constructor(canvasWidth, canvasHeight) {
-    super(canvasWidth / 2, canvasHeight - 90);
+    super(canvasWidth / 2, canvasHeight / 2);
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
 
@@ -107,10 +107,12 @@ export class Player extends Entity {
     this.canvasWidth = width;
     this.canvasHeight = height;
     this.x = width / 2;
-    this.y = height - 90;
+    this.y = height / 2;
   }
 
   reset() {
+    this.x = this.canvasWidth / 2;
+    this.y = this.canvasHeight / 2;
     this.hp = this.maxHp;
     this.invulnerableTimer = 0;
     this.isInvulnerable = false;

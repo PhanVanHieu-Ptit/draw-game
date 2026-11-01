@@ -25,6 +25,7 @@ export class WaveSystem {
     // Boss state tracking
     this.isBossSpawned = false;
     this.isBossDefeated = false;
+    this.bossMinionSpawnTimer = 0;
 
     // Event hooks
     this.onWaveStart = null;
@@ -59,6 +60,7 @@ export class WaveSystem {
     this.enemiesSpawnedInWave = 0;
     this.isBossSpawned = false;
     this.isBossDefeated = false;
+    this.bossMinionSpawnTimer = 0;
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
@@ -95,6 +97,22 @@ export class WaveSystem {
   }
 
   /**
+   * Notify that the Level Boss was eliminated
+   */
+  notifyBossDefeated() {
+    if (this.isBossDefeated) return;
+    this.isBossDefeated = true;
+    this.isIntermission = true;
+    this.intermissionTimer = 2.6;
+    if (this.onLevelComplete) {
+      this.onLevelComplete(this.currentLevelIndex, this.levelData);
+    }
+    if (this.onWaveComplete) {
+      this.onWaveComplete(this.currentWave);
+    }
+  }
+
+  /**
    * Update level & wave progression loop
    * @param {number} dt 
    * @param {number} playerHp 
@@ -124,29 +142,46 @@ export class WaveSystem {
       if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {
         if (!this.isBossSpawned && livingEnemiesCount === 0) {
           this.isBossSpawned = true;
+          this.isBossDefeated = false;
+          this.bossMinionSpawnTimer = 2.2; // Breathing window before first boss minion appears
           if (this.onBossSpawn) {
             this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
           }
           return {
             archetype: this.levelData.bossType,
-            symbolQueue: [...this.levelData.bossSymbols],
+            symbolQueue: (this.levelData.bossPhases && this.levelData.bossPhases.length > 0)
+              ? [...this.levelData.bossPhases[0]]
+              : [...this.levelData.bossSymbols],
+            bossPhases: this.levelData.bossPhases ? this.levelData.bossPhases.map(p => [...p]) : null,
+            bossLives: this.levelData.bossLives || 3,
             isBoss: true,
             isHeartGhost: false,
             speedMultiplier: 0.85
           };
         }
 
-        // If boss was spawned and now defeated
-        if (this.isBossSpawned && livingEnemiesCount === 0) {
-          this.isIntermission = true;
-          this.intermissionTimer = 2.6;
-          if (this.onLevelComplete) {
-            this.onLevelComplete(this.currentLevelIndex, this.levelData);
-          }
-          if (this.onWaveComplete) {
-            this.onWaveComplete(this.currentWave);
-          }
+        // If boss was defeated or living count dropped to 0 after boss was spawned
+        if (this.isBossSpawned && (this.isBossDefeated || livingEnemiesCount === 0)) {
+          this.notifyBossDefeated();
           return null;
+        }
+
+        // WHILE BOSS IS ALIVE: Continue spawning small ghosts ("các con ma nhỏ")!
+        if (this.isBossSpawned && !this.isBossDefeated) {
+          this.bossMinionSpawnTimer -= dt;
+          if (this.bossMinionSpawnTimer <= 0) {
+            // livingEnemiesCount includes Boss + minions
+            const livingMinions = Math.max(0, livingEnemiesCount - 1);
+            const maxMinions = this.currentLevelIndex <= 2 ? 2 : 3;
+            if (livingMinions < maxMinions) {
+              const baseInterval = this.levelData.baseSpawnInterval || 2.4;
+              const interval = Math.max(2.0, baseInterval * 1.35) * (playerHp <= 2 ? 1.2 : 1.0);
+              this.bossMinionSpawnTimer = interval;
+              return this._generateBossMinionConfig(playerHp);
+            } else {
+              this.bossMinionSpawnTimer = 0.8; // retry soon once a minion is cleared
+            }
+          }
         }
       }
     } else {
@@ -219,6 +254,25 @@ export class WaveSystem {
     const pool = (lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape'];
     if (!lvl && W >= 2) pool.push('lightning');
 
+    // Guided Level 1 Tutorial: Ghost 1 is Horizontal [ — ], Ghost 2 is Vertical [ | ]
+    if (this.currentLevelIndex === 1 && this.gameMode === 'STORY') {
+      if (this.enemiesSpawnedInWave === 1) {
+        return {
+          archetype: 'REGULAR',
+          symbolQueue: ['horizontal'],
+          isHeartGhost: false,
+          speedMultiplier: 0.65
+        };
+      } else if (this.enemiesSpawnedInWave === 2) {
+        return {
+          archetype: 'REGULAR',
+          symbolQueue: ['vertical'],
+          isHeartGhost: false,
+          speedMultiplier: 0.70
+        };
+      }
+    }
+
     const symbolQueue = [];
     let count = 1;
 
@@ -250,4 +304,49 @@ export class WaveSystem {
       speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier
     };
   }
+
+  /**
+   * Generate small minion ghost config while Boss is active on battlefield
+   * @param {number} playerHp 
+   */
+  _generateBossMinionConfig(playerHp) {
+    const lvl = this.levelData;
+    const pool = (lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape'];
+    const rand = Math.random();
+
+    let archetype = 'REGULAR';
+    if (lvl) {
+      if (lvl.hasSpeedster && rand < 0.22) {
+        archetype = 'SPEEDSTER';
+      } else if (lvl.hasArmored && rand > 0.80) {
+        archetype = 'ARMORED';
+      }
+    }
+
+    // Minions during boss fight have 1 symbol (or occasionally 2 in later levels)
+    // so player can defeat them fluidly while coordinating against the Boss
+    const symbolQueue = [];
+    const count = (this.currentLevelIndex >= 4 && Math.random() < 0.35 && archetype !== 'SPEEDSTER') ? 2 : 1;
+    for (let i = 0; i < count; i++) {
+      const rune = pool[Math.floor(Math.random() * pool.length)];
+      symbolQueue.push(rune);
+    }
+
+    // Small chance to spawn emergency healing Heart Ghost if player is hurting
+    const heartChance = playerHp <= 2 ? 0.28 : (playerHp < 5 ? 0.12 : 0.04);
+    const isHeartGhost = Math.random() < heartChance;
+    if (isHeartGhost) {
+      symbolQueue.length = 0;
+      symbolQueue.push('heart');
+    }
+
+    return {
+      archetype: isHeartGhost ? 'REGULAR' : archetype,
+      symbolQueue,
+      isHeartGhost,
+      isBoss: false,
+      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier * 0.92
+    };
+  }
 }
+

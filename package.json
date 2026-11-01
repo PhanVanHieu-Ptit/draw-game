@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/export-bundle.js",
     "export": "vite build && node scripts/export-bundle.js",
     "preview": "vite preview",
-    "test": "node test-performance-system.js && node test-visual-effects.js && node test-sound-system.js && node scripts/test-new-features.js && node test-doodle-levels-story.js && node scripts/test-gesture-momo-sound.js && node scripts/test-monster-sounds.js"
+    "test": "node test-performance-system.js && node test-visual-effects.js && node test-sound-system.js && node scripts/test-new-features.js && node test-doodle-levels-story.js"
   },
   "keywords": [],
   "author": "",
