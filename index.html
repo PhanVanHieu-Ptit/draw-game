@@ -20,6 +20,45 @@
       <div class="ltb-prompt" id="ltb-prompt">SẴN SÀNG... VẼ!</div>
     </div>
 
+    <!-- Level 1 Interactive Tutorial Overlay -->
+    <div id="tutorial-overlay" class="tutorial-overlay">
+      <div class="glass-card tutorial-card">
+        <div class="tutorial-header">
+          <span class="tutorial-badge">✨ HƯỚNG DẪN CÁCH CHƠI ✨</span>
+          <button class="btn-text-skip" id="btn-skip-tutorial">ĐÃ HIỂU ✕</button>
+        </div>
+        <div class="tutorial-content">
+          <div class="tutorial-step" id="tutorial-step-1">
+            <h3 class="tutorial-title">VẼ NÉT ĐỂ TIÊU DIỆT U LINH</h3>
+            <p class="tutorial-desc">Mỗi u linh mang một ký hiệu trên đầu. Hãy dùng chuột hoặc vuốt ngón tay vẽ đúng ký hiệu đó trong không khí để phóng phép!</p>
+            <div class="tutorial-demo-box">
+              <div class="demo-track demo-horizontal">
+                <span class="demo-rune" style="color: #fbbf24;">—</span>
+                <div class="demo-wand-hand">🪄</div>
+                <div class="demo-line"></div>
+              </div>
+              <span class="demo-label">Vuốt Ngang: Trái qua Phải [ — ]</span>
+            </div>
+          </div>
+          <div class="tutorial-step hidden" id="tutorial-step-2">
+            <h3 class="tutorial-title">U LINH NÉT DỌC</h3>
+            <p class="tutorial-desc">Rất tốt! Đối với u linh mang ký hiệu [ | ], hãy vuốt một nét thẳng từ trên xuống dưới!</p>
+            <div class="tutorial-demo-box">
+              <div class="demo-track demo-vertical">
+                <span class="demo-rune" style="color: #38bdf8;">|</span>
+                <div class="demo-wand-hand">🪄</div>
+                <div class="demo-line"></div>
+              </div>
+              <span class="demo-label">Vuốt Dọc: Trên xuống Dưới [ | ]</span>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer">
+          <span class="tutorial-hint">💡 Mèo Momo đứng ở giữa màn hình — u linh có thể xuất hiện từ bất kỳ hướng nào!</span>
+        </div>
+      </div>
+    </div>
+
     <!-- UI Overlay: PLAYING HUD -->
     <div id="hud-playing" class="ui-screen">
       <div class="hud-top-bar">
@@ -47,6 +86,7 @@
               <div class="combo-bar" id="combo-bar"></div>
             </div>
           </div>
+          <button class="icon-btn" id="btn-tutorial" title="Xem hướng dẫn cách chơi">❓</button>
           <button class="icon-btn" id="btn-mute" title="Bật/Tắt âm thanh">🔊</button>
           <button class="icon-btn" id="btn-pause" title="Tạm dừng trận đấu (ESC)">⏸️</button>
         </div>
