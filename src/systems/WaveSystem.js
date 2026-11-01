@@ -143,17 +143,21 @@ export class WaveSystem {
       symbolQueue.push(rune);
     }
 
-    // Chance to inject Heart (❤️) if player is wounded
-    const heartChance = playerHp < 5 ? (playerHp <= 2 ? 0.22 : 0.08) : 0;
-    if (Math.random() < heartChance) {
-      // Add or replace last symbol with heart
-      symbolQueue[symbolQueue.length - 1] = 'heart';
+    // Chance to spawn special Heart Ghost (❤️)
+    // Allows players to experience the heart ghost even at full health
+    const heartChance = playerHp < 5 ? (playerHp <= 2 ? 0.28 : 0.16) : 0.09;
+    const isHeartGhost = Math.random() < heartChance;
+    if (isHeartGhost) {
+      // Dedicated single-symbol heart ghost
+      symbolQueue.length = 0;
+      symbolQueue.push('heart');
     }
 
     return {
-      archetype,
+      archetype: isHeartGhost ? 'REGULAR' : archetype,
       symbolQueue,
-      speedMultiplier: this.speedMultiplier
+      isHeartGhost,
+      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier
     };
   }
 }

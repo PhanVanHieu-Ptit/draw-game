@@ -221,6 +221,26 @@ async function runTests() {
   soundSys.toggleMute();
   assert(soundSys.isMuted === false, 'toggleMute() unmutes audio');
 
+  // Test 9: Lightning Strike SFX (soundLightning)
+  const preLightningNodesCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundLightning();
+  const lightningNodes = soundSys.ctx.createdNodes.slice(preLightningNodesCount);
+  const lightningOscs = lightningNodes.filter(n => n.name === 'OscillatorNode');
+  assert(lightningOscs.length >= 3, `soundLightning creates multiple oscillator layers (found ${lightningOscs.length})`);
+  const subBassBoom = lightningOscs.find(o => o.type === 'sine' && o.frequency.value <= 180);
+  assert(subBassBoom !== undefined, 'soundLightning includes low-frequency sub-bass shockwave');
+
+  // Test 10: Background Music (BGM) Controls
+  assert(typeof soundSys.startBGM === 'function', 'startBGM method exists');
+  soundSys.startBGM();
+  assert(soundSys.isBGMPlaying === true, 'startBGM sets isBGMPlaying to true');
+  soundSys.pauseBGM();
+  assert(soundSys.isBGMPaused === true, 'pauseBGM sets isBGMPaused to true');
+  soundSys.resumeBGM();
+  assert(soundSys.isBGMPaused === false, 'resumeBGM clears isBGMPaused');
+  soundSys.stopBGM();
+  assert(soundSys.isBGMPlaying === false, 'stopBGM sets isBGMPlaying to false');
+
   console.log(`\n========================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);

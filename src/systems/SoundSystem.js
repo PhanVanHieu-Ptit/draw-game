@@ -38,6 +38,15 @@ export class SoundSystem {
     this._lastDrawY = null;
     this._lastDrawTime = null;
 
+    // Background Music (BGM) Procedural Synthesizer state
+    this.bgmGain = null;
+    this.bgmVolume = options.bgmVolume !== undefined ? Math.max(0, Math.min(1, options.bgmVolume)) : 0.28;
+    this.isBGMPlaying = false;
+    this.isBGMPaused = false;
+    this._bgmInterval = null;
+    this._bgmNextNoteTime = 0;
+    this._bgmStep = 0;
+
     // Browser policy unlock state
     this._unlocked = false;
     this._unlockHandler = null;
@@ -88,9 +97,17 @@ export class SoundSystem {
       this.masterGain.connect(this.compressor);
       this.compressor.connect(this.ctx.destination);
 
+      // BGM Gain Node connected to masterGain
+      this.bgmGain = this.ctx.createGain();
+      this.bgmGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.bgmVolume, this.ctx.currentTime);
+      this.bgmGain.connect(this.masterGain);
+
       if (this.ctx.state === 'suspended') {
         this.ctx.resume().then(() => {
           this._unlocked = true;
+          if (this.isBGMPlaying && !this.isBGMPaused) {
+            this.resumeBGM();
+          }
         }).catch(() => {});
       } else {
         this._unlocked = true;
@@ -141,6 +158,9 @@ export class SoundSystem {
       } else if (this.ctx.state === 'suspended') {
         this.ctx.resume().then(() => {
           this._unlocked = true;
+          if (this.isBGMPlaying && !this.isBGMPaused) {
+            this.resumeBGM();
+          }
         }).catch(() => {});
       } else {
         this._unlocked = true;
@@ -208,6 +228,14 @@ export class SoundSystem {
       this.masterGain.gain.cancelScheduledValues(now);
       this.masterGain.gain.linearRampToValueAtTime(
         this.isMuted ? 0.0001 : this.volume,
+        now + 0.05
+      );
+    }
+    if (this.bgmGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.linearRampToValueAtTime(
+        this.isMuted ? 0.0001 : this.bgmVolume,
         now + 0.05
       );
     }
@@ -375,6 +403,10 @@ export class SoundSystem {
    */
   soundSpellSuccess(gesture = 'default') {
     if (!this._ensureReady()) return;
+
+    if (gesture === 'lightning') {
+      this.soundLightning();
+    }
 
     const ctx = this.ctx;
     const now = ctx.currentTime;
@@ -769,12 +801,423 @@ export class SoundSystem {
     osc.stop(now + duration);
   }
 
+  /**
+   * Powerful Thunderous Lightning Strike Sound Effect
+   * Synthesizes electric arc zap, massive explosive thunderclap, sub-bass boom, and rolling thunder tail.
+   */
+  soundLightning() {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    // 1. High-frequency electric zap / static crackle
+    const zapOsc = ctx.createOscillator();
+    const zapGain = ctx.createGain();
+    const zapFilter = ctx.createBiquadFilter();
+
+    zapOsc.type = 'sawtooth';
+    zapOsc.frequency.setValueAtTime(3200, now);
+    zapOsc.frequency.exponentialRampToValueAtTime(220, now + 0.07);
+
+    zapFilter.type = 'bandpass';
+    zapFilter.frequency.setValueAtTime(2400, now);
+    zapFilter.Q.setValueAtTime(3.5, now);
+
+    zapGain.gain.setValueAtTime(0.35, now);
+    zapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    zapOsc.connect(zapFilter);
+    zapFilter.connect(zapGain);
+    zapGain.connect(this.masterGain);
+
+    zapOsc.start(now);
+    zapOsc.stop(now + 0.08);
+
+    // 2. Heavy Thunderclap Pop & Transient
+    const clapOsc = ctx.createOscillator();
+    const clapGain = ctx.createGain();
+    const clapFilter = ctx.createBiquadFilter();
+
+    clapOsc.type = 'square';
+    clapOsc.frequency.setValueAtTime(1100, now + 0.01);
+    clapOsc.frequency.exponentialRampToValueAtTime(90, now + 0.14);
+
+    clapFilter.type = 'lowpass';
+    clapFilter.frequency.setValueAtTime(1400, now + 0.01);
+    clapFilter.frequency.exponentialRampToValueAtTime(240, now + 0.18);
+    clapFilter.Q.setValueAtTime(4.2, now + 0.01);
+
+    clapGain.gain.setValueAtTime(0.001, now);
+    clapGain.gain.setValueAtTime(0.48, now + 0.015);
+    clapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    clapOsc.connect(clapFilter);
+    clapFilter.connect(clapGain);
+    clapGain.connect(this.masterGain);
+
+    clapOsc.start(now + 0.01);
+    clapOsc.stop(now + 0.2);
+
+    // 3. Sub-Bass Concussive Shockwave (Heavy chest thump)
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(160, now + 0.015);
+    subOsc.frequency.exponentialRampToValueAtTime(36, now + 0.55);
+
+    subGain.gain.setValueAtTime(0.001, now);
+    subGain.gain.setValueAtTime(0.68, now + 0.025);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(now + 0.015);
+    subOsc.stop(now + 0.6);
+
+    // 4. Low Rumbling Rolling Thunder Tail (Echoes across the night sky)
+    const rumbleOsc = ctx.createOscillator();
+    const rumbleFilter = ctx.createBiquadFilter();
+    const rumbleGain = ctx.createGain();
+
+    rumbleOsc.type = 'sawtooth';
+    rumbleOsc.frequency.setValueAtTime(95, now + 0.06);
+    rumbleOsc.frequency.linearRampToValueAtTime(48, now + 0.85);
+
+    rumbleFilter.type = 'lowpass';
+    rumbleFilter.frequency.setValueAtTime(320, now + 0.06);
+    rumbleFilter.frequency.exponentialRampToValueAtTime(80, now + 0.85);
+    rumbleFilter.Q.setValueAtTime(3.8, now + 0.06);
+
+    rumbleGain.gain.setValueAtTime(0.001, now + 0.06);
+    rumbleGain.gain.linearRampToValueAtTime(0.38, now + 0.16);
+    rumbleGain.gain.setValueAtTime(0.34, now + 0.35);
+    rumbleGain.gain.linearRampToValueAtTime(0.22, now + 0.55);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+    rumbleOsc.connect(rumbleFilter);
+    rumbleFilter.connect(rumbleGain);
+    rumbleGain.connect(this.masterGain);
+
+    rumbleOsc.start(now + 0.06);
+    rumbleOsc.stop(now + 0.9);
+
+    // If web audio buffer is available in browser, mix in realistic white-noise thunderclap texture
+    if (typeof ctx.createBuffer === 'function' && typeof ctx.createBufferSource === 'function') {
+      try {
+        const sampleRate = ctx.sampleRate || 44100;
+        const bufLen = Math.floor(sampleRate * 0.4);
+        const buffer = ctx.createBuffer(1, bufLen, sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * 0.12));
+        }
+        const noiseSrc = ctx.createBufferSource();
+        noiseSrc.buffer = buffer;
+
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(800, now + 0.01);
+        noiseFilter.Q.setValueAtTime(1.8, now + 0.01);
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.45, now + 0.01);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+        noiseSrc.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+
+        noiseSrc.start(now + 0.01);
+        noiseSrc.stop(now + 0.38);
+      } catch (err) {}
+    }
+  }
+
+  /* -------------------------------------------------------------------------
+   * Procedural Background Music (BGM) Sequencer
+   * ------------------------------------------------------------------------- */
+
+  /**
+   * Start looping background music
+   */
+  startBGM() {
+    this.isBGMPlaying = true;
+    this.isBGMPaused = false;
+
+    if (!this.ctx) {
+      this.init();
+    }
+    if (!this.ctx) return;
+
+    if (!this.bgmGain) {
+      this.bgmGain = this.ctx.createGain();
+      this.bgmGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.bgmVolume, this.ctx.currentTime);
+      this.bgmGain.connect(this.masterGain);
+    }
+
+    if (this._bgmInterval) {
+      clearInterval(this._bgmInterval);
+    }
+
+    this._bgmStep = 0;
+    this._bgmNextNoteTime = this.ctx.currentTime + 0.05;
+
+    this._bgmInterval = setInterval(() => {
+      this._scheduleBGM();
+    }, 60);
+  }
+
+  /**
+   * Pause background music
+   */
+  pauseBGM() {
+    this.isBGMPaused = true;
+    if (this._bgmInterval) {
+      clearInterval(this._bgmInterval);
+      this._bgmInterval = null;
+    }
+  }
+
+  /**
+   * Resume background music
+   */
+  resumeBGM() {
+    if (this.isBGMPlaying && this.isBGMPaused) {
+      this.isBGMPaused = false;
+      if (this.ctx) {
+        this._bgmNextNoteTime = this.ctx.currentTime + 0.05;
+        this._bgmInterval = setInterval(() => {
+          this._scheduleBGM();
+        }, 60);
+      }
+    } else if (!this.isBGMPlaying) {
+      this.startBGM();
+    }
+  }
+
+  /**
+   * Stop background music
+   */
+  stopBGM() {
+    this.isBGMPlaying = false;
+    this.isBGMPaused = false;
+    if (this._bgmInterval) {
+      clearInterval(this._bgmInterval);
+      this._bgmInterval = null;
+    }
+  }
+
+  /**
+   * Set BGM volume
+   * @param {number} volume (0.0 to 1.0)
+   */
+  setBGMVolume(volume) {
+    this.bgmVolume = Math.max(0, Math.min(1, volume));
+    if (this.bgmGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.linearRampToValueAtTime(
+        this.isMuted ? 0.0001 : this.bgmVolume,
+        now + 0.05
+      );
+    }
+  }
+
+  /**
+   * Precise lookahead scheduler for procedural BGM
+   * @private
+   */
+  _scheduleBGM() {
+    if (!this.ctx || this.isMuted || !this.isBGMPlaying || this.isBGMPaused) return;
+
+    const stepDuration = 0.2586; // 116 BPM, 8th note duration
+    const lookAhead = 0.25;
+
+    // Bass frequencies (D minor progression: Dm -> Bb -> Gm -> A7)
+    const bassNotes = [
+      73.42, 0, 73.42, 0, 87.31, 0, 55.00, 0,       // Dm (D2, D2, F2, A1)
+      58.27, 0, 58.27, 0, 73.42, 0, 87.31, 0,       // Bb (Bb1, Bb1, D2, F2)
+      49.00, 0, 49.00, 0, 58.27, 0, 73.42, 0,       // Gm (G1, G1, Bb1, D2)
+      55.00, 0, 69.30, 0, 82.41, 0, 55.00, 0        // A7 (A1, C#2, E2, A1)
+    ];
+
+    // Twinkling magical music-box arpeggios
+    const arpeggios = [
+      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 440.00, 587.33, // Dm
+      293.66, 349.23, 466.16, 587.33, 466.16, 349.23, 466.16, 587.33, // Bb
+      293.66, 392.00, 466.16, 587.33, 466.16, 392.00, 466.16, 587.33, // Gm
+      277.18, 329.63, 440.00, 554.37, 440.00, 329.63, 440.00, 554.37  // A7
+    ];
+
+    // Spooky, playful Halloween Lead Melody (Celesta / Magic Bell)
+    const melodyNotes = {
+      0: 587.33,   // D5
+      2: 440.00,   // A4
+      4: 698.46,   // F5
+      6: 659.25,   // E5
+      8: 587.33,   // D5
+      10: 466.16,  // Bb4
+      12: 587.33,  // D5
+      14: 523.25,  // C5
+      16: 466.16,  // Bb4
+      18: 392.00,  // G4
+      20: 466.16,  // Bb4
+      22: 587.33,  // D5
+      24: 554.37,  // C#5
+      26: 659.25,  // E5
+      28: 440.00,  // A4
+      30: 554.37   // C#5
+    };
+
+    while (this._bgmNextNoteTime < this.ctx.currentTime + lookAhead) {
+      const step = this._bgmStep;
+      const t = this._bgmNextNoteTime;
+
+      // 1. Bass Note
+      const bassFreq = bassNotes[step];
+      if (bassFreq > 0) {
+        this._playBGMBass(bassFreq, t, stepDuration * 0.85);
+      }
+
+      // 2. Arpeggio Tone
+      const arpFreq = arpeggios[step];
+      if (arpFreq > 0) {
+        this._playBGMArp(arpFreq, t, 0.16);
+      }
+
+      // 3. Lead Melody Note
+      if (melodyNotes[step] !== undefined) {
+        this._playBGMMelody(melodyNotes[step], t, stepDuration * 0.88);
+      }
+
+      // 4. Subtle percussive tick on off-beats
+      if (step % 2 === 1) {
+        this._playBGMTick(t);
+      }
+
+      this._bgmNextNoteTime += stepDuration;
+      this._bgmStep = (this._bgmStep + 1) % 32;
+    }
+  }
+
+  /**
+   * Warm plucked bass voice for BGM
+   * @private
+   */
+  _playBGMBass(freq, time, duration) {
+    if (!this.ctx || !this.bgmGain) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, time);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(220, time);
+      filter.frequency.exponentialRampToValueAtTime(70, time + duration);
+
+      gain.gain.setValueAtTime(0.24, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + duration);
+    } catch (e) {}
+  }
+
+  /**
+   * Twinkling music-box chime for BGM
+   * @private
+   */
+  _playBGMArp(freq, time, duration) {
+    if (!this.ctx || !this.bgmGain) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+
+      gain.gain.setValueAtTime(0.08, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+      osc.connect(gain);
+      gain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + duration);
+    } catch (e) {}
+  }
+
+  /**
+   * Whimsical spooky lead melody note for BGM
+   * @private
+   */
+  _playBGMMelody(freq, time, duration) {
+    if (!this.ctx || !this.bgmGain) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, time);
+
+      gain.gain.setValueAtTime(0.18, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+      osc.connect(gain);
+      gain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + duration);
+    } catch (e) {}
+  }
+
+  /**
+   * Delicate wood click / shaker for BGM rhythm
+   * @private
+   */
+  _playBGMTick(time) {
+    if (!this.ctx || !this.bgmGain) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800, time);
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1800, time);
+      filter.Q.setValueAtTime(4, time);
+
+      gain.gain.setValueAtTime(0.035, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.bgmGain);
+
+      osc.start(time);
+      osc.stop(time + 0.025);
+    } catch (e) {}
+  }
+
   /* -------------------------------------------------------------------------
    * Aliases for seamless drop-in compatibility with legacy AudioSystem calls
    * ------------------------------------------------------------------------- */
 
   playSpell(gesture) {
     this.soundSpellSuccess(gesture);
+  }
+
+  playLightning() {
+    this.soundLightning();
   }
 
   playEnemyDeath() {
@@ -805,3 +1248,4 @@ export class SoundSystem {
     this.soundGameOver();
   }
 }
+

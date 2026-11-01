@@ -56,12 +56,23 @@ export class PlayingState extends State {
     if (previousState !== GAME_STATES.PAUSE) {
       this.game.resetGameData();
     }
+
+    if (this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
+      this.game.audioSystem.resumeBGM();
+    }
   }
 
   exit(nextState) {
     this.game.inputHandler.setEnabled(false);
     if (nextState !== GAME_STATES.PAUSE) {
       this.game.uiManager.hideScreen(GAME_STATES.PLAYING);
+      if (this.game.audioSystem && typeof this.game.audioSystem.stopBGM === 'function') {
+        this.game.audioSystem.stopBGM();
+      }
+    } else {
+      if (this.game.audioSystem && typeof this.game.audioSystem.pauseBGM === 'function') {
+        this.game.audioSystem.pauseBGM();
+      }
     }
   }
 
@@ -82,10 +93,16 @@ export class PauseState extends State {
   enter() {
     this.game.inputHandler.setEnabled(false);
     this.game.uiManager.showScreen(GAME_STATES.PAUSE);
+    if (this.game.audioSystem && typeof this.game.audioSystem.pauseBGM === 'function') {
+      this.game.audioSystem.pauseBGM();
+    }
   }
 
-  exit() {
+  exit(nextState) {
     this.game.uiManager.hideScreen(GAME_STATES.PAUSE);
+    if (nextState === GAME_STATES.PLAYING && this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
+      this.game.audioSystem.resumeBGM();
+    }
   }
 
   update(dt) {
@@ -110,6 +127,9 @@ export class GameOverState extends State {
 
   enter(previousState, payload = {}) {
     this.game.inputHandler.setEnabled(false);
+    if (this.game.audioSystem && typeof this.game.audioSystem.stopBGM === 'function') {
+      this.game.audioSystem.stopBGM();
+    }
     this.game.audioSystem.playGameOver();
 
     // Check & save High Score

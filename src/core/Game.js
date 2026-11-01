@@ -82,6 +82,9 @@ export class Game {
       enemiesDefeated: 0
     };
 
+    // Lightning screen flash timer
+    this.lightningFlashTimer = 0;
+
     // Input Handler with exact logical dimension callback
     this.inputHandler = new InputHandler(
       this.canvas,
@@ -311,18 +314,36 @@ export class Game {
    * @param {number} dt 
    */
   updatePlaying(dt) {
-    // 1. Update Player
+    // 1. Update Player with dynamic drawing stroke coordinates
+    this.player.setDrawing(this.inputHandler.isDrawing, this.inputHandler.lastPoint);
     this.player.update(dt, this.enemies);
+
+    // Countdown lightning electric screen flash
+    if (this.lightningFlashTimer > 0) {
+      this.lightningFlashTimer -= dt;
+    }
 
     // 2. Wave System Spawner with Pooled Enemy
     const enemyConfig = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
     if (enemyConfig) {
-      const spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+      const isHeart = enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart'));
+      let spawnPos;
+      if (isHeart) {
+        // Stationary Heart Ghost spawns in upper-middle viewable screen
+        spawnPos = {
+          x: Math.random() * (this.width * 0.6) + this.width * 0.2,
+          y: Math.random() * (this.height * 0.28) + this.height * 0.16
+        };
+      } else {
+        spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+      }
+
       const newEnemy = this.enemyPool.acquire();
       newEnemy.init({
         type: enemyConfig.archetype,
         x: spawnPos.x,
         y: spawnPos.y,
+        isHeartGhost: isHeart,
         symbolQueue: enemyConfig.symbolQueue,
         speedMultiplier: enemyConfig.speedMultiplier,
         targetPlayerPos: this.player
@@ -330,9 +351,6 @@ export class Game {
       this.enemies.push(newEnemy);
 
       // Boss / Armored entrance screen shake
-<<<<<<< Updated upstream
-      if (enemyConfig.archetype === 'ARMORED') {
-=======
       if (enemyConfig.archetype === 'BOSS') {
         this.triggerShake(20, 0.75);
         if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
@@ -346,7 +364,6 @@ export class Game {
           28
         );
       } else if (enemyConfig.archetype === 'ARMORED') {
->>>>>>> Stashed changes
         this.triggerShake(11, 0.55);
         this.particleSystem.emitFloatingText(
           '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
@@ -412,15 +429,10 @@ export class Game {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
               
-<<<<<<< Updated upstream
-              // 20 - 30 particles monster death explosion matching archetype
-=======
               const isBoss = proj.targetEnemy.type === 'BOSS';
               if (isBoss) {
                 this.triggerShake(16, 0.5);
               }
-
->>>>>>> Stashed changes
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
                 proj.targetEnemy.y,
@@ -683,6 +695,15 @@ export class Game {
     }
 
     ctx.restore();
+
+    // 6. Lightning Electric Sky Flash Overlay
+    if (this.lightningFlashTimer > 0) {
+      ctx.save();
+      const flashAlpha = Math.min(0.65, this.lightningFlashTimer * 3.2);
+      ctx.fillStyle = `rgba(224, 242, 254, ${flashAlpha})`;
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.restore();
+    }
   }
 
   /**
@@ -712,6 +733,12 @@ export class Game {
       this.audioSystem.playSpell(gesture);
 
       this.triggerShake(3.5, 0.15);
+
+      if (gesture === 'lightning') {
+        this.audioSystem.soundLightning();
+        this.lightningFlashTimer = 0.22;
+        this.triggerShake(14, 0.45);
+      }
 
       if (gesture === 'heart') {
         const healed = this.player.heal(1);
@@ -757,7 +784,13 @@ export class Game {
 
       this.uiManager.showGestureFeedback(gesture, result.score, true);
     } else {
-      this.audioSystem.playFizzle();
+      if (gesture === 'lightning') {
+        this.audioSystem.soundLightning();
+        this.lightningFlashTimer = 0.16;
+        this.triggerShake(8, 0.3);
+      } else {
+        this.audioSystem.playFizzle();
+      }
       this.uiManager.showGestureFeedback(gesture, result.score, false);
       this._fizzleCombo();
     }
