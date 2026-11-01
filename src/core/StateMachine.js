@@ -201,7 +201,11 @@ export class VictoryState extends State {
 
   enter(previousState, payload = {}) {
     this.game.inputHandler.setEnabled(false);
-    this.game.audioSystem.playStart();
+    if (typeof this.game.audioSystem.playVictory === 'function') {
+      this.game.audioSystem.playVictory();
+    } else {
+      this.game.audioSystem.playStart();
+    }
 
     const finalScore = this.game.score;
     const isNewHighScore = this.game.saveHighScore(finalScore);

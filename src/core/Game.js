@@ -163,6 +163,7 @@ export class Game {
 
     this.waveSystem.onWaveComplete = (waveNum) => {
       this.triggerShake(5, 0.3);
+      this.audioSystem.playWaveComplete();
     };
   }
 
@@ -760,9 +761,11 @@ export class Game {
     // Find all enemies whose active (0th) symbol matches the recognized gesture
     const matchingEnemies = this.enemies.filter(e => e.matchesActiveSymbol(gesture));
 
+    // Momo immediately executes the gesture attack slash animation!
+    this.player.castSpell(gesture, matchingEnemies[0] || null);
+
     if (matchingEnemies.length > 0) {
       this.metrics.spellsHit++;
-      this.player.castSpell(matchingEnemies[0]);
       this.audioSystem.playSpell(gesture);
 
       this.triggerShake(3.5, 0.15);
@@ -779,7 +782,6 @@ export class Game {
       if (gesture === 'heart') {
         const healed = this.player.heal(1);
         if (healed) {
-          this.audioSystem.playSpell('heart');
           this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
         }
@@ -820,12 +822,23 @@ export class Game {
 
       this.uiManager.showGestureFeedback(gesture, result.score, true);
     } else {
-      if (gesture === 'lightning') {
+      if (gesture === 'heart') {
+        // In Google Doodle, drawing heart always restores HP even without enemies having heart
+        const healed = this.player.heal(1);
+        if (healed) {
+          this.audioSystem.playSpell('heart');
+          this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
+          this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+        } else {
+          this.audioSystem.playSpell(gesture);
+        }
+      } else if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
         this.lightningFlashTimer = 0.16;
         this.triggerShake(8, 0.3);
       } else {
-        this.audioSystem.playFizzle();
+        this.audioSystem.playSpell(gesture);
+        setTimeout(() => this.audioSystem.playFizzle(), 140);
       }
       this.uiManager.showGestureFeedback(gesture, result.score, false);
       this._fizzleCombo();

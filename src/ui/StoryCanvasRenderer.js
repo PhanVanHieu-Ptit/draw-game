@@ -416,22 +416,7 @@ export class StoryCanvasRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Witch Hat
-    ctx.fillStyle = '#312e81';
-    // Brim
-    ctx.beginPath();
-    ctx.ellipse(0, -radius * 0.7, radius * 1.4, radius * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Cone
-    ctx.beginPath();
-    ctx.moveTo(-radius * 0.8, -radius * 0.7);
-    ctx.quadraticCurveTo(-radius * 0.2, -radius * 2.0, radius * 0.5, -radius * 2.3);
-    ctx.quadraticCurveTo(radius * 0.4, -radius * 1.5, radius * 0.8, -radius * 0.7);
-    ctx.closePath();
-    ctx.fill();
-    // Hat gold band
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(-radius * 0.3, -radius * 1.05, radius * 0.6, 6);
+    // Momo is an authentic black cat with pointed ears (no witch hat, true to Google Doodle)
 
     // Eyes
     if (isShocked) {
@@ -454,28 +439,28 @@ export class StoryCanvasRenderer {
       ctx.arc(0, radius * 0.42, 5, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Big luminous cyan eyes
-      ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 8;
+      // Big luminous amber/golden eyes (Google Doodle Halloween 2016 Momo)
+      ctx.fillStyle = '#facc15';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.ellipse(-radius * 0.36, -radius * 0.08, radius * 0.22, radius * 0.3, 0, 0, Math.PI * 2);
-      ctx.ellipse(radius * 0.36, -radius * 0.08, radius * 0.22, radius * 0.3, 0, 0, Math.PI * 2);
+      ctx.ellipse(-radius * 0.36, -radius * 0.08, radius * 0.24, radius * 0.32, -0.05, 0, Math.PI * 2);
+      ctx.ellipse(radius * 0.36, -radius * 0.08, radius * 0.24, radius * 0.32, 0.05, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Highlights
+      // Dark cat pupils
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath();
+      ctx.ellipse(-radius * 0.34, -radius * 0.08, radius * 0.12, radius * 0.22, 0, 0, Math.PI * 2);
+      ctx.ellipse(radius * 0.38, -radius * 0.08, radius * 0.12, radius * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular highlights
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(-radius * 0.38, -radius * 0.18, 2.5, 0, Math.PI * 2);
       ctx.arc(radius * 0.34, -radius * 0.18, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pupils
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(-radius * 0.34, -radius * 0.08, 3.5, 0, Math.PI * 2);
-      ctx.arc(radius * 0.38, -radius * 0.08, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
       // Cute smile
