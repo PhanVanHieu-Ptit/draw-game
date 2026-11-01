@@ -14,6 +14,34 @@
  * 6. Automatic AudioContext resume on first user interaction.
  */
 
+/**
+ * Authentic Google Doodle Halloween 2016 (Magic Cat Academy) Audio Sprite Map.
+ * Extracted directly from official Google Doodle audio sheets (main.mp3, victory.mp3, initial.mp3, end.mp3).
+ */
+export const AUDIO_SPRITES = {
+  // main.mp3 sprites
+  bgm: { file: 'main', start: 31.308549, duration: 25.263175, loop: true },
+  spell_slash: { file: 'main', start: 70.241565, duration: 0.98356 },     // Kb: basic spell slash
+  combo_1: { file: 'main', start: 72.225125, duration: 1.160 },           // Wb: combo level 1
+  combo_2: { file: 'main', start: 74.385125, duration: 1.248 },           // Dc: combo level 2
+  combo_3: { file: 'main', start: 76.633129, duration: 1.387 },           // Ec: combo level 3
+  combo_4: { file: 'main', start: 79.019796, duration: 1.483 },           // Fc: combo level 4
+  spell_heart: { file: 'main', start: 86.341088, duration: 1.625397 },   // Ic: heart heal spell
+  spell_lightning: { file: 'main', start: 88.966485, duration: 2.066576 }, // Jc: lightning storm spell
+  cat_hurt: { file: 'main', start: 18.89415, duration: 1.984014 },        // tc: cat hurt meow
+  ghost_vanish: { file: 'main', start: 60.31322, duration: 1.335147 },   // wc: ghost defeated/dissolves
+  combo_fizzle: { file: 'main', start: 57.571723, duration: 1.741497 },   // Tb: combo lost/fizzle
+  level_start: { file: 'main', start: 68.073311, duration: 1.168254 },   // Bc: level start ready
+  level_clear: { file: 'main', start: 65.500159, duration: 1.573152 },   // Vb: wave/stage clear
+  boss_intro: { file: 'main', start: 0, duration: 3.160816 },             // kc: boss apparition
+  // victory.mp3
+  victory: { file: 'victory', start: 0, duration: 18.413424 },            // Ib: grand victory fanfare
+  // initial.mp3
+  intro: { file: 'initial', start: 0, duration: 16.921542 },              // vb: spooky intro cutscene
+  // end.mp3
+  game_over: { file: 'end', start: 0, duration: 1.933333 }                // Ob: game over chime
+};
+
 export class SoundSystem {
   /**
    * @param {Object} [options={}]
@@ -38,14 +66,20 @@ export class SoundSystem {
     this._lastDrawY = null;
     this._lastDrawTime = null;
 
-    // Background Music (BGM) Procedural Synthesizer state
+    // Background Music (BGM) Procedural Synthesizer & Authentic Audio state
     this.bgmGain = null;
-    this.bgmVolume = options.bgmVolume !== undefined ? Math.max(0, Math.min(1, options.bgmVolume)) : 0.28;
+    this.bgmVolume = options.bgmVolume !== undefined ? Math.max(0, Math.min(1, options.bgmVolume)) : 0.35;
     this.isBGMPlaying = false;
     this.isBGMPaused = false;
     this._bgmInterval = null;
     this._bgmNextNoteTime = 0;
     this._bgmStep = 0;
+
+    // Authentic Google Doodle Halloween 2016 Audio Tracks (Buffer & Source tracking)
+    this._audioBuffers = {};
+    this._currentBGMSource = null;
+    this._loadingTracks = {};
+    this._currentOneShots = [];
 
     // Browser policy unlock state
     this._unlocked = false;
@@ -105,12 +139,14 @@ export class SoundSystem {
       if (this.ctx.state === 'suspended') {
         this.ctx.resume().then(() => {
           this._unlocked = true;
+          this.preloadAudio();
           if (this.isBGMPlaying && !this.isBGMPaused) {
             this.resumeBGM();
           }
         }).catch(() => {});
       } else {
         this._unlocked = true;
+        this.preloadAudio();
       }
     } catch (err) {
       console.warn('[SoundSystem] Failed to initialize AudioContext:', err);
@@ -408,6 +444,15 @@ export class SoundSystem {
       this.soundLightning();
     }
 
+    // Authentic Google Doodle SFX Sprite
+    let spriteKey = 'spell_slash';
+    if (gesture === 'heart') spriteKey = 'spell_heart';
+    else if (gesture === 'lightning') spriteKey = 'spell_lightning';
+
+    if (this.playAudioSprite(spriteKey, 0.95)) {
+      return;
+    }
+
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -494,6 +539,10 @@ export class SoundSystem {
   soundGhostVanish() {
     if (!this._ensureReady()) return;
 
+    if (this.playAudioSprite('ghost_vanish', 0.9)) {
+      return;
+    }
+
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const duration = 0.45;
@@ -551,6 +600,8 @@ export class SoundSystem {
    */
   soundDamage() {
     if (!this._ensureReady()) return;
+
+    this.playAudioSprite('cat_hurt', 1.0);
 
     const ctx = this.ctx;
     const now = ctx.currentTime;
@@ -705,11 +756,16 @@ export class SoundSystem {
    * ------------------------------------------------------------------------- */
 
   /**
-   * Dynamic ascending combo chime
+   * Dynamic ascending combo chime (Google Doodle authentic combo sound sprites: Wb, Dc, Ec, Fc)
    * @param {number} comboCount 
    */
   soundCombo(comboCount) {
     if (!this._ensureReady()) return;
+    const comboTier = ((Math.max(1, comboCount) - 1) % 4) + 1;
+    if (this.playAudioSprite(`combo_${comboTier}`, 0.95)) {
+      return;
+    }
+
     const baseFreq = 440;
     const semitones = Math.min(22, comboCount);
     const freq = baseFreq * Math.pow(2, semitones / 12);
@@ -717,10 +773,14 @@ export class SoundSystem {
   }
 
   /**
-   * Spell fizzle / gesture mismatch sound
+   * Spell fizzle / gesture mismatch sound (Google Doodle authentic combo lost sound sprite Tb)
    */
   soundFizzle() {
     if (!this._ensureReady()) return;
+    if (this.playAudioSprite('combo_fizzle', 0.85)) {
+      return;
+    }
+
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -744,6 +804,8 @@ export class SoundSystem {
    */
   soundHeal() {
     if (!this._ensureReady()) return;
+    if (this.playAudioSprite('spell_heart', 0.95)) return;
+
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
     notes.forEach((freq, idx) => {
       setTimeout(() => {
@@ -753,11 +815,15 @@ export class SoundSystem {
   }
 
   /**
-   * Game Over descending motif
+   * Game Over descending motif (plays authentic end.mp3 sprite if available)
    */
   soundGameOver() {
     if (!this._ensureReady()) return;
-    const sequence = [440, 392, 349.23, 293.66];
+    if (this.playAudioSprite('game_over', 0.95)) return;
+    if (this._playOneShotBuffer('end')) return;
+
+    // Procedural melancholic descending motif fallback
+    const sequence = [440, 392, 349.23, 293.66, 220];
     sequence.forEach((freq, idx) => {
       setTimeout(() => {
         this._playTone(freq, 0.45, 'sine', 0.24);
@@ -766,15 +832,51 @@ export class SoundSystem {
   }
 
   /**
-   * Game start fanfare
+   * Game start / story intro fanfare (plays authentic level_start / initial.mp3 if available)
    */
   soundStart() {
     if (!this._ensureReady()) return;
+    if (this.playAudioSprite('level_start', 0.95)) return;
+    if (this._playOneShotBuffer('initial')) return;
+
+    // Procedural start fanfare fallback
     const sequence = [392, 523.25, 659.25, 783.99];
     sequence.forEach((freq, idx) => {
       setTimeout(() => {
         this._playTone(freq, 0.25, 'triangle', 0.22);
       }, idx * 90);
+    });
+  }
+
+  /**
+   * Stage Victory fanfare (plays authentic victory.mp3 if available)
+   */
+  soundVictory() {
+    if (!this._ensureReady()) return;
+    if (this.playAudioSprite('victory', 1.0)) return;
+    if (this._playOneShotBuffer('victory')) return;
+
+    // Procedural victory chime fallback
+    const sequence = [293.66, 369.99, 440.00, 587.33, 739.99, 880.00];
+    sequence.forEach((freq, idx) => {
+      setTimeout(() => {
+        this._playTone(freq, 0.35, 'triangle', 0.22);
+      }, idx * 100);
+    });
+  }
+
+  /**
+   * Stage / Wave Cleared Fanfare (Google Doodle authentic level clear sprite Vb)
+   */
+  soundWaveComplete() {
+    if (!this._ensureReady()) return;
+    if (this.playAudioSprite('level_clear', 0.95)) return;
+
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        this._playTone(freq, 0.3, 'triangle', 0.2);
+      }, idx * 70);
     });
   }
 
@@ -937,8 +1039,142 @@ export class SoundSystem {
    * Procedural Background Music (BGM) Sequencer
    * ------------------------------------------------------------------------- */
 
+  /* -------------------------------------------------------------------------
+   * Authentic Google Doodle Halloween 2016 Audio & Procedural BGM Sequencer
+   * ------------------------------------------------------------------------- */
+
   /**
-   * Start looping background music
+   * Preload audio tracks for authentic Google Doodle Halloween 2016 audio
+   */
+  preloadAudio() {
+    if (typeof window === 'undefined') return;
+    ['main', 'initial', 'victory', 'end'].forEach(name => {
+      this._loadAudioTrack(name).catch(() => {});
+    });
+  }
+
+  /**
+   * Load and decode an audio track into an AudioBuffer with robust fallbacks
+   * @param {string} name 'main' | 'initial' | 'victory' | 'end'
+   * @returns {Promise<AudioBuffer|null>}
+   */
+  async _loadAudioTrack(name) {
+    if (this._audioBuffers[name]) return this._audioBuffers[name];
+    if (this._loadingTracks[name]) return this._loadingTracks[name];
+    if (!this.ctx) return null;
+
+    const promise = (async () => {
+      const candidates = [
+        `./assets/audio/${name}.mp3`,
+        `assets/audio/${name}.mp3`,
+        `/audio/${name}.mp3`,
+        `audio/${name}.mp3`,
+        `/${name}.mp3`,
+        `https://www.google.com/logos/2016/halloween16/r4/${name}.mp3`
+      ];
+
+      for (const url of candidates) {
+        try {
+          const resp = await fetch(url);
+          if (resp && resp.ok) {
+            const arrayBuf = await resp.arrayBuffer();
+            if (this.ctx) {
+              const audioBuf = await this.ctx.decodeAudioData(arrayBuf);
+              this._audioBuffers[name] = audioBuf;
+              delete this._loadingTracks[name];
+
+              // If BGM is playing and we just loaded 'main', switch to buffer
+              if (name === 'main' && this.isBGMPlaying && !this.isBGMPaused && !this._currentBGMSource) {
+                this._startBufferBGM();
+              }
+              return audioBuf;
+            }
+          }
+        } catch (e) {
+          // Continue to next candidate URL
+        }
+      }
+      delete this._loadingTracks[name];
+      return null;
+    })();
+
+    this._loadingTracks[name] = promise;
+    return promise;
+  }
+
+  /**
+   * Play an authentic Google Doodle audio sprite from decoded AudioBuffers
+   * @param {string} spriteName Key in AUDIO_SPRITES
+   * @param {number} [customVolume=1.0] Relative volume scale
+   * @returns {boolean} True if played via authentic buffer sprite
+   */
+  playAudioSprite(spriteName, customVolume = 1.0) {
+    if (!this._ensureReady()) return false;
+    const sprite = AUDIO_SPRITES[spriteName];
+    if (!sprite || !this.ctx || this.isMuted) return false;
+
+    const buf = this._audioBuffers[sprite.file];
+    if (!buf) {
+      this._loadAudioTrack(sprite.file).catch(() => {});
+      return false;
+    }
+
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(this.isMuted ? 0.0001 : customVolume, this.ctx.currentTime);
+
+      src.connect(gain);
+      gain.connect(this.masterGain);
+
+      src.start(0, sprite.start, sprite.duration);
+      this._currentOneShots.push(src);
+
+      src.onended = () => {
+        const idx = this._currentOneShots.indexOf(src);
+        if (idx !== -1) this._currentOneShots.splice(idx, 1);
+      };
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /**
+   * Play a one-shot buffer (e.g., initial, victory, end)
+   * @private
+   * @param {string} name
+   * @returns {boolean} True if played via buffer
+   */
+  _playOneShotBuffer(name) {
+    if (!this.ctx || this.isMuted) return false;
+    const buf = this._audioBuffers[name];
+    if (!buf) {
+      // Trigger preload for future calls
+      this._loadAudioTrack(name).catch(() => {});
+      return false;
+    }
+
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.masterGain);
+      src.start(0);
+      this._currentOneShots.push(src);
+      src.onended = () => {
+        const idx = this._currentOneShots.indexOf(src);
+        if (idx !== -1) this._currentOneShots.splice(idx, 1);
+      };
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /**
+   * Start looping background music (Google Doodle OST with eerie procedural fallback)
    */
   startBGM() {
     this.isBGMPlaying = true;
@@ -955,6 +1191,20 @@ export class SoundSystem {
       this.bgmGain.connect(this.masterGain);
     }
 
+    // If authentic Google Halloween main.mp3 buffer is ready, play it!
+    if (this._audioBuffers['main']) {
+      this._startBufferBGM();
+      return;
+    }
+
+    // Try loading main.mp3 asynchronously
+    this._loadAudioTrack('main').then(buf => {
+      if (buf && this.isBGMPlaying && !this.isBGMPaused && !this._currentBGMSource) {
+        this._startBufferBGM();
+      }
+    }).catch(() => {});
+
+    // Meanwhile, run eerie procedural Halloween synth loop as instant fallback
     if (this._bgmInterval) {
       clearInterval(this._bgmInterval);
     }
@@ -968,10 +1218,47 @@ export class SoundSystem {
   }
 
   /**
+   * Play the authentic Google Doodle main.mp3 buffer on seamless loop
+   * Google Doodle Halloween 2016 BGM theme is slice Sb (31.308549s - 56.571724s)
+   * @private
+   */
+  _startBufferBGM() {
+    if (!this._audioBuffers['main'] || !this.ctx || this.isMuted || !this.isBGMPlaying || this.isBGMPaused) return;
+
+    if (this._currentBGMSource) {
+      try { this._currentBGMSource.stop(0); } catch (e) {}
+      this._currentBGMSource = null;
+    }
+
+    // Stop procedural interval since authentic music is active
+    if (this._bgmInterval) {
+      clearInterval(this._bgmInterval);
+      this._bgmInterval = null;
+    }
+
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this._audioBuffers['main'];
+      src.loop = true;
+      src.loopStart = 31.308549;
+      src.loopEnd = 31.308549 + 25.263175;
+      src.connect(this.bgmGain);
+      src.start(0, 31.308549);
+      this._currentBGMSource = src;
+    } catch (err) {
+      console.warn('[SoundSystem] Failed to start buffer BGM:', err);
+    }
+  }
+
+  /**
    * Pause background music
    */
   pauseBGM() {
     this.isBGMPaused = true;
+    if (this._currentBGMSource) {
+      try { this._currentBGMSource.stop(0); } catch (e) {}
+      this._currentBGMSource = null;
+    }
     if (this._bgmInterval) {
       clearInterval(this._bgmInterval);
       this._bgmInterval = null;
@@ -984,11 +1271,16 @@ export class SoundSystem {
   resumeBGM() {
     if (this.isBGMPlaying && this.isBGMPaused) {
       this.isBGMPaused = false;
-      if (this.ctx) {
-        this._bgmNextNoteTime = this.ctx.currentTime + 0.05;
-        this._bgmInterval = setInterval(() => {
-          this._scheduleBGM();
-        }, 60);
+      if (this._audioBuffers['main']) {
+        this._startBufferBGM();
+      } else {
+        if (this.ctx) {
+          this._bgmNextNoteTime = this.ctx.currentTime + 0.05;
+          this._bgmInterval = setInterval(() => {
+            this._scheduleBGM();
+          }, 60);
+        }
+        this._loadAudioTrack('main').catch(() => {});
       }
     } else if (!this.isBGMPlaying) {
       this.startBGM();
@@ -1001,6 +1293,10 @@ export class SoundSystem {
   stopBGM() {
     this.isBGMPlaying = false;
     this.isBGMPaused = false;
+    if (this._currentBGMSource) {
+      try { this._currentBGMSource.stop(0); } catch (e) {}
+      this._currentBGMSource = null;
+    }
     if (this._bgmInterval) {
       clearInterval(this._bgmInterval);
       this._bgmInterval = null;
@@ -1024,32 +1320,34 @@ export class SoundSystem {
   }
 
   /**
-   * Precise lookahead scheduler for procedural BGM
+   * Eerie & Haunting ("Ma Mị") procedural Halloween BGM synthesizer
+   * D Harmonic Minor progression with gothic music-box celesta, hollow cello bass, and ghostly theremin glides
    * @private
    */
   _scheduleBGM() {
     if (!this.ctx || this.isMuted || !this.isBGMPlaying || this.isBGMPaused) return;
+    if (this._currentBGMSource) return; // Buffer is playing authentic music
 
     const stepDuration = 0.2586; // 116 BPM, 8th note duration
     const lookAhead = 0.25;
 
-    // Bass frequencies (D minor progression: Dm -> Bb -> Gm -> A7)
+    // Spooky gothic bass: D minor -> Bb maj -> Gm -> A7(b9)
     const bassNotes = [
       73.42, 0, 73.42, 0, 87.31, 0, 55.00, 0,       // Dm (D2, D2, F2, A1)
       58.27, 0, 58.27, 0, 73.42, 0, 87.31, 0,       // Bb (Bb1, Bb1, D2, F2)
       49.00, 0, 49.00, 0, 58.27, 0, 73.42, 0,       // Gm (G1, G1, Bb1, D2)
-      55.00, 0, 69.30, 0, 82.41, 0, 55.00, 0        // A7 (A1, C#2, E2, A1)
+      55.00, 0, 69.30, 0, 82.41, 0, 58.27, 0        // A7(b9) (A1, C#2, E2, Bb1)
     ];
 
-    // Twinkling magical music-box arpeggios
+    // Eerie music-box arpeggios with mystical chromatic tensions
     const arpeggios = [
-      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 440.00, 587.33, // Dm
-      293.66, 349.23, 466.16, 587.33, 466.16, 349.23, 466.16, 587.33, // Bb
+      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 440.00, 554.37, // Dm (D4-F4-A4-D5 with C#5 ghost)
+      293.66, 349.23, 466.16, 587.33, 466.16, 349.23, 466.16, 622.25, // Bb (Bb4 with Eb5 passing)
       293.66, 392.00, 466.16, 587.33, 466.16, 392.00, 466.16, 587.33, // Gm
-      277.18, 329.63, 440.00, 554.37, 440.00, 329.63, 440.00, 554.37  // A7
+      277.18, 329.63, 440.00, 554.37, 466.16, 349.23, 440.00, 554.37  // A7(b9) haunted finish
     ];
 
-    // Spooky, playful Halloween Lead Melody (Celesta / Magic Bell)
+    // Haunting Halloween Lead Melody (Celesta & Ghostly Theremin Chime)
     const melodyNotes = {
       0: 587.33,   // D5
       2: 440.00,   // A4
@@ -1063,7 +1361,7 @@ export class SoundSystem {
       18: 392.00,  // G4
       20: 466.16,  // Bb4
       22: 587.33,  // D5
-      24: 554.37,  // C#5
+      24: 554.37,  // C#5 (Haunting harmonic minor leading tone)
       26: 659.25,  // E5
       28: 440.00,  // A4
       30: 554.37   // C#5
@@ -1073,21 +1371,21 @@ export class SoundSystem {
       const step = this._bgmStep;
       const t = this._bgmNextNoteTime;
 
-      // 1. Bass Note
+      // 1. Plucked Cello / Organ Bass Note
       const bassFreq = bassNotes[step];
       if (bassFreq > 0) {
         this._playBGMBass(bassFreq, t, stepDuration * 0.85);
       }
 
-      // 2. Arpeggio Tone
+      // 2. Haunted Music-Box Arpeggio Tone
       const arpFreq = arpeggios[step];
       if (arpFreq > 0) {
-        this._playBGMArp(arpFreq, t, 0.16);
+        this._playBGMArp(arpFreq, t, 0.18);
       }
 
-      // 3. Lead Melody Note
+      // 3. Eerie Celesta & Ghostly Theremin Lead Melody
       if (melodyNotes[step] !== undefined) {
-        this._playBGMMelody(melodyNotes[step], t, stepDuration * 0.88);
+        this._playBGMMelody(melodyNotes[step], t, stepDuration * 0.95);
       }
 
       // 4. Subtle percussive tick on off-beats
@@ -1101,7 +1399,7 @@ export class SoundSystem {
   }
 
   /**
-   * Warm plucked bass voice for BGM
+   * Warm hollow plucked bass voice for BGM
    * @private
    */
   _playBGMBass(freq, time, duration) {
@@ -1115,10 +1413,10 @@ export class SoundSystem {
       osc.frequency.setValueAtTime(freq, time);
 
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(220, time);
-      filter.frequency.exponentialRampToValueAtTime(70, time + duration);
+      filter.frequency.setValueAtTime(240, time);
+      filter.frequency.exponentialRampToValueAtTime(65, time + duration);
 
-      gain.gain.setValueAtTime(0.24, time);
+      gain.gain.setValueAtTime(0.26, time);
       gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
       osc.connect(filter);
@@ -1131,7 +1429,7 @@ export class SoundSystem {
   }
 
   /**
-   * Twinkling music-box chime for BGM
+   * Spooky music-box chime with delicate vibrato for BGM
    * @private
    */
   _playBGMArp(freq, time, duration) {
@@ -1139,14 +1437,23 @@ export class SoundSystem {
     try {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
 
       osc.type = 'sine';
+      // Subtle eerie vibrato
       osc.frequency.setValueAtTime(freq, time);
+      osc.frequency.linearRampToValueAtTime(freq * 1.006, time + duration * 0.5);
+      osc.frequency.linearRampToValueAtTime(freq * 0.995, time + duration);
 
-      gain.gain.setValueAtTime(0.08, time);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(freq * 1.2, time);
+      filter.Q.setValueAtTime(3.5, time);
+
+      gain.gain.setValueAtTime(0.09, time);
       gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
-      osc.connect(gain);
+      osc.connect(filter);
+      filter.connect(gain);
       gain.connect(this.bgmGain);
 
       osc.start(time);
@@ -1155,7 +1462,7 @@ export class SoundSystem {
   }
 
   /**
-   * Whimsical spooky lead melody note for BGM
+   * Haunting celesta / ghostly theremin lead melody for BGM
    * @private
    */
   _playBGMMelody(freq, time, duration) {
@@ -1163,14 +1470,23 @@ export class SoundSystem {
     try {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
 
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, time);
+      // Eerie slight portamento/glide
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.008, time + duration * 0.6);
+      osc.frequency.exponentialRampToValueAtTime(freq, time + duration);
 
-      gain.gain.setValueAtTime(0.18, time);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400, time);
+      filter.frequency.exponentialRampToValueAtTime(600, time + duration);
+
+      gain.gain.setValueAtTime(0.20, time);
       gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
-      osc.connect(gain);
+      osc.connect(filter);
+      filter.connect(gain);
       gain.connect(this.bgmGain);
 
       osc.start(time);

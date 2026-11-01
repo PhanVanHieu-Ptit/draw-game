@@ -68,4 +68,18 @@ export class AudioSystem extends SoundSystem {
   playStart() {
     this.soundStart();
   }
+
+  /**
+   * Victory fanfare (Google Doodle victory.mp3 / chime)
+   */
+  playVictory() {
+    this.soundVictory();
+  }
+
+  /**
+   * Stage / Wave Cleared fanfare (Google Doodle level_clear sprite)
+   */
+  playWaveComplete() {
+    this.soundWaveComplete();
+  }
 }
