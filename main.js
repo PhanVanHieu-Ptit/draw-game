@@ -17,4 +17,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Expose to window for debugging if needed
   window.__ARCANE_GAME__ = game;
+  window.game = game;
 });

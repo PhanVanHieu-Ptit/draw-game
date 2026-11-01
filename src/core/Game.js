@@ -123,6 +123,20 @@ export class Game {
       this.uiManager.updateLevel(lvlNum, lvlData);
       this.triggerShake(8, 0.45);
       this.uiManager.showLevelTransition(lvlNum, lvlData);
+
+      if (lvlNum === 5) {
+        this.player.setRidingBroom(true);
+        this.particleSystem.emitFloatingText(
+          '🧹 MOMO CƯỠI CHỔI THẦN BAY LÊN KHÔNG TRUNG! 🧹',
+          this.width / 2,
+          this.height * 0.42,
+          '#38bdf8',
+          24
+        );
+      } else {
+        this.player.setRidingBroom(false);
+      }
+
       this.particleSystem.emitFloatingText(
         `CẤP ĐỘ ${lvlNum}: ${lvlData ? lvlData.name.toUpperCase() : ''}`,
         this.width / 2,
@@ -270,6 +284,7 @@ export class Game {
     };
 
     this.player.reset();
+    this.fallingSpellbook = null;
 
     // Release all active entities back to object pools
     this.enemyPool.releaseAll(this.enemies);
@@ -387,11 +402,19 @@ export class Game {
           y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
         };
       } else if (isBoss) {
-        // Boss descends grandly from upper center
-        spawnPos = {
-          x: this.width / 2,
-          y: -75
-        };
+        if (enemyConfig.archetype === 'BOSS_MASTER') {
+          // Colossal Master Demon Boss hovers in the upper sky (to bằng 1/4 màn hình)
+          spawnPos = {
+            x: this.width / 2,
+            y: Math.max(195, this.height * 0.32)
+          };
+        } else {
+          // Boss descends grandly from upper center
+          spawnPos = {
+            x: this.width / 2,
+            y: -75
+          };
+        }
       } else {
         spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
       }
@@ -401,6 +424,8 @@ export class Game {
         type: enemyConfig.archetype,
         x: spawnPos.x,
         y: spawnPos.y,
+        canvasWidth: this.width,
+        canvasHeight: this.height,
         isHeartGhost: isHeart,
         symbolQueue: enemyConfig.symbolQueue,
         bossPhases: enemyConfig.bossPhases,
@@ -552,6 +577,26 @@ export class Game {
                   this.waveSystem.notifyBossDefeated();
                 }
 
+                // If Level 5 Final Boss was defeated: The Stolen Ancient Spellbook drops!
+                if (this.waveSystem.currentLevelIndex === 5) {
+                  this.fallingSpellbook = {
+                    x: proj.targetEnemy.x,
+                    y: proj.targetEnemy.y,
+                    rotation: 0,
+                    caught: false,
+                    timer: 0
+                  };
+                  this.triggerShake(26, 0.85);
+                  this.particleSystem.emitHitBurst(proj.targetEnemy.x, proj.targetEnemy.y, '#fbbf24', 45);
+                  this.particleSystem.emitFloatingText(
+                    '📖 CỔ THƯ RƠI XUỐNG! 📖',
+                    proj.targetEnemy.x,
+                    proj.targetEnemy.y - 45,
+                    '#fbbf24',
+                    28
+                  );
+                }
+
                 // Cleanse all remaining minion ghosts in an epic celebratory magic shockwave!
                 for (let j = 0; j < this.enemies.length; j++) {
                   const minion = this.enemies[j];
@@ -608,6 +653,55 @@ export class Game {
       }
     }
 
+    // Update Falling / Recovered Ancient Spellbook in Level 5
+    if (this.fallingSpellbook) {
+      this.fallingSpellbook.timer += dt;
+      if (!this.fallingSpellbook.caught) {
+        const dx = this.player.x - this.fallingSpellbook.x;
+        const dy = (this.player.y - 28) - this.fallingSpellbook.y;
+        const dist = Math.hypot(dx, dy);
+
+        this.fallingSpellbook.x += dx * Math.min(1.0, dt * 2.4);
+        this.fallingSpellbook.y += Math.max(80, dy * 1.6) * dt;
+        this.fallingSpellbook.rotation = Math.sin(this.fallingSpellbook.timer * 5) * 0.18;
+
+        if (Math.random() < 0.5) {
+          this.particleSystem.emitHitBurst(this.fallingSpellbook.x, this.fallingSpellbook.y, '#fbbf24', 2);
+        }
+
+        if (dist < 34 || this.fallingSpellbook.y >= this.player.y - 28) {
+          this.fallingSpellbook.caught = true;
+          this.fallingSpellbook.x = this.player.x;
+          this.fallingSpellbook.y = this.player.y - 32;
+
+          this.triggerShake(16, 0.45);
+          this.particleSystem.emitHitBurst(this.player.x, this.player.y - 30, '#fbbf24', 35);
+          this.particleSystem.emitFloatingText(
+            '✨ ĐÃ LẤY LẠI ĐƯỢC QUYỂN SÁCH CỔ! ✨',
+            this.width / 2,
+            this.height * 0.30,
+            '#fde047',
+            28
+          );
+          this.particleSystem.emitFloatingText(
+            '🏰 MOMO ĐÁP XUỐNG THÀNH TRONG TIẾNG TUNG HÔ! 🏰',
+            this.width / 2,
+            this.height * 0.36,
+            '#34d399',
+            22
+          );
+          if (this.audioSystem && typeof this.audioSystem.playVictoryFanfare === 'function') {
+            this.audioSystem.playVictoryFanfare();
+          }
+        }
+      } else {
+        // Held by Momo on broom as Momo descends gracefully
+        this.fallingSpellbook.x = this.player.x;
+        this.fallingSpellbook.y = this.player.y - 32 + Math.sin(this.fallingSpellbook.timer * 4) * 3;
+        this.player.y += 35 * dt; // Momo gracefully descends downwards
+      }
+    }
+
     // 5. Update Combo Decay
     if (this.comboCount > 0) {
       this.comboTimer -= dt;
@@ -653,6 +747,11 @@ export class Game {
 
     // 2. Render Player Momo
     this.player.render(ctx);
+
+    // Render Falling / Recovered Ancient Spellbook if present
+    if (this.fallingSpellbook) {
+      this._renderFallingSpellbook(ctx);
+    }
 
     // 3. Render Enemies
     for (let i = 0; i < this.enemies.length; i++) {
@@ -767,6 +866,64 @@ export class Game {
       ctx.font = 'bold 15px sans-serif';
       ctx.fillText('VUỐT DỌC (|)', cx, endY + 20);
     }
+
+    ctx.restore();
+  }
+
+  /**
+   * Render the Falling / Recovered Ancient Master Spellbook (Level 5 Climax)
+   * @param {CanvasRenderingContext2D} ctx 
+   * @private
+   */
+  _renderFallingSpellbook(ctx) {
+    if (!this.fallingSpellbook) return;
+    const fb = this.fallingSpellbook;
+    ctx.save();
+    ctx.translate(fb.x, fb.y);
+    ctx.rotate(fb.rotation);
+
+    // Glowing golden radial aura
+    const glow = ctx.createRadialGradient(0, 0, 5, 0, 0, 50);
+    glow.addColorStop(0, 'rgba(251, 191, 36, 0.7)');
+    glow.addColorStop(0.5, 'rgba(245, 158, 11, 0.3)');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 50, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ancient Leather Book
+    ctx.fillStyle = '#1e1b4b';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 16;
+    ctx.fillRect(-22, -16, 44, 32);
+    ctx.strokeRect(-22, -16, 44, 32);
+
+    // Golden clasps
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-22, -16, 6, 6);
+    ctx.fillRect(16, -16, 6, 6);
+    ctx.fillRect(-22, 10, 6, 6);
+    ctx.fillRect(16, 10, 6, 6);
+
+    // Cover golden eye / rune symbol
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sacred sparkle motes
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✨', 0, -22);
 
     ctx.restore();
   }

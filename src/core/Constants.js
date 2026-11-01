@@ -173,10 +173,10 @@ export const ENEMY_TYPES = {
     name: 'Chúa Tể Bóng Ma',
     enName: 'Master Ghost',
     baseSpeed: 34,
-    radius: 60,
+    radius: 135, // Colossal Demon Boss taking up ~1/4 of the screen!
     color: '#f43f5e',
     glowColor: '#e11d48',
-    score: 3000
+    score: 5000
   }
 };
 
@@ -296,8 +296,8 @@ export const LEVEL_CONFIGS = [
     id: 'rooftop',
     name: 'Sân Thượng Lâu Đài',
     enName: 'The Rooftop',
-    tagline: 'Trận chiến định mệnh dưới trăng máu!',
-    description: 'Chúa tể hắc ám đang giữ cuốn sách thần chú cổ đại trên đỉnh tháp.',
+    tagline: 'Momo cưỡi chổi thần quyết chiến Chúa Tể Ác Ma!',
+    description: 'Chúa tể ác ma khổng lồ ngự trị bầu trời, liên tục triệu hồi quỷ dữ. Hãy đoạt lại Cổ Thư!',
     themeColor: '#f43f5e',
     ambientColor: '#2b0713',
     totalMinions: 26,
@@ -349,24 +349,24 @@ export const STORY_SLIDES = {
   ],
   VICTORY: [
     {
-      title: 'Chúa Tể Ma Bị Đánh Bại!',
+      title: 'Chúa Tể Ác Ma Bị Tiêu Diệt!',
       enTitle: 'Master Ghost Defeated!',
-      text: 'Dưới ánh trăng rằm rực rỡ trên sân thượng, đòn ma pháp uy lực của Momo đã hoàn toàn thanh tẩy Chúa Tể Bóng Ma!',
-      enText: 'High above the academy rooftop, Momo\'s brilliant final spell shatters the dark grasp of the Master Ghost!',
+      text: 'Dưới ánh trăng rằm rực rỡ trên bầu trời, Momo cưỡi chổi thần vung đòn ma pháp uy lực hoàn toàn thanh tẩy Chúa Tể Ác Ma khổng lồ!',
+      enText: 'High above the rooftop on her magic flying broom, Momo\'s brilliant final spell shatters the dark grasp of the Master Ghost!',
       illustration: 'boss_defeated'
     },
     {
-      title: 'Cuốn Sách Thần Chú Trở Về!',
-      enTitle: 'The Spellbook Returns!',
-      text: 'Cuốn Sách Thần Chú Cổ Đại rơi xuống từ không trung và được Momo bắt lấy trọn vẹn trong vòng tay ấm áp.',
-      enText: 'The ancient Master Spellbook floats gently down into Momo\'s paws. The dark curse is broken!',
+      title: 'Đoạt Lại Cuốn Sách Cổ!',
+      enTitle: 'The Spellbook Recovered!',
+      text: 'Cuốn Sách Cổ rơi xuống từ tay tên ác ma và được Momo cưỡi chổi thần lao tới đón lấy trọn vẹn trong vòng tay ấm áp!',
+      enText: 'The ancient Master Spellbook falls from the demon\'s grasp. Momo swoops down on her broom and catches it safely!',
       illustration: 'book_recovered'
     },
     {
-      title: 'Bình Yên Trở Lại Học Viện!',
-      enTitle: 'Peace Restored to the Academy!',
-      text: 'Ngôi trường phép thuật bừng sáng rạng rỡ. Momo và các bạn mèo cùng nhau ăn mừng chiến thắng vang dội mùa Halloween!',
-      enText: 'The school radiates with magical warmth. Momo celebrates with her feline classmates — the academy is saved!',
+      title: 'Đáp Xuống Thành & Bạn Bè Tung Hô!',
+      enTitle: 'Courtyard Landing & Friends Cheering!',
+      text: 'Momo cưỡi chổi thần đáp xuống sân trường học viện an toàn. Toàn thể bạn bè ùa ra đón chào và cùng nhau tung hô Momo lên không trung trong niềm vui chiến thắng vỡ òa!',
+      enText: 'Momo lands at the academy courtyard. Her cat classmates rush in with joy and toss Momo into the air, celebrating the great Halloween victory!',
       illustration: 'happy_celebration'
     }
   ]

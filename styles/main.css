@@ -1017,9 +1017,9 @@ html, body {
    VICTORY SCREEN MODAL
    ========================================================================== */
 .victory-card {
-  max-width: 600px;
-  width: 92%;
-  padding: 28px 36px;
+  max-width: 640px;
+  width: 94%;
+  padding: 24px 30px;
 }
 
 .victory-trophy-badge {
@@ -1035,15 +1035,17 @@ html, body {
 }
 
 .victory-title {
-  font-size: 2.2rem;
+  font-size: 2.0rem;
   background: linear-gradient(135deg, #34d399 0%, #38bdf8 50%, #f472b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .victory-canvas-wrap {
-  height: 190px;
-  margin: 12px 0 16px 0;
+  height: 260px;
+  max-width: 560px;
+  width: 100%;
+  margin: 12px auto 16px auto;
 }
 
 /* Responsive adjustments */

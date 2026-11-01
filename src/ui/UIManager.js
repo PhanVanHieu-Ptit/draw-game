@@ -255,6 +255,24 @@ export class UIManager {
         }
       }
 
+      if (e.key === 'v' || e.key === 'V') {
+        this.game.stateMachine.changeState(GAME_STATES.VICTORY);
+      }
+
+      if (e.key === '5') {
+        if (this.game.waveSystem) {
+          this.game.waveSystem.initLevel(5);
+        }
+      }
+
+      if (e.key === 'g' || e.key === 'G') {
+        if (this.game.player) {
+          this.game.player.hp = 999;
+          this.game.player.maxHp = 999;
+          this.updateHearts(999, 999);
+        }
+      }
+
       if (e.key === 'Enter') {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.MENU || currentState === GAME_STATES.GAMEOVER) {
@@ -409,7 +427,11 @@ export class UIManager {
     if (this.ltbEn) this.ltbEn.textContent = levelData ? levelData.enName.toUpperCase() : 'ENDLESS WAVE';
 
     // Phase 1: Chuẩn bị sẵn sàng! (Get Ready!)
-    if (this.ltbPrompt) this.ltbPrompt.textContent = '⚡ CHUẨN BỊ SẴN SÀNG! ⚡';
+    if (this.ltbPrompt) {
+      this.ltbPrompt.textContent = (levelNum === 5)
+        ? '🧹 MOMO CƯỠI CHỔI THẦN! ⚡'
+        : '⚡ CHUẨN BỊ SẴN SÀNG! ⚡';
+    }
     this.levelTransitionBanner.className = 'level-transition-banner show phase-ready';
 
     if (this.game && this.game.player) {

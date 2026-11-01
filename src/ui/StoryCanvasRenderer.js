@@ -329,66 +329,401 @@ export class StoryCanvasRenderer {
   }
 
   // -------------------------------------------------------------------------
-  // VICTORY CELEBRATION SCENE
+  // VICTORY CELEBRATION SCENE (Momo lands at castle, book recovered, friends toss Momo up!)
   // -------------------------------------------------------------------------
   static _drawVictoryScene(ctx, w, h, t) {
-    // Grand celebratory sky
+    // 1. Midnight Castle Sky with warm celebration glow
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#1e1b4b');
-    bg.addColorStop(0.6, '#431407');
-    bg.addColorStop(1, '#170a04');
+    bg.addColorStop(0, '#100826');
+    bg.addColorStop(0.55, '#2e1045');
+    bg.addColorStop(1, '#1a0b06');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Big glowing golden moon
+    // 2. Glowing Full Moon of Peace & Restoration
     const moonX = w / 2;
-    const moonY = h * 0.38;
-    const moonGrad = ctx.createRadialGradient(moonX, moonY, 15, moonX, moonY, 90);
+    const moonY = h * 0.26;
+    const moonR = Math.min(50, w * 0.12);
+    const moonGrad = ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, moonR * 1.8);
     moonGrad.addColorStop(0, '#fef08a');
-    moonGrad.addColorStop(0.5, '#f59e0b');
+    moonGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.45)');
     moonGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = moonGrad;
     ctx.beginPath();
-    ctx.arc(moonX, moonY, 90, 0, Math.PI * 2);
+    ctx.arc(moonX, moonY, moonR * 1.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cheering Momo holding recovered spellbook overhead
-    const momoX = w / 2;
-    const momoY = h * 0.72;
-    StoryCanvasRenderer._drawCatHead(ctx, momoX, momoY, 34, false, t);
+    ctx.fillStyle = '#fef9c3';
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Master Spellbook held high in paws
-    const bookY = momoY - 68 + Math.sin(t * 4) * 4;
-    ctx.save();
-    ctx.fillStyle = '#f59e0b';
-    ctx.strokeStyle = '#fbbf24';
+    // 3. Castle Towers & Spires on Left and Right
+    ctx.fillStyle = '#160924';
+    // Left tower
+    ctx.fillRect(0, h * 0.38, w * 0.18, h * 0.62);
+    ctx.beginPath();
+    ctx.moveTo(-10, h * 0.38);
+    ctx.lineTo(w * 0.09, h * 0.16);
+    ctx.lineTo(w * 0.18 + 10, h * 0.38);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right tower
+    ctx.fillRect(w * 0.82, h * 0.38, w * 0.18, h * 0.62);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.82 - 10, h * 0.38);
+    ctx.lineTo(w * 0.91, h * 0.16);
+    ctx.lineTo(w + 10, h * 0.38);
+    ctx.closePath();
+    ctx.fill();
+
+    // Glowing arched windows on towers
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(w * 0.06, h * 0.45, 14, 22);
+    ctx.fillRect(w * 0.88, h * 0.45, 14, 22);
+    ctx.shadowBlur = 0;
+
+    // 4. Celebration Bunting / Pennant Flags strung between towers
+    const buntingY = h * 0.36;
+    const buntingColors = ['#f43f5e', '#38bdf8', '#fbbf24', '#34d399', '#c084fc', '#f97316'];
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.18, buntingY);
+    ctx.quadraticCurveTo(w * 0.5, buntingY + 22, w * 0.82, buntingY);
+    ctx.stroke();
+
+    for (let f = 0; f < 10; f++) {
+      const u = (f + 1) / 11;
+      const fx = w * 0.18 + u * (w * 0.64);
+      const fy = buntingY + Math.sin(u * Math.PI) * 22;
+      ctx.fillStyle = buntingColors[f % buntingColors.length];
+      ctx.beginPath();
+      ctx.moveTo(fx - 7, fy);
+      ctx.lineTo(fx + 7, fy);
+      ctx.lineTo(fx, fy + 12);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 5. Cobblestone Courtyard Ground
+    const groundY = h * 0.74;
+    const groundGrad = ctx.createLinearGradient(0, groundY, 0, h);
+    groundGrad.addColorStop(0, '#2b1408');
+    groundGrad.addColorStop(0.2, '#1a0b06');
+    groundGrad.addColorStop(1, '#0d0503');
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, groundY, w, h - groundY);
+
+    // Stone courtyard edge
+    ctx.strokeStyle = '#451a03';
     ctx.lineWidth = 3;
-    ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 18;
-    ctx.fillRect(momoX - 28, bookY, 56, 32);
-    ctx.strokeRect(momoX - 28, bookY, 56, 32);
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(w, groundY);
+    ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('✨📖✨', momoX, bookY + 20);
+    // 6. Magic Flying Broomstick resting proudly on the left cobblestones
+    ctx.save();
+    ctx.translate(w * 0.18, groundY + 12);
+    ctx.rotate(-0.18);
+    // Broom handle
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-35, 10);
+    ctx.lineTo(38, -6);
+    ctx.stroke();
+    // Gold ferrule
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-20, 4, 6, 9);
+    // Bristles
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.moveTo(-18, 4);
+    ctx.lineTo(-46, 0);
+    ctx.lineTo(-44, 18);
+    ctx.lineTo(-18, 12);
+    ctx.closePath();
+    ctx.fill();
+    // Golden sparks around broom
+    ctx.fillStyle = '#fde047';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(-25, -2 + Math.sin(t * 4) * 2, 2, 0, Math.PI * 2);
+    ctx.arc(36, -10 + Math.cos(t * 3) * 2, 2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
-    // Floating celebratory heart motes
-    const hearts = [
-      { x: w * 0.22, y: h * 0.35 + Math.sin(t * 3) * 10, col: '#f43f5e' },
-      { x: w * 0.35, y: h * 0.22 + Math.cos(t * 2.5) * 8, col: '#ec4899' },
-      { x: w * 0.65, y: h * 0.24 + Math.sin(t * 2.8) * 8, col: '#ec4899' },
-      { x: w * 0.78, y: h * 0.38 + Math.cos(t * 3.2) * 10, col: '#f43f5e' }
+    // 7. TOSSING PHYSICS & FRIENDS HEAVING MOMO INTO THE AIR ("tung hô")
+    const tossCycle = (t * 3.0) % (Math.PI * 2);
+    const tossHeight = Math.pow(Math.max(0, Math.sin(tossCycle)), 1.4) * 58;
+    const heaveY = Math.max(0, -Math.cos(tossCycle)) * 6; // Friends crouch slightly before tossing
+
+    // Cat Friends standing in the courtyard around Momo tossing Momo up
+    const friends = [
+      { x: w * 0.33, y: groundY - 4 + heaveY, type: 'ginger', name: 'Ginger' },
+      { x: w * 0.42, y: groundY - 2 + heaveY, type: 'calico', name: 'Calico' },
+      { x: w * 0.58, y: groundY - 2 + heaveY, type: 'gray', name: 'Gray' },
+      { x: w * 0.67, y: groundY - 4 + heaveY, type: 'white', name: 'Snowy' }
     ];
 
-    for (const heart of hearts) {
-      ctx.fillStyle = heart.col;
-      ctx.shadowColor = heart.col;
-      ctx.shadowBlur = 10;
-      ctx.font = '20px sans-serif';
-      ctx.fillText('❤️', heart.x, heart.y);
+    for (const fr of friends) {
+      StoryCanvasRenderer._drawCheeringFriend(ctx, fr.x, fr.y, fr.type, t);
     }
+
+    // 8. MOMO SOARING IN MID-AIR WITH THE ANCIENT MASTER SPELLBOOK!
+    const momoBaseY = groundY - 32;
+    const momoY = momoBaseY - tossHeight;
+    const momoX = w / 2;
+
+    ctx.save();
+    ctx.translate(momoX, momoY);
+
+    // Momo's joyful black cat body
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 18, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Happy tail waving in the air
+    const tailWave = Math.sin(t * 8) * 0.4;
+    ctx.save();
+    ctx.translate(-12, 14);
+    ctx.rotate(tailWave);
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-14, -8, -18, -20);
+    ctx.stroke();
+    ctx.restore();
+
+    // Momo's Cute Cat Head
+    StoryCanvasRenderer._drawCatHead(ctx, 0, -10, 26, false, t);
+
+    // Outstretched paws holding the Ancient Master Spellbook high overhead!
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.ellipse(-14, -28, 5, 10, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(14, -28, 5, 10, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // THE RECOVERED ANCIENT MASTER SPELLBOOK (Quyển Sách Cổ)
+    const bookY = -48;
+    // Radiant golden god rays emanating from the book
+    const rayPulse = Math.sin(t * 6) * 4;
+    const rayGrad = ctx.createRadialGradient(0, bookY + 12, 5, 0, bookY + 12, 45 + rayPulse);
+    rayGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+    rayGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.4)');
+    rayGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = rayGrad;
+    ctx.beginPath();
+    ctx.arc(0, bookY + 12, 45 + rayPulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ancient Tome leather cover
+    ctx.fillStyle = '#1e1b4b';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 16;
+    ctx.fillRect(-24, bookY, 48, 28);
+    ctx.strokeRect(-24, bookY, 48, 28);
+
+    // Golden corner clasps
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-24, bookY, 6, 6);
+    ctx.fillRect(18, bookY, 6, 6);
+    ctx.fillRect(-24, bookY + 22, 6, 6);
+    ctx.fillRect(18, bookY + 22, 6, 6);
+
+    // Golden eye / mystic symbol on cover
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.ellipse(0, bookY + 14, 8, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(0, bookY + 14, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Sparkles radiating above book
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✨📖✨', 0, bookY - 6);
+
+    ctx.restore();
+
+    // 9. Confetti & Celebration Fireworks Shower
+    for (let c = 0; c < 28; c++) {
+      const cx = (c * 37 + Math.sin(t * 2.5 + c) * 30) % w;
+      const cy = (t * 60 + c * 23) % (h * 0.95);
+      const cColor = buntingColors[c % buntingColors.length];
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(t * 3 + c);
+      ctx.fillStyle = cColor;
+      ctx.fillRect(-3, -2, 7, 4);
+      ctx.restore();
+    }
+
+    // Celebratory fireworks bursts in night sky
+    const fwAlpha1 = (Math.sin(t * 3) + 1) * 0.5;
+    ctx.fillStyle = `rgba(244, 63, 94, ${fwAlpha1 * 0.6})`;
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(w * 0.25, h * 0.22, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    const fwAlpha2 = (Math.cos(t * 2.7) + 1) * 0.5;
+    ctx.fillStyle = `rgba(56, 189, 248, ${fwAlpha2 * 0.6})`;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(w * 0.75, h * 0.20, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Floating celebratory hearts around the cheering friends
+    const hearts = [
+      { x: w * 0.28, y: groundY - 55 + Math.sin(t * 3) * 8, col: '#f43f5e' },
+      { x: w * 0.72, y: groundY - 55 + Math.cos(t * 2.8) * 8, col: '#ec4899' },
+      { x: w * 0.50, y: groundY - 75 + Math.sin(t * 3.5) * 6, col: '#fde047' }
+    ];
+    for (const hrt of hearts) {
+      ctx.fillStyle = hrt.col;
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(hrt.col === '#fde047' ? '✨' : '❤️', hrt.x, hrt.y);
+    }
+  }
+
+  /**
+   * Helper to draw Momo's student cat classmates cheering and tossing
+   * @param {CanvasRenderingContext2D} ctx 
+   * @param {number} x 
+   * @param {number} y 
+   * @param {string} type 'ginger' | 'calico' | 'gray' | 'white'
+   * @param {number} t Time in seconds
+   */
+  static _drawCheeringFriend(ctx, x, y, type, t) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    let bodyColor = '#ea580c';
+    let eyeColor = '#22c55e';
+    let detailColor = '#9a3412';
+
+    if (type === 'calico') {
+      bodyColor = '#f8fafc';
+      eyeColor = '#f59e0b';
+      detailColor = '#ea580c';
+    } else if (type === 'gray') {
+      bodyColor = '#64748b';
+      eyeColor = '#38bdf8';
+      detailColor = '#334155';
+    } else if (type === 'white') {
+      bodyColor = '#ffffff';
+      eyeColor = '#38bdf8';
+      detailColor = '#f472b6';
+    }
+
+    // Bobbing excitement
+    const bounce = Math.sin(t * 6 + x) * 2;
+    ctx.translate(0, bounce);
+
+    // Body
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Calico or ginger coat patches
+    if (type === 'calico') {
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.ellipse(-5, -4, 6, 8, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#18181b';
+      ctx.beginPath();
+      ctx.ellipse(6, 4, 6, 7, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (type === 'ginger') {
+      ctx.strokeStyle = detailColor;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-8, -4); ctx.lineTo(-2, -2);
+      ctx.moveTo(-8, 2); ctx.lineTo(-2, 4);
+      ctx.moveTo(8, -4); ctx.lineTo(2, -2);
+      ctx.moveTo(8, 2); ctx.lineTo(2, 4);
+      ctx.stroke();
+    }
+
+    // Head
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, -16, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ears
+    ctx.beginPath();
+    ctx.moveTo(-11, -22); ctx.lineTo(-14, -34); ctx.lineTo(-3, -27); ctx.closePath();
+    ctx.moveTo(11, -22); ctx.lineTo(14, -34); ctx.lineTo(3, -27); ctx.closePath();
+    ctx.fill();
+
+    // Pink ear interior
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.moveTo(-10, -23); ctx.lineTo(-12, -31); ctx.lineTo(-4, -26); ctx.closePath();
+    ctx.moveTo(10, -23); ctx.lineTo(12, -31); ctx.lineTo(4, -26); ctx.closePath();
+    ctx.fill();
+
+    // White cat pink ribbon bow
+    if (type === 'white') {
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.ellipse(-10, -30, 4, 2.5, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(-4, -30, 4, 2.5, 0.4, 0, Math.PI * 2);
+      ctx.arc(-7, -30, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Big happy cheering eyes
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(-5, -16, 3, 0, Math.PI * 2);
+    ctx.arc(5, -16, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#09090b';
+    ctx.beginPath();
+    ctx.arc(-5, -16, 1.5, 0, Math.PI * 2);
+    ctx.arc(5, -16, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cheering smiling mouth
+    ctx.fillStyle = '#e11d48';
+    ctx.beginPath();
+    ctx.arc(0, -11, 3.5, 0, Math.PI);
+    ctx.fill();
+
+    // Raised cheering paws heaving towards Momo!
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(-10, -26, 4, 8, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(10, -26, 4, 8, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   /**

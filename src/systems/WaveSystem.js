@@ -78,7 +78,8 @@ export class WaveSystem {
       this.speedMultiplier = Math.min(1.75, 1.0 + 0.05 * (levelNum - 1));
     }
 
-    this.spawnTimer = 1.2; // brief breathing time before first ghost
+    // In Level 5, spawn the giant boss immediately with brief 0.2s dramatic breathing time
+    this.spawnTimer = (levelNum === 5 && this.gameMode === 'STORY') ? 0.2 : 1.2;
 
     if (this.onLevelStart && this.levelData) {
       this.onLevelStart(this.currentLevelIndex, this.levelData);
@@ -103,7 +104,8 @@ export class WaveSystem {
     if (this.isBossDefeated) return;
     this.isBossDefeated = true;
     this.isIntermission = true;
-    this.intermissionTimer = 2.6;
+    // For final level, allow 4.2s for spellbook drop, Momo catching it, and landing cutscene
+    this.intermissionTimer = (this.currentLevelIndex === 5 && this.gameMode === 'STORY') ? 4.2 : 2.6;
     if (this.onLevelComplete) {
       this.onLevelComplete(this.currentLevelIndex, this.levelData);
     }
@@ -136,7 +138,59 @@ export class WaveSystem {
       return null;
     }
 
-    // 2. Story Mode: Minions cleared -> Boss Battle
+    // 2. Special Level 5 Final Boss Showdown:
+    // The Colossal Demon Master Boss is ALWAYS present from the very start, and minions spawn continuously!
+    if (this.gameMode === 'STORY' && this.currentLevelIndex === 5 && this.levelData) {
+      // Immediate Boss Spawn on level start
+      if (!this.isBossSpawned) {
+        this.spawnTimer -= dt;
+        if (this.spawnTimer <= 0) {
+          this.isBossSpawned = true;
+          this.isBossDefeated = false;
+          this.bossMinionSpawnTimer = 1.2;
+          if (this.onBossSpawn) {
+            this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
+          }
+          return {
+            archetype: this.levelData.bossType,
+            symbolQueue: (this.levelData.bossPhases && this.levelData.bossPhases.length > 0)
+              ? [...this.levelData.bossPhases[0]]
+              : [...this.levelData.bossSymbols],
+            bossPhases: this.levelData.bossPhases ? this.levelData.bossPhases.map(p => [...p]) : null,
+            bossLives: this.levelData.bossLives || 5,
+            isBoss: true,
+            isHeartGhost: false,
+            speedMultiplier: 0.80
+          };
+        }
+        return null;
+      }
+
+      // If Boss was defeated or all enemies cleared
+      if (this.isBossSpawned && (this.isBossDefeated || livingEnemiesCount === 0)) {
+        this.notifyBossDefeated();
+        return null;
+      }
+
+      // Continuous swarm of minions while Boss is alive ("các con nhỏ cứ xuất hiện liên tục")
+      if (this.isBossSpawned && !this.isBossDefeated) {
+        this.bossMinionSpawnTimer -= dt;
+        if (this.bossMinionSpawnTimer <= 0) {
+          const livingMinions = Math.max(0, livingEnemiesCount - 1);
+          const maxMinions = 3;
+          if (livingMinions < maxMinions) {
+            const interval = Math.max(1.6, 2.2 * (playerHp <= 2 ? 1.2 : 1.0));
+            this.bossMinionSpawnTimer = interval;
+            return this._generateBossMinionConfig(playerHp);
+          } else {
+            this.bossMinionSpawnTimer = 0.6;
+          }
+        }
+      }
+      return null;
+    }
+
+    // 3. Story Mode (Levels 1-4): Minions wave cleared -> Level Boss Battle
     if (this.gameMode === 'STORY' && this.levelData) {
       // If all minions have spawned and died, spawn the Level Boss!
       if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {

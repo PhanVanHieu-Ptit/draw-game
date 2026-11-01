@@ -51,6 +51,11 @@ export class Player extends Entity {
     this.momoSprites = MOMO_SPRITES;
     this.castGesture = null;
 
+    // Flying Magic Broomstick (Chổi thần) for Level 5
+    this.isRidingBroom = false;
+    this.broomHoverTime = 0;
+    this.broomJetTimer = 0;
+
     // Multi-sheet preloading (level1-png-sprite.png, level1-png1-sprite.png, main-png-sprite.png)
     this.spriteSheets = {};
     this.spritesLoaded = {};
@@ -129,6 +134,15 @@ export class Player extends Entity {
     this.animState = 'idle';
     this.frameIndex = 0;
     this.frameTimer = 0;
+    this.isRidingBroom = false;
+  }
+
+  /**
+   * Toggle Momo riding the Magic Flying Broomstick (used in Level 5)
+   * @param {boolean} riding 
+   */
+  setRidingBroom(riding = true) {
+    this.isRidingBroom = Boolean(riding);
   }
 
   /**
@@ -437,24 +451,28 @@ export class Player extends Entity {
     ctx.save();
     ctx.translate(this.x, this.y);
 
-    // 1. Arcane Ground Rune / Danger Circle
+    // 1. Arcane Ground Rune or Airborne Levitation Ring
     const isDanger = this.dangerPulse > 0;
     const pulseFactor = isDanger ? (Math.sin(this.dangerPulse) * 0.25 + 0.75) : 0.4;
     ctx.save();
     ctx.beginPath();
     ctx.arc(0, 0, this.dangerRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = isDanger ? `rgba(239, 68, 68, ${0.4 * pulseFactor})` : 'rgba(251, 191, 36, 0.15)';
-    ctx.lineWidth = isDanger ? 2.5 : 1.5;
-    ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = isDanger
+      ? `rgba(239, 68, 68, ${0.4 * pulseFactor})`
+      : (this.isRidingBroom ? 'rgba(56, 189, 248, 0.28)' : 'rgba(251, 191, 36, 0.15)');
+    ctx.lineWidth = isDanger ? 2.5 : (this.isRidingBroom ? 2.0 : 1.5);
+    ctx.setLineDash(this.isRidingBroom ? [12, 6] : [8, 8]);
     ctx.stroke();
 
-    // Subtle inner golden/amber ambient halo on floor
-    const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
-    grad.addColorStop(0, this.healPulseTimer > 0 ? 'rgba(244, 63, 94, 0.35)' : 'rgba(251, 191, 36, 0.2)');
-    grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    // Subtle inner ambient levitation halo
+    const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 65);
+    grad.addColorStop(0, this.healPulseTimer > 0
+      ? 'rgba(244, 63, 94, 0.35)'
+      : (this.isRidingBroom ? 'rgba(56, 189, 248, 0.22)' : 'rgba(251, 191, 36, 0.2)'));
+    grad.addColorStop(1, 'transparent');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, 0, 60, 0, Math.PI * 2);
+    ctx.arc(0, 0, 65, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
@@ -463,14 +481,26 @@ export class Player extends Entity {
       ctx.globalAlpha = 0.35;
     }
 
-    // Gentle idle breathing bob
-    const bob = Math.sin(this.time * 3) * 2.5;
-    ctx.translate(0, bob);
+    // Gentle idle breathing bob or energetic airborne flying hover
+    if (this.isRidingBroom) {
+      const airBob = Math.sin(this.time * 3.6) * 7.5;
+      const airTilt = Math.sin(this.time * 2.2) * 0.06;
+      ctx.translate(0, airBob);
+      ctx.rotate(airTilt);
+    } else {
+      const bob = Math.sin(this.time * 3) * 2.5;
+      ctx.translate(0, bob);
+    }
 
     // Hurt recoil glow
     if (this.hurtTimer > 0) {
       ctx.shadowColor = '#ef4444';
       ctx.shadowBlur = 18;
+    }
+
+    // Render Magic Flying Broomstick under Momo if airborne!
+    if (this.isRidingBroom) {
+      this._renderMagicBroom(ctx);
     }
 
     // 3. Render Authentic Google Doodle Momo Sprite if loaded, otherwise Authentic Vector Fallback
@@ -482,6 +512,109 @@ export class Player extends Entity {
 
     // 4. Interactive Magic Stardust & Wand Flare when drawing or casting
     this._renderMagicWandEffects(ctx);
+
+    ctx.restore();
+  }
+
+  /**
+   * Render Momo's Magic Flying Broomstick (Chổi Thần)
+   * Authentic wooden shaft, golden bindings, flowing straw bristles, and arcane stardust jet stream.
+   * @private
+   */
+  _renderMagicBroom(ctx) {
+    ctx.save();
+    const isTurbo = this.isDrawing || this.castTimer > 0;
+    const bristleSway = Math.sin(this.time * 5.5) * 2.5;
+
+    // 1. Arcane Jet Flame / Stardust Stream trailing behind the broom bristles
+    const jetLength = isTurbo ? 48 : 26;
+    const jetGrad = ctx.createLinearGradient(-35, 14, -35 - jetLength, 14);
+    jetGrad.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
+    jetGrad.addColorStop(0.5, 'rgba(244, 114, 182, 0.6)');
+    jetGrad.addColorStop(1, 'transparent');
+
+    ctx.save();
+    ctx.fillStyle = jetGrad;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = isTurbo ? 22 : 12;
+    ctx.beginPath();
+    ctx.moveTo(-35, 8);
+    ctx.lineTo(-35 - jetLength, 14 + (Math.random() - 0.5) * 4);
+    ctx.lineTo(-35, 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stardust Sparkles floating backwards from broom tail
+    for (let i = 0; i < 4; i++) {
+      const spx = -36 - Math.random() * jetLength;
+      const spy = 14 + (Math.random() - 0.5) * 14;
+      const sSize = Math.random() * 2 + 1;
+      ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(spx, spy, sSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 2. Straw / Twig Broom Head (Bristles)
+    ctx.save();
+    ctx.fillStyle = '#b45309';
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 1.6;
+
+    // Main straw bundle
+    ctx.beginPath();
+    ctx.moveTo(-20, 10);
+    ctx.quadraticCurveTo(-38, 2 + bristleSway, -56, 6 + bristleSway);
+    ctx.lineTo(-58, 22 + bristleSway);
+    ctx.quadraticCurveTo(-36, 26 + bristleSway, -20, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Golden straw highlights
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-22, 12); ctx.quadraticCurveTo(-38, 7, -54, 9 + bristleSway);
+    ctx.moveTo(-22, 14); ctx.quadraticCurveTo(-38, 14, -55, 14 + bristleSway);
+    ctx.moveTo(-22, 16); ctx.quadraticCurveTo(-38, 21, -54, 19 + bristleSway);
+    ctx.stroke();
+
+    // Golden ferrule / band binding the bristles
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(-22, 9, 6, 11);
+    ctx.strokeRect(-22, 9, 6, 11);
+    ctx.restore();
+
+    // 3. Polished Wooden Handle passing under Momo
+    ctx.save();
+    ctx.strokeStyle = '#78350f';
+    ctx.fillStyle = '#92400e';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(-20, 14);
+    ctx.lineTo(44, 9);
+    ctx.stroke();
+
+    // Golden tip cap with arcane star gem at front of broom
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(45, 9, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crystal glint
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(45, 9, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
     ctx.restore();
   }

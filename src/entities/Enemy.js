@@ -328,8 +328,13 @@ export class Enemy extends Entity {
     if (this.isBoss) {
       if (this.isRetreating) {
         this.retreatTimer -= dt;
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
+        if (this.type === 'BOSS_MASTER') {
+          this.y -= 130 * dt; // Recoil upwards into storm clouds
+          this.x += (Math.random() - 0.5) * 60 * dt;
+        } else {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+        }
         if (this.retreatTimer <= 0) {
           this.isRetreating = false;
           this.isReEntering = true;
@@ -350,13 +355,20 @@ export class Enemy extends Entity {
         return;
       } else if (this.isReEntering) {
         this.reEnterTimer -= dt;
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        const curDist = Math.hypot(this.targetPlayerPos.x - this.x, this.targetPlayerPos.y - this.y);
-        if (this.reEnterTimer <= 0 || curDist < 200) {
-          this.isReEntering = false;
-          this.vx = 0;
-          this.vy = 0;
+        if (this.type === 'BOSS_MASTER') {
+          this.y += 110 * dt;
+          if (this.reEnterTimer <= 0) {
+            this.isReEntering = false;
+          }
+        } else {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+          const curDist = Math.hypot(this.targetPlayerPos.x - this.x, this.targetPlayerPos.y - this.y);
+          if (this.reEnterTimer <= 0 || curDist < 200) {
+            this.isReEntering = false;
+            this.vx = 0;
+            this.vy = 0;
+          }
         }
         return;
       }
@@ -376,6 +388,15 @@ export class Enemy extends Entity {
 
     // Heart ghost stays stationary in one place!
     if (this.isHeartGhost || this.symbolQueue.includes('heart')) {
+      return;
+    }
+
+    // BOSS_MASTER (Level 5 Final Demon Boss) hovers majestically across the upper sky!
+    if (this.type === 'BOSS_MASTER') {
+      const hoverX = this.targetPlayerPos.x + Math.sin(this.time * 0.75 + this.phase) * 120;
+      const hoverY = Math.max(195, this.targetPlayerPos.y * 0.6) + Math.cos(this.time * 0.95 + this.phase) * 18;
+      this.x += (hoverX - this.x) * Math.min(1.0, dt * 2.0);
+      this.y += (hoverY - this.y) * Math.min(1.0, dt * 2.0);
       return;
     }
 
@@ -619,63 +640,130 @@ export class Enemy extends Entity {
       ctx.fillRect(0, r * 0.48, 8, 4);
       ctx.shadowBlur = 0;
     } else if (this.type === 'BOSS_MASTER' || this.type === 'BOSS') {
-      // 5. Final Master Boss Ghost: Demon horns, dark crown & clutching the STOLEN MASTER SPELLBOOK!
-      ctx.strokeStyle = '#f43f5e';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(0, -r * 0.2, r + 6, Math.PI * 0.85, Math.PI * 0.15, true);
-      ctx.stroke();
+      // 5. Final Master Boss Ghost: Colossal Demon taking up ~1/4 of the screen!
+      // Demon wings / spectral mantle of billowing crimson dark smoke
+      ctx.save();
+      ctx.fillStyle = 'rgba(127, 29, 29, 0.45)';
+      ctx.shadowColor = '#e11d48';
+      ctx.shadowBlur = 32;
 
-      ctx.fillStyle = '#be123c';
-      ctx.shadowColor = '#f43f5e';
-      ctx.shadowBlur = 18;
-
-      // Crown horns
+      // Left shadow wing
       ctx.beginPath();
-      ctx.moveTo(-r * 0.85, -r * 0.3);
-      ctx.quadraticCurveTo(-r * 1.5, -r * 0.9, -r * 1.45, -r * 1.45);
-      ctx.quadraticCurveTo(-r * 0.9, -r * 1.05, -r * 0.35, -r * 0.75);
+      ctx.moveTo(-r * 0.4, -r * 0.2);
+      ctx.bezierCurveTo(-r * 1.5, -r * 0.8, -r * 1.85, r * 0.3, -r * 1.45, r * 0.9);
+      ctx.bezierCurveTo(-r * 1.1, r * 0.4, -r * 0.8, r * 0.2, -r * 0.4, 0);
       ctx.closePath();
       ctx.fill();
 
+      // Right shadow wing
+      ctx.beginPath();
+      ctx.moveTo(r * 0.4, -r * 0.2);
+      ctx.bezierCurveTo(r * 1.5, -r * 0.8, r * 1.85, r * 0.3, r * 1.45, r * 0.9);
+      ctx.bezierCurveTo(r * 1.1, r * 0.4, r * 0.8, r * 0.2, r * 0.4, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Menacing Crown Horns
+      ctx.fillStyle = '#be123c';
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 22;
+
+      // Left horn
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.75, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 1.4, -r * 0.9, -r * 1.35, -r * 1.45);
+      ctx.quadraticCurveTo(-r * 0.85, -r * 1.05, -r * 0.3, -r * 0.75);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Center demonic spike
       ctx.beginPath();
       ctx.moveTo(-r * 0.25, -r * 0.9);
       ctx.lineTo(0, -r * 1.6);
       ctx.lineTo(r * 0.25, -r * 0.9);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
+      // Right horn
       ctx.beginPath();
-      ctx.moveTo(r * 0.85, -r * 0.3);
-      ctx.quadraticCurveTo(r * 1.5, -r * 0.9, r * 1.45, -r * 1.45);
-      ctx.quadraticCurveTo(r * 0.9, -r * 1.05, r * 0.35, -r * 0.75);
+      ctx.moveTo(r * 0.75, -r * 0.3);
+      ctx.quadraticCurveTo(r * 1.4, -r * 0.9, r * 1.35, -r * 1.45);
+      ctx.quadraticCurveTo(r * 0.85, -r * 1.05, r * 0.3, -r * 0.75);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+
+      // Glowing demonic forehead crest gem
+      ctx.fillStyle = '#fde047';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.ellipse(0, -r * 0.65, 9, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
       // The Stolen Master Spellbook in its shadowy grasp!
       const bookW = r * 0.85;
-      const bookH = r * 0.65;
+      const bookH = r * 0.62;
       const bookX = -bookW / 2;
-      const bookY = r * 0.32;
+      const bookY = r * 0.26;
 
+      // Ancient tome leather and golden filigree
+      ctx.save();
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.shadowColor = '#e11d48';
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 18;
       ctx.fillRect(bookX, bookY, bookW, bookH);
       ctx.strokeRect(bookX, bookY, bookW, bookH);
 
-      // Book eye of dark magic
+      // Ornate golden corner brackets
+      ctx.fillStyle = '#fbbf24';
+      const cSize = Math.max(9, r * 0.12);
+      // Top-left
+      ctx.beginPath(); ctx.moveTo(bookX, bookY); ctx.lineTo(bookX + cSize, bookY); ctx.lineTo(bookX, bookY + cSize); ctx.closePath(); ctx.fill();
+      // Top-right
+      ctx.beginPath(); ctx.moveTo(bookX + bookW, bookY); ctx.lineTo(bookX + bookW - cSize, bookY); ctx.lineTo(bookX + bookW, bookY + cSize); ctx.closePath(); ctx.fill();
+      // Bottom-left
+      ctx.beginPath(); ctx.moveTo(bookX, bookY + bookH); ctx.lineTo(bookX + cSize, bookY + bookH); ctx.lineTo(bookX, bookY + bookH - cSize); ctx.closePath(); ctx.fill();
+      // Bottom-right
+      ctx.beginPath(); ctx.moveTo(bookX + bookW, bookY + bookH); ctx.lineTo(bookX + bookW - cSize, bookY + bookH); ctx.lineTo(bookX + bookW, bookY + bookH - cSize); ctx.closePath(); ctx.fill();
+
+      // Mystic Glowing Eye of Ancient Arcana on book cover
+      const eyePulsate = Math.sin(this.time * 4) * 2;
       ctx.fillStyle = '#f59e0b';
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 14;
       ctx.beginPath();
-      ctx.ellipse(0, bookY + bookH / 2, 7, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, bookY + bookH / 2, 13 + eyePulsate, 9 + eyePulsate * 0.6, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#7f1d1d';
       ctx.beginPath();
-      ctx.arc(0, bookY + bookH / 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(0, bookY + bookH / 2, 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
+
+      // Shadowy spectral claws wrapping over the book
+      ctx.fillStyle = '#1e050f';
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2.0;
+      // Left claw
+      ctx.beginPath();
+      ctx.ellipse(bookX + 6, bookY + bookH / 2, 9, 16, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Right claw
+      ctx.beginPath();
+      ctx.ellipse(bookX + bookW - 6, bookY + bookH / 2, 9, 16, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
 
     // 4. Ghost Face & Expressions (Normal eyes/mouth vs Hit scared scream & sweat drop)
@@ -1022,13 +1110,17 @@ export class Enemy extends Entity {
   _renderSymbols(ctx) {
     ctx.save();
 
+    const isMaster = this.type === 'BOSS_MASTER';
+    const badgeY = isMaster ? -this.radius - 12 : -this.radius - 32;
+    const bossHpY = isMaster ? badgeY - 22 : -this.radius - 52;
+    const bannerY = isMaster ? -this.radius - 8 : -this.radius - 28;
+
     // 1. Boss Lives Hearts display
     if (this.isBoss && this.maxBossLives > 1) {
       const heartSize = 16;
       const hSpacing = 3;
       const totalHWidth = this.maxBossLives * heartSize + (this.maxBossLives - 1) * hSpacing;
       const startHX = -totalHWidth / 2;
-      const bossHpY = -this.radius - 52;
 
       ctx.save();
       for (let h = 0; h < this.maxBossLives; h++) {
@@ -1059,7 +1151,7 @@ export class Enemy extends Entity {
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('⚡ LÙI LẠI... (-1 MẠNG)', 0, -this.radius - 28);
+      ctx.fillText('⚡ LÙI LẠI... (-1 MẠNG)', 0, bannerY);
       ctx.restore();
       return;
     }
@@ -1071,7 +1163,7 @@ export class Enemy extends Entity {
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🔥 KÝ TỰ MỚI! 🔥', 0, -this.radius - 28);
+      ctx.fillText('🔥 KÝ TỰ MỚI! 🔥', 0, bannerY);
     }
 
     if (this.symbolQueue.length === 0) {
@@ -1084,7 +1176,6 @@ export class Enemy extends Entity {
     const spacing = 6;
     const totalWidth = this.symbolQueue.length * badgeWidth + (this.symbolQueue.length - 1) * spacing;
     const startX = -totalWidth / 2;
-    const badgeY = -this.radius - 32;
 
     for (let i = 0; i < this.symbolQueue.length; i++) {
       const runeId = this.symbolQueue[i];
