@@ -170,10 +170,11 @@ export const ENEMY_TYPES = {
   BOSS_MASTER: {
     type: 'BOSS_MASTER',
     isBoss: true,
+    isFinalBoss: true,
     name: 'Chúa Tể Bóng Ma',
     enName: 'Master Ghost',
     baseSpeed: 34,
-    radius: 60,
+    radius: 140,
     color: '#f43f5e',
     glowColor: '#e11d48',
     score: 3000
@@ -300,7 +301,7 @@ export const LEVEL_CONFIGS = [
     description: 'Chúa tể hắc ám đang giữ cuốn sách thần chú cổ đại trên đỉnh tháp.',
     themeColor: '#f43f5e',
     ambientColor: '#2b0713',
-    totalMinions: 26,
+    totalMinions: 0, // Level 5 is directly the Colossal Boss Battle right from the start!
     baseSpawnInterval: 1.45,
     speedMultiplier: 1.30,
     allowedRunes: ['horizontal', 'vertical', 'caret', 'v_shape', 'lightning'],

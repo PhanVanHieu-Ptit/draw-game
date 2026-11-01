@@ -123,6 +123,19 @@ export class Game {
       this.uiManager.updateLevel(lvlNum, lvlData);
       this.triggerShake(8, 0.45);
       this.uiManager.showLevelTransition(lvlNum, lvlData);
+
+      // In Level 5 (The Rooftop), Momo stands on the left side facing the giant boss on the right!
+      if (lvlNum === 5) {
+        const isMobile = this.width < 600;
+        this.player.x = this.width * (isMobile ? 0.20 : 0.22);
+        this.player.y = this.height * (isMobile ? 0.65 : 0.70);
+        this.player.castTargetAngle = -0.15;
+      } else {
+        this.player.x = this.width / 2;
+        this.player.y = this.height / 2;
+        this.player.castTargetAngle = -Math.PI / 2;
+      }
+
       this.particleSystem.emitFloatingText(
         `CẤP ĐỘ ${lvlNum}: ${lvlData ? lvlData.name.toUpperCase() : ''}`,
         this.width / 2,
@@ -191,7 +204,11 @@ export class Game {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => {
       setTimeout(() => this.resize(), 100);
+      setTimeout(() => this.resize(), 300);
     });
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+    }
   }
 
   /**
@@ -202,23 +219,37 @@ export class Game {
     const rawDpr = window.devicePixelRatio || 1;
     this.dpr = Math.min(rawDpr, 2.0);
 
-    const rect = this.canvas.getBoundingClientRect();
-    this.width = rect.width || window.innerWidth;
-    this.height = rect.height || window.innerHeight;
+    const parent = this.canvas.parentElement;
+    this.width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
+    this.height = parent && parent.clientHeight > 0 ? parent.clientHeight : window.innerHeight;
 
     // Internal pixel buffer scaled by DPR
     this.canvas.width = Math.round(this.width * this.dpr);
     this.canvas.height = Math.round(this.height * this.dpr);
 
-    // Explicit CSS display size matching viewport
-    this.canvas.style.width = `${this.width}px`;
-    this.canvas.style.height = `${this.height}px`;
+    // Keep display size matching container via 100%
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
 
     // Resize lightmap canvas at logical size for maximum GPU fillrate performance
     this.lightCanvas.width = Math.round(this.width);
     this.lightCanvas.height = Math.round(this.height);
 
-    this.player.resize(this.width, this.height);
+    if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
+      const isMobile = this.width < 600;
+      this.player.x = this.width * (isMobile ? 0.20 : 0.22);
+      this.player.y = this.height * (isMobile ? 0.65 : 0.70);
+    } else {
+      this.player.resize(this.width, this.height);
+    }
+
+    // Update dimensions on active enemies (e.g. final boss)
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (typeof e.updateCanvasDimensions === 'function') {
+        e.updateCanvasDimensions(this.width, this.height);
+      }
+    }
   }
 
   _createAmbientStars(count) {
@@ -269,6 +300,7 @@ export class Game {
       enemiesDefeated: 0
     };
 
+    this.player.resize(this.width, this.height);
     this.player.reset();
 
     // Release all active entities back to object pools
@@ -387,13 +419,37 @@ export class Game {
           y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
         };
       } else if (isBoss) {
-        // Boss descends grandly from upper center
-        spawnPos = {
-          x: this.width / 2,
-          y: -75
-        };
+        if (enemyConfig.archetype === 'BOSS_MASTER') {
+          // Final Master Boss: Positioned majestically on the RIGHT side of the screen
+          spawnPos = {
+            x: this.width * 0.76,
+            y: this.height * 0.46
+          };
+        } else {
+          // Level 1-4 Bosses descend grandly from upper center
+          spawnPos = {
+            x: this.width / 2,
+            y: -75
+          };
+        }
       } else {
-        spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+        // Minions in Level 5 (The Rooftop) spawn from the right border and upper sky towards Momo on the left
+        if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
+          const spawnSide = Math.random();
+          if (spawnSide < 0.65) {
+            spawnPos = {
+              x: this.width + 40,
+              y: Math.random() * (this.height * 0.65) + 40
+            };
+          } else {
+            spawnPos = {
+              x: this.width * 0.45 + Math.random() * (this.width * 0.55),
+              y: -40
+            };
+          }
+        } else {
+          spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+        }
       }
 
       const newEnemy = this.enemyPool.acquire();
@@ -401,6 +457,8 @@ export class Game {
         type: enemyConfig.archetype,
         x: spawnPos.x,
         y: spawnPos.y,
+        canvasWidth: this.width,
+        canvasHeight: this.height,
         isHeartGhost: isHeart,
         symbolQueue: enemyConfig.symbolQueue,
         bossPhases: enemyConfig.bossPhases,
@@ -466,15 +524,10 @@ export class Game {
           }
         }
 
-        // Multi-phase Boss recoils and retreats if it hits player while having remaining lives
-        if (enemy.isBoss && enemy.bossLives > 1) {
-          enemy.startBossRetreat();
+        // Multi-phase Boss recoils and retreats when it hits player to attack again!
+        if (enemy.isBoss) {
+          enemy.startBossRetreat(false);
           continue;
-        }
-
-        // If boss on final life hits player, notify wave system
-        if (enemy.isBoss && typeof this.waveSystem.notifyBossDefeated === 'function') {
-          this.waveSystem.notifyBossDefeated();
         }
 
         // Return crashed enemy to pool with O(1) swap-and-pop removal

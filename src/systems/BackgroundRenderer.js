@@ -149,8 +149,8 @@ export class BackgroundRenderer {
     ctx.stroke();
     ctx.restore();
 
-    // 3. Huge Wooden Bookshelves on Left & Right
-    const shelfWidth = Math.max(140, w * 0.22);
+    // 3. Huge Wooden Bookshelves on Left & Right (responsive width for mobile screens)
+    const shelfWidth = Math.min(Math.max(65, w * 0.16), 220);
     this._drawBookshelf(ctx, 0, h * 0.12, shelfWidth, h * 0.78, t, false);
     this._drawBookshelf(ctx, w - shelfWidth, h * 0.12, shelfWidth, h * 0.78, t, true);
 

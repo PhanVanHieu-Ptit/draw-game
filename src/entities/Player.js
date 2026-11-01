@@ -104,15 +104,15 @@ export class Player extends Entity {
   }
 
   resize(width, height) {
-    this.canvasWidth = width;
-    this.canvasHeight = height;
-    this.x = width / 2;
-    this.y = height / 2;
+    this.canvasWidth = width || window.innerWidth;
+    this.canvasHeight = height || window.innerHeight;
+    this.x = this.canvasWidth / 2;
+    this.y = this.canvasHeight / 2;
   }
 
   reset() {
-    this.x = this.canvasWidth / 2;
-    this.y = this.canvasHeight / 2;
+    this.x = (this.canvasWidth || window.innerWidth) / 2;
+    this.y = (this.canvasHeight || window.innerHeight) / 2;
     this.hp = this.maxHp;
     this.invulnerableTimer = 0;
     this.isInvulnerable = false;
