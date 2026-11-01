@@ -1,33 +1,72 @@
 /**
  * @file UIManager.js
- * @description Manages HTML5 UI overlays, HUD updates (Hearts, Score, Combo, Waves), and Modal Dialogs.
+ * @description Manages HTML5 UI overlays, HUD updates, 5-level stage selection,
+ * level transition banners (Ready... Set... Draw!), Story Cutscenes, and Victory screens.
  */
 
-import { GAME_STATES, RUNES } from '../core/Constants.js';
+import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES } from '../core/Constants.js';
+import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 
 export class UIManager {
   constructor(game) {
     this.game = game;
 
-    // Cache DOM elements
+    // Cache DOM screens
     this.screens = {
       [GAME_STATES.MENU]: document.getElementById('menu-screen'),
+      [GAME_STATES.STORY]: document.getElementById('story-screen'),
       [GAME_STATES.PLAYING]: document.getElementById('hud-playing'),
       [GAME_STATES.PAUSE]: document.getElementById('pause-screen'),
-      [GAME_STATES.GAMEOVER]: document.getElementById('gameover-screen')
+      [GAME_STATES.GAMEOVER]: document.getElementById('gameover-screen'),
+      [GAME_STATES.VICTORY]: document.getElementById('victory-screen')
     };
 
     // HUD Elements
     this.heartsContainer = document.getElementById('hearts-container');
     this.scoreVal = document.getElementById('score-val');
     this.waveBadge = document.getElementById('wave-badge');
+    this.levelSubBadge = document.getElementById('level-sub-badge');
     this.comboBadge = document.getElementById('combo-badge');
     this.comboMult = document.getElementById('combo-mult');
     this.comboBar = document.getElementById('combo-bar');
     this.gestureFeedback = document.getElementById('gesture-feedback');
 
-    // Menu / Gameover Elements
+    // Level Transition Banner Elements
+    this.levelTransitionBanner = document.getElementById('level-transition-banner');
+    this.ltbNumber = document.getElementById('ltb-number');
+    this.ltbTitle = document.getElementById('ltb-title');
+    this.ltbEn = document.getElementById('ltb-en');
+    this.ltbPrompt = document.getElementById('ltb-prompt');
+    this._ltbTimeout = null;
+
+    // Menu Elements
     this.menuHighScore = document.getElementById('menu-high-score');
+    this.stageButtons = document.querySelectorAll('.stage-btn');
+    this.selectedStage = 1;
+
+    // Story Cutscene Elements
+    this.storyCanvas = document.getElementById('storyCanvas');
+    this.storyStepBadge = document.getElementById('story-step-badge');
+    this.storySlideTitle = document.getElementById('story-slide-title');
+    this.storySlideText = document.getElementById('story-slide-text');
+    this.storySlideEn = document.getElementById('story-slide-en');
+    this.storyDots = document.getElementById('story-dots');
+    this.btnStoryNext = document.getElementById('btn-story-next');
+    this.btnStoryPrev = document.getElementById('btn-story-prev');
+    this.btnSkipStory = document.getElementById('btn-skip-story');
+    this.currentStoryIndex = 0;
+    this.storyAnimTimer = 0;
+    this._storyAnimHandle = null;
+
+    // Victory Elements
+    this.victoryCanvas = document.getElementById('victoryCanvas');
+    this.vicScore = document.getElementById('vic-score');
+    this.vicHighScore = document.getElementById('vic-high-score');
+    this.vicStages = document.getElementById('vic-stages');
+    this.vicAccuracy = document.getElementById('vic-accuracy');
+    this._victoryAnimHandle = null;
+
+    // GameOver Elements
     this.goScore = document.getElementById('go-score');
     this.goHighScore = document.getElementById('go-high-score');
     this.goWave = document.getElementById('go-wave');
@@ -36,20 +75,96 @@ export class UIManager {
 
     this._bindButtonEvents();
     this._bindKeyboardEvents();
+    this._bindStageSelector();
   }
 
   _bindButtonEvents() {
-    // Start Game Button
-    const btnStart = document.getElementById('btn-start-game');
-    if (btnStart) {
-      btnStart.addEventListener('click', () => {
+    // Menu Buttons
+    const btnStartStory = document.getElementById('btn-start-story');
+    if (btnStartStory) {
+      btnStartStory.addEventListener('click', () => {
         this.game.audioSystem.init();
         this.game.audioSystem.playStart();
-        this.game.stateMachine.changeState(GAME_STATES.PLAYING);
+        // Start from Story Cutscene, then into Selected Level
+        this.game.stateMachine.changeState(GAME_STATES.STORY, { startLevel: this.selectedStage });
       });
     }
 
-    // Pause Button in HUD
+    const btnStartEndless = document.getElementById('btn-start-endless');
+    if (btnStartEndless) {
+      btnStartEndless.addEventListener('click', () => {
+        this.game.audioSystem.init();
+        this.game.audioSystem.playStart();
+        this.game.waveSystem.setMode('ENDLESS');
+        this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+      });
+    }
+
+    const btnViewStory = document.getElementById('btn-view-story');
+    if (btnViewStory) {
+      btnViewStory.addEventListener('click', () => {
+        this.game.audioSystem.init();
+        this.game.stateMachine.changeState(GAME_STATES.STORY, { previewOnly: true });
+      });
+    }
+
+    // Story Cutscene Controls
+    if (this.btnStoryNext) {
+      this.btnStoryNext.addEventListener('click', () => {
+        const slides = STORY_SLIDES.INTRO;
+        if (this.currentStoryIndex < slides.length - 1) {
+          this.showStorySlide(this.currentStoryIndex + 1);
+        } else {
+          // Finished slides -> Launch Game into Level!
+          this.game.audioSystem.playStart();
+          this.game.waveSystem.setMode('STORY');
+          this.game.stateMachine.changeState(GAME_STATES.PLAYING, {
+            resetData: true,
+            startLevel: this.selectedStage || 1
+          });
+        }
+      });
+    }
+
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.addEventListener('click', () => {
+        if (this.currentStoryIndex > 0) {
+          this.showStorySlide(this.currentStoryIndex - 1);
+        }
+      });
+    }
+
+    if (this.btnSkipStory) {
+      this.btnSkipStory.addEventListener('click', () => {
+        this.game.audioSystem.playStart();
+        this.game.waveSystem.setMode('STORY');
+        this.game.stateMachine.changeState(GAME_STATES.PLAYING, {
+          resetData: true,
+          startLevel: this.selectedStage || 1
+        });
+      });
+    }
+
+    // Victory Screen Buttons
+    const btnVicReplay = document.getElementById('btn-vic-replay-story');
+    if (btnVicReplay) {
+      btnVicReplay.addEventListener('click', () => {
+        this.game.audioSystem.playStart();
+        this.game.waveSystem.setMode('STORY');
+        this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true, startLevel: 1 });
+      });
+    }
+
+    const btnVicEndless = document.getElementById('btn-vic-play-endless');
+    if (btnVicEndless) {
+      btnVicEndless.addEventListener('click', () => {
+        this.game.audioSystem.playStart();
+        this.game.waveSystem.setMode('ENDLESS');
+        this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+      });
+    }
+
+    // HUD Pause
     const btnPause = document.getElementById('btn-pause');
     if (btnPause) {
       btnPause.addEventListener('click', () => {
@@ -59,7 +174,7 @@ export class UIManager {
       });
     }
 
-    // Resume Button
+    // Pause Resume
     const btnResume = document.getElementById('btn-resume');
     if (btnResume) {
       btnResume.addEventListener('click', () => {
@@ -67,7 +182,7 @@ export class UIManager {
       });
     }
 
-    // Restart Button from Pause
+    // Pause Restart
     const btnRestart = document.getElementById('btn-restart');
     if (btnRestart) {
       btnRestart.addEventListener('click', () => {
@@ -76,7 +191,7 @@ export class UIManager {
       });
     }
 
-    // Play Again Button from GameOver
+    // GameOver Play Again
     const btnPlayAgain = document.getElementById('btn-play-again');
     if (btnPlayAgain) {
       btnPlayAgain.addEventListener('click', () => {
@@ -86,7 +201,7 @@ export class UIManager {
       });
     }
 
-    // Audio Mute toggle button
+    // Audio Mute toggle
     const btnMute = document.getElementById('btn-mute');
     if (btnMute) {
       btnMute.addEventListener('click', () => {
@@ -97,9 +212,19 @@ export class UIManager {
     }
   }
 
+  _bindStageSelector() {
+    this.stageButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stage = parseInt(btn.getAttribute('data-stage'), 10) || 1;
+        this.selectedStage = stage;
+        this.stageButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  }
+
   _bindKeyboardEvents() {
     window.addEventListener('keydown', (e) => {
-      // Toggle Pause with Escape or P key
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.PLAYING) {
@@ -109,7 +234,6 @@ export class UIManager {
         }
       }
 
-      // Enter key starts game from Menu or GameOver
       if (e.key === 'Enter') {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.MENU || currentState === GAME_STATES.GAMEOVER) {
@@ -117,13 +241,14 @@ export class UIManager {
           this.game.audioSystem.playStart();
           this.game.resetGameData();
           this.game.stateMachine.changeState(GAME_STATES.PLAYING);
+        } else if (currentState === GAME_STATES.STORY) {
+          if (this.btnStoryNext) this.btnStoryNext.click();
         }
       }
     });
   }
 
   showScreen(stateName, payload = {}) {
-    // Hide all screens first
     Object.values(this.screens).forEach(screen => {
       if (screen) screen.classList.remove('active');
     });
@@ -133,12 +258,27 @@ export class UIManager {
       target.classList.add('active');
     }
 
-    // Update screen-specific data
     if (stateName === GAME_STATES.MENU) {
       if (this.menuHighScore) {
         this.menuHighScore.textContent = this.game.highScore.toLocaleString();
       }
+      this._stopStoryAnim();
+      this._stopVictoryAnim();
+    } else if (stateName === GAME_STATES.STORY) {
+      this.currentStoryIndex = 0;
+      this.showStorySlide(0);
+      this._startStoryAnim();
+    } else if (stateName === GAME_STATES.VICTORY) {
+      this._stopStoryAnim();
+      this._startVictoryAnim();
+
+      if (this.vicScore) this.vicScore.textContent = (payload.score || 0).toLocaleString();
+      if (this.vicHighScore) this.vicHighScore.textContent = (payload.highScore || 0).toLocaleString();
+      if (this.vicStages) this.vicStages.textContent = '5/5 (100%)';
+      if (this.vicAccuracy) this.vicAccuracy.textContent = `${payload.accuracy || 100}%`;
     } else if (stateName === GAME_STATES.GAMEOVER) {
+      this._stopStoryAnim();
+      this._stopVictoryAnim();
       if (this.goScore) this.goScore.textContent = (payload.score || 0).toLocaleString();
       if (this.goHighScore) this.goHighScore.textContent = (payload.highScore || 0).toLocaleString();
       if (this.goWave) this.goWave.textContent = payload.wave || 1;
@@ -146,6 +286,9 @@ export class UIManager {
       if (this.goNewRecord) {
         this.goNewRecord.style.display = payload.isNewHighScore ? 'inline-block' : 'none';
       }
+    } else if (stateName === GAME_STATES.PLAYING) {
+      this._stopStoryAnim();
+      this._stopVictoryAnim();
     }
   }
 
@@ -154,13 +297,121 @@ export class UIManager {
     if (target) {
       target.classList.remove('active');
     }
+    if (stateName === GAME_STATES.STORY) {
+      this._stopStoryAnim();
+    } else if (stateName === GAME_STATES.VICTORY) {
+      this._stopVictoryAnim();
+    }
   }
 
-  /**
-   * Update heart icons in HUD
-   * @param {number} currentHp 
-   * @param {number} maxHp 
-   */
+  // =========================================================================
+  // STORY CUTSCENE SLIDES
+  // =========================================================================
+  showStorySlide(index) {
+    const slides = STORY_SLIDES.INTRO;
+    if (index < 0 || index >= slides.length) return;
+    this.currentStoryIndex = index;
+    const slide = slides[index];
+
+    if (this.storyStepBadge) this.storyStepBadge.textContent = `CỐT TRUYỆN • ${index + 1}/${slides.length}`;
+    if (this.storySlideTitle) this.storySlideTitle.textContent = slide.title;
+    if (this.storySlideText) this.storySlideText.textContent = slide.text;
+    if (this.storySlideEn) this.storySlideEn.textContent = slide.enText;
+
+    if (this.btnStoryNext) {
+      this.btnStoryNext.innerHTML = `<span>${slide.actionPrompt || 'Tiếp Tục ➜'}</span>`;
+    }
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.style.visibility = index === 0 ? 'hidden' : 'visible';
+    }
+
+    // Update dots
+    if (this.storyDots) {
+      const dots = this.storyDots.querySelectorAll('.story-dot');
+      dots.forEach((d, i) => {
+        if (i === index) d.classList.add('active');
+        else d.classList.remove('active');
+      });
+    }
+
+    StoryCanvasRenderer.renderSlide(this.storyCanvas, index, performance.now() / 1000);
+  }
+
+  _startStoryAnim() {
+    this._stopStoryAnim();
+    const tick = () => {
+      const time = performance.now() / 1000;
+      StoryCanvasRenderer.renderSlide(this.storyCanvas, this.currentStoryIndex, time);
+      this._storyAnimHandle = requestAnimationFrame(tick);
+    };
+    this._storyAnimHandle = requestAnimationFrame(tick);
+  }
+
+  _stopStoryAnim() {
+    if (this._storyAnimHandle) {
+      cancelAnimationFrame(this._storyAnimHandle);
+      this._storyAnimHandle = null;
+    }
+  }
+
+  // =========================================================================
+  // VICTORY CUTSCENE
+  // =========================================================================
+  _startVictoryAnim() {
+    this._stopVictoryAnim();
+    const tick = () => {
+      const time = performance.now() / 1000;
+      StoryCanvasRenderer.renderVictory(this.victoryCanvas, time);
+      this._victoryAnimHandle = requestAnimationFrame(tick);
+    };
+    this._victoryAnimHandle = requestAnimationFrame(tick);
+  }
+
+  _stopVictoryAnim() {
+    if (this._victoryAnimHandle) {
+      cancelAnimationFrame(this._victoryAnimHandle);
+      this._victoryAnimHandle = null;
+    }
+  }
+
+  // =========================================================================
+  // LEVEL TRANSITION BANNER (READY... SET... DRAW!)
+  // =========================================================================
+  showLevelTransition(levelNum, levelData) {
+    if (!this.levelTransitionBanner) return;
+
+    if (this.ltbNumber) this.ltbNumber.textContent = `CẤP ĐỘ ${levelNum}`;
+    if (this.ltbTitle) this.ltbTitle.textContent = levelData ? levelData.name.toUpperCase() : `ĐỢT ${levelNum}`;
+    if (this.ltbEn) this.ltbEn.textContent = levelData ? levelData.enName.toUpperCase() : 'ENDLESS WAVE';
+    if (this.ltbPrompt) this.ltbPrompt.textContent = 'SẴN SÀNG... VẼ!';
+
+    this.levelTransitionBanner.classList.add('show');
+    clearTimeout(this._ltbTimeout);
+    this._ltbTimeout = setTimeout(() => {
+      if (this.levelTransitionBanner) {
+        this.levelTransitionBanner.classList.remove('show');
+      }
+    }, 2400);
+  }
+
+  // =========================================================================
+  // HUD UPDATES
+  // =========================================================================
+  updateLevel(levelNum, levelData) {
+    if (this.waveBadge) {
+      this.waveBadge.textContent = levelData ? `CẤP ${levelNum}: ${levelData.name.toUpperCase()}` : `ĐỢT ${levelNum}`;
+    }
+    if (this.levelSubBadge) {
+      this.levelSubBadge.textContent = levelData ? levelData.enName : 'Vô Tận (Endless)';
+    }
+  }
+
+  updateWave(waveNum) {
+    if (this.waveBadge && !this.game.waveSystem.levelData) {
+      this.waveBadge.textContent = `WAVE ${waveNum}`;
+    }
+  }
+
   updateHearts(currentHp, maxHp) {
     if (!this.heartsContainer) return;
     this.heartsContainer.innerHTML = '';
@@ -179,32 +430,12 @@ export class UIManager {
     }
   }
 
-  /**
-   * Update score counter in HUD
-   * @param {number} score 
-   */
   updateScore(score) {
     if (this.scoreVal) {
       this.scoreVal.textContent = Math.round(score).toLocaleString();
     }
   }
 
-  /**
-   * Update wave badge in HUD
-   * @param {number} waveNum 
-   */
-  updateWave(waveNum) {
-    if (this.waveBadge) {
-      this.waveBadge.textContent = `WAVE ${waveNum}`;
-    }
-  }
-
-  /**
-   * Update combo count and decay bar
-   * @param {number} count 
-   * @param {number} multiplier 
-   * @param {number} decayProgress 0..1
-   */
   updateCombo(count, multiplier, decayProgress) {
     if (!this.comboBadge) return;
 
@@ -224,12 +455,6 @@ export class UIManager {
     }
   }
 
-  /**
-   * Flash recognized gesture feedback pill in HUD
-   * @param {string | null} gesture 
-   * @param {number} score 
-   * @param {boolean} isSuccess 
-   */
   showGestureFeedback(gesture, score, isSuccess) {
     if (!this.gestureFeedback) return;
 

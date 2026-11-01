@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Arcane Paws: Spellscribe | Magic Cat Gesture Defense</title>
-  <meta name="description" content="Trò chơi vẽ cử chỉ ma pháp Arcade phòng thủ phong cách Magic Cat Academy. Sử dụng Canvas 2D API và thuật toán Dollar Recognizer.">
+  <title>Magic Cat Academy: Arcane Paws | Gesture Defense</title>
+  <meta name="description" content="Trò chơi vẽ cử chỉ ma pháp Arcade phòng thủ phong cách Magic Cat Academy. Cùng chú mèo Momo trải qua 5 màn chơi trường học phép thuật để tiêu diệt u linh và lấy lại cuốn sách thần chú!">
   <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
   <div id="game-wrapper">
     <!-- Main HTML5 Canvas -->
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Level Transition Banner (Ready... Set... Draw!) -->
+    <div id="level-transition-banner" class="level-transition-banner">
+      <div class="ltb-level-number" id="ltb-number">CẤP ĐỘ 1</div>
+      <div class="ltb-level-title" id="ltb-title">THƯ VIỆN CỔ KÍNH</div>
+      <div class="ltb-level-en" id="ltb-en">THE LIBRARY</div>
+      <div class="ltb-prompt" id="ltb-prompt">SẴN SÀNG... VẼ!</div>
+    </div>
 
     <!-- UI Overlay: PLAYING HUD -->
     <div id="hud-playing" class="ui-screen">
@@ -24,10 +32,11 @@
           <span class="heart-icon filled">❤️</span>
         </div>
 
-        <!-- Center Score & Wave -->
+        <!-- Center Score, Stage & Level Info -->
         <div class="hud-center-panel">
           <div class="score-counter" id="score-val">0</div>
-          <div class="wave-badge" id="wave-badge">WAVE 1</div>
+          <div class="wave-badge" id="wave-badge">CẤP 1: THƯ VIỆN</div>
+          <div class="level-sub-badge" id="level-sub-badge">The Library</div>
         </div>
 
         <!-- Right Controls & Combo -->
@@ -51,9 +60,36 @@
 
     <!-- UI Overlay: MENU SCREEN -->
     <div id="menu-screen" class="ui-screen modal-overlay active">
-      <div class="glass-card">
-        <h1 class="game-title">ARCANE PAWS</h1>
-        <p class="game-subtitle">Vẽ các ấn ký cử chỉ ma pháp để thanh tẩy đợt u linh!</p>
+      <div class="glass-card menu-card">
+        <h1 class="game-title">MAGIC CAT ACADEMY</h1>
+        <p class="game-subtitle">Cùng chú mèo phù thủy Momo vẽ ấn ký giải cứu 5 khu vực trường học!</p>
+
+        <!-- 5 Levels Stage Selector -->
+        <div class="stage-selector-container">
+          <div class="stage-selector-title">CHỌN KHU VỰC TRƯỜNG HỌC (5 MÀN):</div>
+          <div class="stage-grid">
+            <button class="stage-btn active" data-stage="1" title="Màn 1: Thư Viện">
+              <span class="stage-icon">📚</span>
+              <span class="stage-name">1. Thư Viện</span>
+            </button>
+            <button class="stage-btn" data-stage="2" title="Màn 2: Nhà Ăn & Bếp">
+              <span class="stage-icon">🍲</span>
+              <span class="stage-name">2. Nhà Bếp</span>
+            </button>
+            <button class="stage-btn" data-stage="3" title="Màn 3: Lớp Học">
+              <span class="stage-icon">🔭</span>
+              <span class="stage-name">3. Lớp Học</span>
+            </button>
+            <button class="stage-btn" data-stage="4" title="Màn 4: Nhà Thể Dục">
+              <span class="stage-icon">🏀</span>
+              <span class="stage-name">4. Thể Dục</span>
+            </button>
+            <button class="stage-btn" data-stage="5" title="Màn 5: Sân Thượng">
+              <span class="stage-icon">🏰</span>
+              <span class="stage-name">5. Sân Thượng</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Rune Guide Grid -->
         <div class="rune-guide-grid">
@@ -83,14 +119,97 @@
           </div>
         </div>
 
-        <button class="btn-primary" id="btn-start-game">
-          <span>BẮT ĐẦU CHƠI</span>
-          <span>⚡</span>
-        </button>
+        <div class="menu-action-buttons">
+          <button class="btn-primary" id="btn-start-story">
+            <span>CHƠI CỐT TRUYỆN</span>
+            <span>📖</span>
+          </button>
+          <button class="btn-secondary" id="btn-start-endless">
+            <span>CHẾ ĐỘ VÔ TẬN</span>
+            <span>⚡</span>
+          </button>
+          <button class="btn-subtle" id="btn-view-story">
+            <span>🎬 Xem Hoạt Cảnh Cốt Truyện</span>
+          </button>
+        </div>
 
         <div class="high-score-tag">
-          <span>🏆 Kỷ lục:</span>
+          <span>🏆 Kỷ lục Điểm:</span>
           <span id="menu-high-score">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: STORY CUTSCENE SCREEN -->
+    <div id="story-screen" class="ui-screen modal-overlay">
+      <div class="glass-card story-card">
+        <div class="story-header">
+          <span class="story-badge" id="story-step-badge">CỐT TRUYỆN • 1/3</span>
+          <button class="btn-text-skip" id="btn-skip-story">Bỏ qua ➔</button>
+        </div>
+
+        <!-- Illustrated Story Scene Canvas -->
+        <div class="story-canvas-wrap">
+          <canvas id="storyCanvas" width="480" height="240"></canvas>
+        </div>
+
+        <div class="story-text-container">
+          <h2 class="story-slide-title" id="story-slide-title">Học Viện Mèo Phép Thuật</h2>
+          <p class="story-slide-text" id="story-slide-text">Momo là một chú mèo phù thủy chăm chỉ đang nghiên cứu cuốn Sách Thần Chú Cổ Đại trong thư viện yên tĩnh dưới ánh nến.</p>
+          <p class="story-slide-en" id="story-slide-en">Momo, a wizard cat student, is studying the ancient Master Spellbook in the quiet academy library.</p>
+        </div>
+
+        <div class="story-dots-row" id="story-dots">
+          <span class="story-dot active"></span>
+          <span class="story-dot"></span>
+          <span class="story-dot"></span>
+        </div>
+
+        <div class="button-group story-button-group">
+          <button class="btn-secondary" id="btn-story-prev">QUAY LẠI</button>
+          <button class="btn-primary" id="btn-story-next">TIẾP TỤC ➜</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: VICTORY SCREEN -->
+    <div id="victory-screen" class="ui-screen modal-overlay">
+      <div class="glass-card victory-card">
+        <div class="victory-trophy-badge">🏆 CHIẾN THẮNG HUY HOÀNG 🏆</div>
+        <h1 class="game-title victory-title">GIẢI CỨU HỌC VIỆN!</h1>
+        <p class="game-subtitle">Chúa tể bóng ma đã bị tiêu diệt! Cuốn Sách Thần Chú Cổ Đại đã trở về an toàn với Momo!</p>
+
+        <div class="story-canvas-wrap victory-canvas-wrap">
+          <canvas id="victoryCanvas" width="480" height="200"></canvas>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">Tổng Điểm</span>
+            <span class="stat-value" id="vic-score" style="color: #fbbf24;">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Kỷ Lục</span>
+            <span class="stat-value" id="vic-high-score">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Khu Vực Giải Cứu</span>
+            <span class="stat-value" id="vic-stages" style="color: #34d399;">5/5 (100%)</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Độ Chính Xác</span>
+            <span class="stat-value" id="vic-accuracy" style="color: #38bdf8;">100%</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" id="btn-vic-replay-story">
+            <span>CHƠI LẠI CỐT TRUYỆN</span>
+            <span>✨</span>
+          </button>
+          <button class="btn-secondary" id="btn-vic-play-endless">
+            <span>CHẾ ĐỘ VÔ TẬN ⚡</span>
+          </button>
         </div>
       </div>
     </div>
