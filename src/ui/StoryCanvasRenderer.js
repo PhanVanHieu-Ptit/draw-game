@@ -194,16 +194,35 @@ export class StoryCanvasRenderer {
     ctx.quadraticCurveTo(ghostX - 26, ghostY + 36, ghostX - 26, ghostY);
     ctx.fill();
 
-    // Ghost sneaky laughing eyes & grin
-    ctx.strokeStyle = '#312e81';
+    // Ghost sneaky laughing sinister eyes, eyebrows & fanged grin
+    ctx.strokeStyle = '#1e1b4b';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(ghostX - 8, ghostY + 2, 5, Math.PI, 0);
-    ctx.arc(ghostX + 8, ghostY + 2, 5, Math.PI, 0);
+    // Sinister angled eyebrows (\ /)
+    ctx.moveTo(ghostX - 14, ghostY - 5); ctx.lineTo(ghostX - 4, ghostY);
+    ctx.moveTo(ghostX + 14, ghostY - 5); ctx.lineTo(ghostX + 4, ghostY);
+    // Slanted eyes
+    ctx.moveTo(ghostX - 12, ghostY + 3); ctx.lineTo(ghostX - 5, ghostY + 6);
+    ctx.moveTo(ghostX + 12, ghostY + 3); ctx.lineTo(ghostX + 5, ghostY + 6);
     ctx.stroke();
+
+    // Dark sinister mouth with pointy white fangs
+    ctx.fillStyle = '#0a0614';
     ctx.beginPath();
-    ctx.arc(ghostX, ghostY + 14, 7, 0, Math.PI);
+    ctx.moveTo(ghostX - 10, ghostY + 11);
+    ctx.quadraticCurveTo(ghostX, ghostY + 13, ghostX + 10, ghostY + 11);
+    ctx.quadraticCurveTo(ghostX + 6, ghostY + 19, ghostX, ghostY + 19);
+    ctx.quadraticCurveTo(ghostX - 6, ghostY + 19, ghostX - 10, ghostY + 11);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
+
+    // Sharp white vampire fangs
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(ghostX - 7, ghostY + 12); ctx.lineTo(ghostX - 4, ghostY + 12); ctx.lineTo(ghostX - 5.5, ghostY + 16.5); ctx.closePath();
+    ctx.moveTo(ghostX + 4, ghostY + 12); ctx.lineTo(ghostX + 7, ghostY + 12); ctx.lineTo(ghostX + 5.5, ghostY + 16.5); ctx.closePath();
+    ctx.fill();
 
     // Stolen book clutched in ghost's tail
     ctx.fillStyle = '#fbbf24';

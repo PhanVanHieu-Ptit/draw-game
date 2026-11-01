@@ -87,6 +87,10 @@ export class Game {
     // Lightning screen flash timer
     this.lightningFlashTimer = 0;
 
+    // Level 1 Tutorial interactive tracking
+    this.isTutorialActive = false;
+    this.tutorialStep = 0;
+
     // Input Handler with exact logical dimension callback
     this.inputHandler = new InputHandler(
       this.canvas,
@@ -143,7 +147,8 @@ export class Game {
     };
 
     this.waveSystem.onLevelComplete = (lvlNum, lvlData) => {
-      this.triggerShake(6, 0.35);
+      this.triggerShake(10, 0.45);
+      this.uiManager.showLevelComplete(lvlNum, lvlData);
       this.particleSystem.emitFloatingText(
         `MÀN ${lvlNum} HOÀN THÀNH!`,
         this.width / 2,
@@ -270,6 +275,12 @@ export class Game {
     this.inputHandler.clear();
     this.waveSystem.reset();
 
+    this.isTutorialActive = false;
+    this.tutorialStep = 0;
+    if (this.uiManager) {
+      this.uiManager.hideTutorial();
+    }
+
     this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
     this.uiManager.updateScore(0);
     this.uiManager.updateCombo(0, 1, 0);
@@ -364,10 +375,12 @@ export class Game {
       const isBoss = enemyConfig.isBoss || enemyConfig.archetype === 'BOSS' || (typeof enemyConfig.archetype === 'string' && enemyConfig.archetype.startsWith('BOSS_'));
       let spawnPos;
       if (isHeart) {
-        // Stationary Heart Ghost spawns in upper-middle viewable screen
+        // Stationary Heart Ghost spawns around Momo in viewable arena
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.min(this.width, this.height) * 0.28;
         spawnPos = {
-          x: Math.random() * (this.width * 0.6) + this.width * 0.2,
-          y: Math.random() * (this.height * 0.28) + this.height * 0.16
+          x: Math.max(60, Math.min(this.width - 60, this.width / 2 + Math.cos(angle) * dist)),
+          y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
         };
       } else if (isBoss) {
         // Boss descends grandly from upper center
@@ -386,6 +399,8 @@ export class Game {
         y: spawnPos.y,
         isHeartGhost: isHeart,
         symbolQueue: enemyConfig.symbolQueue,
+        bossPhases: enemyConfig.bossPhases,
+        bossLives: enemyConfig.bossLives,
         speedMultiplier: enemyConfig.speedMultiplier,
         targetPlayerPos: this.player
       });
@@ -438,6 +453,17 @@ export class Game {
           }
         }
 
+        // Multi-phase Boss recoils and retreats if it hits player while having remaining lives
+        if (enemy.isBoss && enemy.bossLives > 1) {
+          enemy.startBossRetreat();
+          continue;
+        }
+
+        // If boss on final life hits player, notify wave system
+        if (enemy.isBoss && typeof this.waveSystem.notifyBossDefeated === 'function') {
+          this.waveSystem.notifyBossDefeated();
+        }
+
         // Return crashed enemy to pool with O(1) swap-and-pop removal
         this.enemyPool.release(enemy);
         this.enemies[i] = this.enemies[this.enemies.length - 1];
@@ -459,13 +485,80 @@ export class Game {
             this.particleSystem.emitHitBurst(proj.x, proj.y, rune.color, 16);
             this.audioSystem.playHit();
 
-            if (hitResult.destroyed) {
+            // Tutorial progression
+            if (this.isTutorialActive) {
+              if (proj.gesture === 'horizontal' && this.tutorialStep === 1) {
+                this.uiManager.advanceTutorial(2);
+                this.particleSystem.emitFloatingText('XUẤT SẮC! TIẾP TỤC NÉT DỌC [ | ]', this.width / 2, this.height * 0.38, '#38bdf8', 22);
+              } else if (proj.gesture === 'vertical' && this.tutorialStep === 2) {
+                this.uiManager.advanceTutorial(3);
+                this.particleSystem.emitFloatingText('HOÀN THÀNH HƯỚNG DẪN! HÃY CHIẾN ĐẤU! ⚡', this.width / 2, this.height * 0.38, '#34d399', 24);
+              }
+            }
+
+            if (hitResult.isPhaseComplete) {
+              // Multi-phase Boss lost 1 life and is retreating!
+              const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
+              if (isTargetBoss) {
+                if (typeof this.audioSystem.playBossRoar === 'function') {
+                  this.audioSystem.playBossRoar();
+                } else if (typeof this.audioSystem.playEnemyAttack === 'function') {
+                  this.audioSystem.playEnemyAttack();
+                }
+                this.triggerShake(16, 0.5);
+                this.particleSystem.emitHitBurst(proj.targetEnemy.x, proj.targetEnemy.y, '#f59e0b', 26);
+                this.particleSystem.emitFloatingText(
+                  `💥 TRÙM MẤT 1 MẠNG! (CÒN ${hitResult.bossLivesRemaining}) - LÙI LẠI!`,
+                  proj.targetEnemy.x,
+                  proj.targetEnemy.y - 45,
+                  '#f43f5e',
+                  24
+                );
+                const phaseReward = 500 * this.comboMultiplier;
+                this.score += phaseReward;
+                this.particleSystem.emitFloatingText(
+                  `+${phaseReward}`,
+                  proj.targetEnemy.x,
+                  proj.targetEnemy.y - 18,
+                  '#fde047',
+                  22
+                );
+              }
+            } else if (hitResult.destroyed) {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
               
               const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
               if (isTargetBoss) {
                 this.triggerShake(22, 0.75);
+<<<<<<< Updated upstream
+=======
+
+                // Notify WaveSystem that the Boss has fallen
+                if (typeof this.waveSystem.notifyBossDefeated === 'function') {
+                  this.waveSystem.notifyBossDefeated();
+                }
+
+                // Cleanse all remaining minion ghosts in an epic celebratory magic shockwave!
+                for (let j = 0; j < this.enemies.length; j++) {
+                  const minion = this.enemies[j];
+                  if (minion !== proj.targetEnemy && !minion.isDead) {
+                    minion.isDead = true;
+                    this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, minion.type, 22);
+                    const minionReward = (minion.scoreValue || 100) * this.comboMultiplier;
+                    this.score += minionReward;
+                    this.particleSystem.emitFloatingText(
+                      `+${minionReward}`,
+                      minion.x,
+                      minion.y - 18,
+                      '#fde047',
+                      18
+                    );
+                  }
+                }
+              } else {
+                this.audioSystem.playEnemyDeath();
+>>>>>>> Stashed changes
               }
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
@@ -562,11 +655,106 @@ export class Game {
     // 5. Render Particles & Floating texts
     this.particleSystem.render(ctx);
 
-    // 6. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
+    // 6. Render On-Canvas Interactive Tutorial Guide if active
+    this._renderTutorialGuide(ctx);
+
+    // 7. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
     this._renderDynamicLighting(ctx);
 
-    // 7. Render Neon Drawing Trail
+    // 8. Render Neon Drawing Trail
     this.inputHandler.render(ctx);
+
+    ctx.restore();
+  }
+
+  /**
+   * Render in-game animated drawing guide trajectory for Level 1 Tutorial
+   * @param {CanvasRenderingContext2D} ctx 
+   */
+  _renderTutorialGuide(ctx) {
+    if (!this.isTutorialActive || this.tutorialStep <= 0) return;
+
+    ctx.save();
+    const time = performance.now() / 1000;
+    const progress = (time % 1.6) / 1.6;
+
+    if (this.tutorialStep === 1) {
+      // Step 1: Horizontal swipe [ — ]
+      const cx = this.width / 2;
+      const cy = this.height * 0.40;
+      const len = 150;
+      const startX = cx - len / 2;
+      const endX = cx + len / 2;
+
+      // Glow backdrop
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(startX, cy);
+      ctx.lineTo(endX, cy);
+      ctx.stroke();
+
+      // Dashed guide line
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(startX, cy);
+      ctx.lineTo(endX, cy);
+      ctx.stroke();
+
+      // Moving wand icon
+      const curX = startX + progress * len;
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 12;
+      ctx.font = '26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🪄', curX, cy - 14);
+
+      // Label text
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('VUỐT NGANG (—)', cx, cy + 22);
+    } else if (this.tutorialStep === 2) {
+      // Step 2: Vertical swipe [ | ]
+      const cx = this.width / 2;
+      const cy = this.height * 0.40;
+      const len = 130;
+      const startY = cy - len / 2;
+      const endY = cy + len / 2;
+
+      // Glow backdrop
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(cx, startY);
+      ctx.lineTo(cx, endY);
+      ctx.stroke();
+
+      // Dashed guide line
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(cx, startY);
+      ctx.lineTo(cx, endY);
+      ctx.stroke();
+
+      // Moving wand icon
+      const curY = startY + progress * len;
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 12;
+      ctx.font = '26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🪄', cx + 16, curY);
+
+      // Label text
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('VUỐT DỌC (|)', cx, endY + 20);
+    }
 
     ctx.restore();
   }

@@ -4,7 +4,7 @@
  * level transition banners (Ready... Set... Draw!), Story Cutscenes, and Victory screens.
  */
 
-import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES } from '../core/Constants.js';
+import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORAGE_KEYS } from '../core/Constants.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 
 export class UIManager {
@@ -38,6 +38,14 @@ export class UIManager {
     this.ltbEn = document.getElementById('ltb-en');
     this.ltbPrompt = document.getElementById('ltb-prompt');
     this._ltbTimeout = null;
+    this._ltbDrawTimeout = null;
+
+    // Tutorial Overlay Elements
+    this.tutorialOverlay = document.getElementById('tutorial-overlay');
+    this.tutorialStep1 = document.getElementById('tutorial-step-1');
+    this.tutorialStep2 = document.getElementById('tutorial-step-2');
+    this.btnSkipTutorial = document.getElementById('btn-skip-tutorial');
+    this.btnTutorialHUD = document.getElementById('btn-tutorial');
 
     // Menu Elements
     this.menuHighScore = document.getElementById('menu-high-score');
@@ -198,6 +206,19 @@ export class UIManager {
         this.game.audioSystem.playStart();
         this.game.resetGameData();
         this.game.stateMachine.changeState(GAME_STATES.PLAYING);
+      });
+    }
+
+    // Tutorial Controls
+    if (this.btnSkipTutorial) {
+      this.btnSkipTutorial.addEventListener('click', () => {
+        this.hideTutorial();
+      });
+    }
+
+    if (this.btnTutorialHUD) {
+      this.btnTutorialHUD.addEventListener('click', () => {
+        this.showTutorial(1);
       });
     }
 
@@ -375,23 +396,132 @@ export class UIManager {
   }
 
   // =========================================================================
-  // LEVEL TRANSITION BANNER (READY... SET... DRAW!)
+  // LEVEL TRANSITION BANNER (CHUẨN BỊ SẴN SÀNG... VẼ!)
   // =========================================================================
   showLevelTransition(levelNum, levelData) {
     if (!this.levelTransitionBanner) return;
 
+    clearTimeout(this._ltbTimeout);
+    clearTimeout(this._ltbDrawTimeout);
+
     if (this.ltbNumber) this.ltbNumber.textContent = `CẤP ĐỘ ${levelNum}`;
     if (this.ltbTitle) this.ltbTitle.textContent = levelData ? levelData.name.toUpperCase() : `ĐỢT ${levelNum}`;
     if (this.ltbEn) this.ltbEn.textContent = levelData ? levelData.enName.toUpperCase() : 'ENDLESS WAVE';
-    if (this.ltbPrompt) this.ltbPrompt.textContent = 'SẴN SÀNG... VẼ!';
 
-    this.levelTransitionBanner.classList.add('show');
-    clearTimeout(this._ltbTimeout);
+    // Phase 1: Chuẩn bị sẵn sàng! (Get Ready!)
+    if (this.ltbPrompt) this.ltbPrompt.textContent = '⚡ CHUẨN BỊ SẴN SÀNG! ⚡';
+    this.levelTransitionBanner.className = 'level-transition-banner show phase-ready';
+
+    if (this.game && this.game.player) {
+      this.game.player.setDrawing(true);
+    }
+    if (this.game && this.game.audioSystem) {
+      if (typeof this.game.audioSystem.playStart === 'function') {
+        this.game.audioSystem.playStart();
+      }
+    }
+
+    // Phase 2: VẼ! (DRAW!) - explosive action trigger at 1000ms
+    this._ltbDrawTimeout = setTimeout(() => {
+      if (!this.levelTransitionBanner) return;
+      this.levelTransitionBanner.className = 'level-transition-banner show phase-draw';
+      if (this.ltbPrompt) this.ltbPrompt.textContent = '🔥 VẼ! 🔥';
+
+      if (this.game) {
+        this.game.triggerShake(12, 0.4);
+        if (this.game.particleSystem) {
+          this.game.particleSystem.emitHitBurst(this.game.width / 2, this.game.height * 0.4, '#fbbf24', 28);
+        }
+        if (this.game.audioSystem) {
+          if (typeof this.game.audioSystem.playSpell === 'function') {
+            this.game.audioSystem.playSpell('horizontal');
+          }
+        }
+        if (this.game.player) {
+          this.game.player.setDrawing(false);
+        }
+      }
+    }, 1000);
+
+    // Phase 3: Banner fades out, game actions intensify!
     this._ltbTimeout = setTimeout(() => {
       if (this.levelTransitionBanner) {
-        this.levelTransitionBanner.classList.remove('show');
+        this.levelTransitionBanner.className = 'level-transition-banner';
+      }
+      // If Level 1 and tutorial has not been completed, automatically prompt tutorial
+      if (levelNum === 1 && !this._hasCompletedTutorial()) {
+        this.showTutorial(1);
+      }
+    }, 2100);
+  }
+
+  showLevelComplete(levelNum, levelData) {
+    if (!this.levelTransitionBanner) return;
+
+    clearTimeout(this._ltbTimeout);
+    clearTimeout(this._ltbDrawTimeout);
+
+    this.levelTransitionBanner.className = 'level-transition-banner show phase-clear';
+    if (this.ltbNumber) this.ltbNumber.textContent = `🎉 HOÀN THÀNH CẤP ĐỘ ${levelNum}! 🎉`;
+    if (this.ltbTitle) this.ltbTitle.textContent = levelData ? levelData.name.toUpperCase() : 'KHU VỰC ĐÃ GIẢI CỨU';
+    if (this.ltbEn) this.ltbEn.textContent = 'STAGE COMPLETED!';
+    if (this.ltbPrompt) this.ltbPrompt.textContent = '✨ CHUẨN BỊ TIẾN VÀO KHU VỰC MỚI... ✨';
+
+    this._ltbTimeout = setTimeout(() => {
+      if (this.levelTransitionBanner) {
+        this.levelTransitionBanner.className = 'level-transition-banner';
       }
     }, 2400);
+  }
+
+  // =========================================================================
+  // LEVEL 1 TUTORIAL GUIDE MANAGEMENT
+  // =========================================================================
+  _hasCompletedTutorial() {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED) === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  showTutorial(step = 1) {
+    if (!this.tutorialOverlay) return;
+    this.tutorialOverlay.classList.add('show');
+
+    if (step === 1) {
+      if (this.tutorialStep1) this.tutorialStep1.classList.remove('hidden');
+      if (this.tutorialStep2) this.tutorialStep2.classList.add('hidden');
+    } else if (step === 2) {
+      if (this.tutorialStep1) this.tutorialStep1.classList.add('hidden');
+      if (this.tutorialStep2) this.tutorialStep2.classList.remove('hidden');
+    }
+
+    if (this.game) {
+      this.game.isTutorialActive = true;
+      this.game.tutorialStep = step;
+    }
+  }
+
+  advanceTutorial(nextStep) {
+    if (nextStep >= 3) {
+      this.hideTutorial();
+    } else {
+      this.showTutorial(nextStep);
+    }
+  }
+
+  hideTutorial() {
+    if (this.tutorialOverlay) {
+      this.tutorialOverlay.classList.remove('show');
+    }
+    if (this.game) {
+      this.game.isTutorialActive = false;
+      this.game.tutorialStep = 0;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, 'true');
+    } catch (e) {}
   }
 
   // =========================================================================

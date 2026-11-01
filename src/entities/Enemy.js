@@ -32,7 +32,7 @@ export class Enemy extends Entity {
     this.shiverTimer = 0;
     this.isHeartGhost = false;
 
-    if (config.type) {
+    if (config.type || config.isHeartGhost || config.symbolQueue) {
       this.init(config);
     }
   }
@@ -86,6 +86,36 @@ export class Enemy extends Entity {
       this.glowColor = '#f43f5e';
     }
 
+    // Multi-phase Boss tracking
+    this.bossPhases = [];
+    if (this.isBoss) {
+      if (config.bossPhases && Array.isArray(config.bossPhases) && config.bossPhases.length > 0) {
+        this.bossPhases = config.bossPhases.map(p => [...p]);
+      } else if (this.symbolQueue.length > 0) {
+        this.bossPhases = [[...this.symbolQueue]];
+      }
+      this.maxBossLives = config.bossLives || (this.bossPhases.length > 0 ? this.bossPhases.length : 3);
+      this.bossLives = this.maxBossLives;
+      this.currentPhaseIndex = 0;
+      if (this.symbolQueue.length === 0 && this.bossPhases.length > 0) {
+        for (let i = 0; i < this.bossPhases[0].length; i++) {
+          this.symbolQueue.push(this.bossPhases[0][i]);
+        }
+      }
+      this.isRetreating = false;
+      this.isReEntering = false;
+      this.retreatTimer = 0;
+      this.reEnterTimer = 0;
+    } else {
+      this.bossLives = 1;
+      this.maxBossLives = 1;
+      this.currentPhaseIndex = 0;
+      this.isRetreating = false;
+      this.isReEntering = false;
+      this.retreatTimer = 0;
+      this.reEnterTimer = 0;
+    }
+
     if (config.targetPlayerPos) {
       this.targetPlayerPos.x = config.targetPlayerPos.x;
       this.targetPlayerPos.y = config.targetPlayerPos.y;
@@ -112,32 +142,45 @@ export class Enemy extends Entity {
     this.hitTimer = 0;
     this.targetPlayerPos.x = 0;
     this.targetPlayerPos.y = 0;
+    this.isRetreating = false;
+    this.isReEntering = false;
+    this.retreatTimer = 0;
+    this.reEnterTimer = 0;
+    this.bossPhases = [];
+    this.bossLives = 1;
+    this.maxBossLives = 1;
+    this.currentPhaseIndex = 0;
   }
 
   /**
-   * Calculate random edge spawn position
+   * Calculate random edge spawn position from any of the 4 borders (Top, Bottom, Left, Right)
+   * Ghosts can emerge from all 360-degree directions toward Momo in the center.
    * @param {number} canvasWidth 
    * @param {number} canvasHeight 
    * @returns {{x: number, y: number}}
    */
   static getRandomEdgePosition(canvasWidth, canvasHeight) {
-    const margin = 50;
-    const edge = Math.floor(Math.random() * 3); // 0: Top, 1: Left, 2: Right
+    const margin = 60;
+    const edge = Math.floor(Math.random() * 4); // 0: Top, 1: Bottom, 2: Left, 3: Right
     let x, y;
 
     switch (edge) {
       case 0: // Top edge
-        x = Math.random() * (canvasWidth - 100) + 50;
+        x = Math.random() * (canvasWidth - 80) + 40;
         y = -margin;
         break;
-      case 1: // Left edge
-        x = -margin;
-        y = Math.random() * (canvasHeight * 0.65) + 30;
+      case 1: // Bottom edge
+        x = Math.random() * (canvasWidth - 80) + 40;
+        y = canvasHeight + margin;
         break;
-      case 2: // Right edge
+      case 2: // Left edge
+        x = -margin;
+        y = Math.random() * (canvasHeight - 80) + 40;
+        break;
+      case 3: // Right edge
       default:
         x = canvasWidth + margin;
-        y = Math.random() * (canvasHeight * 0.65) + 30;
+        y = Math.random() * (canvasHeight - 80) + 40;
         break;
     }
 
@@ -165,43 +208,102 @@ export class Enemy extends Entity {
    * @param {string} gesture 
    * @returns {boolean}
    */
+  /**
+   * Check if the enemy's front symbol matches the gesture
+   * @param {string} gesture 
+   * @returns {boolean}
+   */
   matchesActiveSymbol(gesture) {
-    if (this.symbolQueue.length === 0) return false;
+    if (this.isDead || this.symbolQueue.length === 0) return false;
+    if (this.isRetreating || this.isReEntering) return false;
     return this.symbolQueue[0] === gesture;
   }
 
   /**
    * Apply hit from a spell matching front symbol
    * @param {string} gesture 
-   * @returns {{ matched: boolean, destroyed: boolean, remaining: number, runeId: string }}
+   * @returns {{ matched: boolean, destroyed: boolean, isPhaseComplete?: boolean, bossLivesRemaining?: number, remaining: number, runeId: string }}
    */
   takeHit(gesture) {
     if (this.symbolQueue.length === 0) {
       return { matched: false, destroyed: true, remaining: 0, runeId: null };
     }
 
+    if (this.isRetreating || this.isReEntering) {
+      return { matched: false, destroyed: false, remaining: this.symbolQueue.length, runeId: null };
+    }
+
     if (this.symbolQueue[0] === gesture) {
       const removedRune = this.symbolQueue.shift();
       this.hitTimer = 0.22; // Hit flash duration
-      const destroyed = this.symbolQueue.length === 0;
-      if (destroyed) {
-        this.isDead = true;
+      const isQueueEmpty = this.symbolQueue.length === 0;
+
+      if (isQueueEmpty) {
+        if (this.isBoss && this.bossLives > 1) {
+          this.bossLives--;
+          this.startBossRetreat();
+          return {
+            matched: true,
+            destroyed: false,
+            isPhaseComplete: true,
+            bossLivesRemaining: this.bossLives,
+            remaining: 0,
+            runeId: removedRune
+          };
+        } else {
+          if (this.isBoss) this.bossLives = 0;
+          this.isDead = true;
+          return {
+            matched: true,
+            destroyed: true,
+            remaining: 0,
+            runeId: removedRune
+          };
+        }
       } else {
         // Ghost was hit and survived: SLOW DOWN significantly and CHANGE FACIAL EXPRESSION!
         this.slowTimer = 2.4;
         this.slowFactor = 0.35;
         this.expressionTimer = 2.4;
         this.shiverTimer = 0.45;
+        return {
+          matched: true,
+          destroyed: false,
+          remaining: this.symbolQueue.length,
+          runeId: removedRune
+        };
       }
-      return {
-        matched: true,
-        destroyed,
-        remaining: this.symbolQueue.length,
-        runeId: removedRune
-      };
     }
 
     return { matched: false, destroyed: false, remaining: this.symbolQueue.length, runeId: null };
+  }
+
+  /**
+   * Trigger multi-phase Boss retreat recoil animation when 1 life is depleted.
+   * In Google Doodle 2016, each time a boss phase is beaten, boss recoils backward,
+   * then re-emerges with fresh runes!
+   */
+  startBossRetreat() {
+    this.isRetreating = true;
+    this.retreatTimer = 1.35;
+    this.expressionTimer = 1.6;
+    this.shiverTimer = 0.9;
+    this.hitTimer = 0.4;
+
+    // Recoil away from Momo
+    const dx = this.x - this.targetPlayerPos.x;
+    const dy = this.y - this.targetPlayerPos.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    let dirX = dx / dist;
+    let dirY = dy / dist;
+
+    // Favor retreating backwards up or out towards edge
+    if (Math.abs(dirY) < 0.3) {
+      dirY = -0.7;
+    }
+
+    this.vx = dirX * 220;
+    this.vy = dirY * 220;
   }
 
   /**
@@ -221,6 +323,44 @@ export class Enemy extends Entity {
     if (this.slowTimer > 0) this.slowTimer -= dt;
     if (this.expressionTimer > 0) this.expressionTimer -= dt;
     if (this.shiverTimer > 0) this.shiverTimer -= dt;
+
+    // Boss multi-phase retreat and re-entry state machine
+    if (this.isBoss) {
+      if (this.isRetreating) {
+        this.retreatTimer -= dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        if (this.retreatTimer <= 0) {
+          this.isRetreating = false;
+          this.isReEntering = true;
+          this.reEnterTimer = 1.2;
+          this.currentPhaseIndex++;
+          if (this.bossPhases && this.currentPhaseIndex < this.bossPhases.length) {
+            this.symbolQueue = [...this.bossPhases[this.currentPhaseIndex]];
+          } else {
+            this.symbolQueue = ['horizontal', 'vertical', 'lightning'];
+          }
+          // Move smoothly back towards combat range relative to player
+          const rdx = this.targetPlayerPos.x - this.x;
+          const rdy = (this.targetPlayerPos.y - 120) - this.y;
+          const rdist = Math.hypot(rdx, rdy) || 1;
+          this.vx = (rdx / rdist) * 180;
+          this.vy = (rdy / rdist) * 180;
+        }
+        return;
+      } else if (this.isReEntering) {
+        this.reEnterTimer -= dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        const curDist = Math.hypot(this.targetPlayerPos.x - this.x, this.targetPlayerPos.y - this.y);
+        if (this.reEnterTimer <= 0 || curDist < 200) {
+          this.isReEntering = false;
+          this.vx = 0;
+          this.vy = 0;
+        }
+        return;
+      }
+    }
 
     // Eye blinking timer state machine
     this.blinkTimer -= dt;
@@ -550,10 +690,13 @@ export class Enemy extends Entity {
   }
 
   /**
-   * Render dynamic facial expressions: normal curious gaze vs hit shocked/scared face
+   * Render dynamic facial expressions: menacing spooky gaze with sharp fangs vs hit shocked screaming face
    */
   _renderFace(ctx, r, isHit, isScared) {
     ctx.save();
+
+    const isHeart = this.isHeartGhost || (this.symbolQueue && this.symbolQueue.includes('heart'));
+    const isAnyBoss = Boolean(this.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
 
     const dx = this.targetPlayerPos.x - this.x;
     const dy = this.targetPlayerPos.y - this.y;
@@ -569,105 +712,295 @@ export class Enemy extends Entity {
     }
 
     const eyeOffsetX = r * 0.35;
-    const eyeOffsetY = -r * 0.2;
-    const eyeRadiusX = isScared ? r * 0.25 : r * 0.20;
-    const eyeRadiusY = isScared ? r * 0.28 : Math.max(1, (r * 0.24) * eyeScaleY);
+    const eyeOffsetY = -r * 0.22;
+    const eyeRadiusX = isScared ? r * 0.25 : (isAnyBoss ? r * 0.24 : r * 0.20);
+    const eyeRadiusY = isScared ? r * 0.28 : Math.max(2, (r * 0.22) * eyeScaleY);
 
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = this.type === 'SPEEDSTER' ? '#ffe4e6' : '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(-eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
-    ctx.ellipse(eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (isScared) {
-      // 1. Scared / Shocked Face: Tiny trembling pupils
-      const tremX = Math.sin(this.time * 24) * 1.2;
-      const tremY = Math.cos(this.time * 20) * 1.2;
-      const pupilR = Math.max(1.5, r * 0.08);
-
-      ctx.fillStyle = '#0f172a';
+    if (isHeart) {
+      // Gentle, friendly healing spirit face
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(-eyeOffsetX + tremX, eyeOffsetY + tremY, pupilR, 0, Math.PI * 2);
-      ctx.arc(eyeOffsetX + tremX, eyeOffsetY + tremY, pupilR, 0, Math.PI * 2);
+      ctx.ellipse(-eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
+      ctx.ellipse(eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Scared angled eyebrows \ /
-      ctx.strokeStyle = '#1e1b4b';
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-eyeOffsetX - eyeRadiusX * 0.8, eyeOffsetY - eyeRadiusY - 2);
-      ctx.lineTo(-eyeOffsetX + eyeRadiusX * 0.6, eyeOffsetY - eyeRadiusY + 3);
-      ctx.moveTo(eyeOffsetX + eyeRadiusX * 0.8, eyeOffsetY - eyeRadiusY - 2);
-      ctx.lineTo(eyeOffsetX - eyeRadiusX * 0.6, eyeOffsetY - eyeRadiusY + 3);
-      ctx.stroke();
-
-      // 2. Shocked screaming trembling mouth
-      const mouthWobble = Math.sin(this.time * 18) * 1.5;
-      ctx.fillStyle = '#1e1b4b';
-      ctx.beginPath();
-      ctx.ellipse(0, r * 0.22, r * 0.15 + mouthWobble, r * 0.22 - mouthWobble, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Scared pink tongue inside open mouth
+      // Soft happy pupil
+      const pupilShift = r * 0.05;
+      const px = Math.cos(angleToPlayer) * pupilShift;
+      const py = Math.sin(angleToPlayer) * pupilShift * eyeScaleY;
       ctx.fillStyle = '#f43f5e';
       ctx.beginPath();
-      ctx.arc(0, r * 0.28, r * 0.08, 0, Math.PI);
+      ctx.arc(-eyeOffsetX + px, eyeOffsetY + py, eyeRadiusX * 0.55, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + px, eyeOffsetY + py, eyeRadiusX * 0.55, 0, Math.PI * 2);
       ctx.fill();
 
-      // 3. Nervous cartoon sweat drop floating beside forehead
-      const sweatDropY = -r * 0.35 + Math.sin(this.time * 10) * 2;
+      // Cute smile
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, r * 0.18, 5, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+
+      ctx.restore();
+      return;
+    }
+
+    // =========================================================================
+    // SCARY / SPOOKY GHOST COMBAT FACE (Regular, Speedster, Armored, and Bosses)
+    // =========================================================================
+
+    // 1. Spooky Eye Sockets & Glowing Demonic Eyes
+    const eyeSlant = isScared ? 0.10 : 0.24; // Slanted down towards center (\   /)
+
+    // Determine archetype spectral eye glow colors
+    let scleraColor = '#f0fdf4';
+    let glowColor = '#22d3ee';
+    let pupilColor = '#090d16';
+    let browColor = '#0f172a';
+    let glowBlur = 8;
+
+    if (isAnyBoss) {
+      scleraColor = '#fef08a';
+      glowColor = (this.type === 'BOSS_MASTER' || this.type === 'BOSS') ? '#f43f5e' : '#f59e0b';
+      pupilColor = '#450a0a';
+      browColor = '#450a0a';
+      glowBlur = 14;
+    } else if (this.type === 'SPEEDSTER') {
+      scleraColor = '#fee2e2';
+      glowColor = '#ef4444';
+      pupilColor = '#7f1d1d';
+      browColor = '#7f1d1d';
+      glowBlur = 10;
+    } else if (this.type === 'ARMORED') {
+      scleraColor = '#f3e8ff';
+      glowColor = '#a855f7';
+      pupilColor = '#3b0764';
+      browColor = '#3b0764';
+      glowBlur = 9;
+    }
+
+    // --- Left Eye ---
+    ctx.save();
+    ctx.translate(-eyeOffsetX, eyeOffsetY);
+    ctx.rotate(isScared ? -eyeSlant : eyeSlant);
+
+    // Dark shadowy eye socket backing
+    ctx.fillStyle = '#05020a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, eyeRadiusX + 2, eyeRadiusY + 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing spectral sclera
+    ctx.fillStyle = scleraColor;
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = glowBlur;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Pupil
+    if (isScared) {
+      const tremX = Math.sin(this.time * 26) * 1.5;
+      const tremY = Math.cos(this.time * 22) * 1.5;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(tremX, tremY, Math.max(1.5, r * 0.07), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const pShiftX = Math.cos(angleToPlayer) * (eyeRadiusX * 0.32);
+      const pShiftY = Math.sin(angleToPlayer) * (eyeRadiusY * 0.28);
+      // Predatory vertical slit pupil
+      ctx.fillStyle = pupilColor;
+      ctx.beginPath();
+      ctx.ellipse(pShiftX, pShiftY, eyeRadiusX * 0.32, eyeRadiusY * 0.82, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Demonic glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(pShiftX - 1, pShiftY - 1.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // --- Right Eye ---
+    ctx.save();
+    ctx.translate(eyeOffsetX, eyeOffsetY);
+    ctx.rotate(isScared ? eyeSlant : -eyeSlant);
+
+    // Dark shadowy eye socket backing
+    ctx.fillStyle = '#05020a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, eyeRadiusX + 2, eyeRadiusY + 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing spectral sclera
+    ctx.fillStyle = scleraColor;
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = glowBlur;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Pupil
+    if (isScared) {
+      const tremX = Math.sin(this.time * 26 + 1) * 1.5;
+      const tremY = Math.cos(this.time * 22 + 1) * 1.5;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(tremX, tremY, Math.max(1.5, r * 0.07), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const pShiftX = Math.cos(angleToPlayer) * (eyeRadiusX * 0.32);
+      const pShiftY = Math.sin(angleToPlayer) * (eyeRadiusY * 0.28);
+      // Predatory vertical slit pupil
+      ctx.fillStyle = pupilColor;
+      ctx.beginPath();
+      ctx.ellipse(pShiftX, pShiftY, eyeRadiusX * 0.32, eyeRadiusY * 0.82, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Demonic glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(pShiftX - 1, pShiftY - 1.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 2. Angry / Sinister Furrowed Eyebrows
+    ctx.strokeStyle = browColor;
+    ctx.lineWidth = isAnyBoss ? 3.6 : (this.type === 'ARMORED' ? 3.0 : 2.4);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (!isScared) {
+      // Menacing angry brow line slanting fiercely inward (\  /)
+      ctx.moveTo(-eyeOffsetX - eyeRadiusX * 0.95, eyeOffsetY - eyeRadiusY * 1.05);
+      ctx.lineTo(-eyeOffsetX + eyeRadiusX * 0.75, eyeOffsetY - eyeRadiusY * 0.35);
+
+      ctx.moveTo(eyeOffsetX + eyeRadiusX * 0.95, eyeOffsetY - eyeRadiusY * 1.05);
+      ctx.lineTo(eyeOffsetX - eyeRadiusX * 0.75, eyeOffsetY - eyeRadiusY * 0.35);
+
+      // Boss demonic center furrow crease
+      if (isAnyBoss) {
+        ctx.moveTo(0, eyeOffsetY - eyeRadiusY * 0.65);
+        ctx.lineTo(0, eyeOffsetY - eyeRadiusY * 0.2);
+      }
+    } else {
+      // Scared distressed eyebrows (/  \)
+      ctx.moveTo(-eyeOffsetX - eyeRadiusX * 0.85, eyeOffsetY - eyeRadiusY * 0.35);
+      ctx.lineTo(-eyeOffsetX + eyeRadiusX * 0.70, eyeOffsetY - eyeRadiusY * 1.10);
+
+      ctx.moveTo(eyeOffsetX + eyeRadiusX * 0.85, eyeOffsetY - eyeRadiusY * 0.35);
+      ctx.lineTo(eyeOffsetX - eyeRadiusX * 0.70, eyeOffsetY - eyeRadiusY * 1.10);
+    }
+    ctx.stroke();
+
+    // 3. Menacing Jagged Grinning Mouth with Sharp Pointy Fangs
+    const mw = isAnyBoss ? r * 0.58 : (this.type === 'SPEEDSTER' ? r * 0.50 : (this.type === 'ARMORED' ? r * 0.46 : r * 0.42));
+    const mh = isAnyBoss ? r * 0.30 : (this.type === 'SPEEDSTER' ? r * 0.24 : r * 0.20);
+    const my = r * 0.22;
+
+    if (!isScared) {
+      // Wicked sinister evil grin curving up sharply into cheeks
+      ctx.fillStyle = this.type === 'SPEEDSTER' ? '#200306' : (this.type === 'ARMORED' ? '#180324' : (isAnyBoss ? '#1a0307' : '#070913'));
+      ctx.beginPath();
+      ctx.moveTo(-mw, my - mh * 0.2);
+      ctx.quadraticCurveTo(0, my + mh * 0.1, mw, my - mh * 0.2);
+      ctx.quadraticCurveTo(mw * 0.55, my + mh, 0, my + mh);
+      ctx.quadraticCurveTo(-mw * 0.55, my + mh, -mw, my - mh * 0.2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Mouth outline
+      ctx.strokeStyle = browColor;
+      ctx.lineWidth = isAnyBoss ? 2.6 : 1.8;
+      ctx.stroke();
+
+      // Sharp white fangs
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      // Upper Left Fang
+      ctx.moveTo(-mw * 0.55, my - mh * 0.05);
+      ctx.lineTo(-mw * 0.22, my - mh * 0.05);
+      ctx.lineTo(-mw * 0.38, my + mh * 0.78);
+      ctx.closePath();
+
+      // Upper Right Fang
+      ctx.moveTo(mw * 0.22, my - mh * 0.05);
+      ctx.lineTo(mw * 0.55, my - mh * 0.05);
+      ctx.lineTo(mw * 0.38, my + mh * 0.78);
+      ctx.closePath();
+
+      // Center Lower Sharp Fang
+      ctx.moveTo(-mw * 0.14, my + mh * 0.95);
+      ctx.lineTo(mw * 0.14, my + mh * 0.95);
+      ctx.lineTo(0, my + mh * 0.22);
+      ctx.closePath();
+
+      // Extra ferocious teeth for Bosses & Speedsters
+      if (isAnyBoss || this.type === 'SPEEDSTER') {
+        // Extra left tooth
+        ctx.moveTo(-mw * 0.80, my - mh * 0.15);
+        ctx.lineTo(-mw * 0.55, my - mh * 0.05);
+        ctx.lineTo(-mw * 0.68, my + mh * 0.50);
+        ctx.closePath();
+
+        // Extra right tooth
+        ctx.moveTo(mw * 0.55, my - mh * 0.05);
+        ctx.lineTo(mw * 0.80, my - mh * 0.15);
+        ctx.lineTo(mw * 0.68, my + mh * 0.50);
+        ctx.closePath();
+      }
+      ctx.fill();
+    } else {
+      // Horrified screaming gaping mouth cavity
+      const screamWobble = Math.sin(this.time * 20) * 1.5;
+      ctx.fillStyle = '#05020a';
+      ctx.beginPath();
+      ctx.ellipse(0, my + 4, mw * 0.65 + screamWobble, mh * 1.35 - screamWobble, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      // Terrified shivering fangs along rim
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(-mw * 0.35, my - mh * 0.6);
+      ctx.lineTo(-mw * 0.15, my - mh * 0.6);
+      ctx.lineTo(-mw * 0.25, my + mh * 0.05);
+      ctx.closePath();
+
+      ctx.moveTo(mw * 0.15, my - mh * 0.6);
+      ctx.lineTo(mw * 0.35, my - mh * 0.6);
+      ctx.lineTo(mw * 0.25, my + mh * 0.05);
+      ctx.closePath();
+
+      ctx.moveTo(-mw * 0.12, my + mh * 1.25);
+      ctx.lineTo(mw * 0.12, my + mh * 1.25);
+      ctx.lineTo(0, my + mh * 0.55);
+      ctx.closePath();
+      ctx.fill();
+
+      // Agonized pink tongue / inner throat
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.arc(0, my + mh * 0.75, mw * 0.25, 0, Math.PI);
+      ctx.fill();
+
+      // Distress cartoon ectoplasm/sweat drop beside temple
+      const dropY = -r * 0.38 + Math.sin(this.time * 12) * 2.5;
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#0284c7';
       ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.moveTo(r * 0.68, sweatDropY - 5);
-      ctx.quadraticCurveTo(r * 0.76, sweatDropY, r * 0.68, sweatDropY + 4);
-      ctx.quadraticCurveTo(r * 0.60, sweatDropY, r * 0.68, sweatDropY - 5);
+      ctx.moveTo(r * 0.72, dropY - 5);
+      ctx.quadraticCurveTo(r * 0.82, dropY, r * 0.72, dropY + 4);
+      ctx.quadraticCurveTo(r * 0.62, dropY, r * 0.72, dropY - 5);
       ctx.fill();
-    } else {
-      // Normal state: gaze tracking player
-      if (eyeScaleY > 0.25) {
-        const maxPupilShift = r * 0.08;
-        const pupilX = Math.cos(angleToPlayer) * maxPupilShift;
-        const pupilY = Math.sin(angleToPlayer) * maxPupilShift * eyeScaleY;
-
-        const pupilColor = this.type === 'SPEEDSTER' 
-          ? '#dc2626' 
-          : (this.type === 'ARMORED' ? '#581c87' : '#1e1b4b');
-
-        ctx.fillStyle = pupilColor;
-        if (this.type === 'SPEEDSTER') {
-          ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 8;
-        }
-
-        ctx.beginPath();
-        ctx.ellipse(-eyeOffsetX + pupilX, eyeOffsetY + pupilY, eyeRadiusX * 0.65, eyeRadiusY * 0.65, 0, 0, Math.PI * 2);
-        ctx.ellipse(eyeOffsetX + pupilX, eyeOffsetY + pupilY, eyeRadiusX * 0.65, eyeRadiusY * 0.65, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 0;
-        ctx.beginPath();
-        ctx.arc(-eyeOffsetX + pupilX - 1, eyeOffsetY + pupilY - 1, eyeRadiusX * 0.24, 0, Math.PI * 2);
-        ctx.arc(eyeOffsetX + pupilX - 1, eyeOffsetY + pupilY - 1, eyeRadiusX * 0.24, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Normal cute playful ghost smile
-      ctx.strokeStyle = this.type === 'SPEEDSTER' 
-        ? '#dc2626' 
-        : (this.type === 'ARMORED' ? '#581c87' : '#1e1b4b');
-      ctx.lineWidth = 1.8;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(-3, r * 0.16, 3.5, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(3, r * 0.16, 3.5, 0.2, Math.PI - 0.2);
-      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
@@ -683,10 +1016,69 @@ export class Enemy extends Entity {
   /**
    * Render hovering symbol queue pills above enemy
    */
+  /**
+   * Render hovering symbol queue pills and Boss Phase hearts above enemy
+   */
   _renderSymbols(ctx) {
-    if (this.symbolQueue.length === 0) return;
-
     ctx.save();
+
+    // 1. Boss Lives Hearts display
+    if (this.isBoss && this.maxBossLives > 1) {
+      const heartSize = 16;
+      const hSpacing = 3;
+      const totalHWidth = this.maxBossLives * heartSize + (this.maxBossLives - 1) * hSpacing;
+      const startHX = -totalHWidth / 2;
+      const bossHpY = -this.radius - 52;
+
+      ctx.save();
+      for (let h = 0; h < this.maxBossLives; h++) {
+        const isFilled = h < this.bossLives;
+        const hx = startHX + h * (heartSize + hSpacing) + heartSize / 2;
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (isFilled) {
+          ctx.shadowColor = '#f43f5e';
+          ctx.shadowBlur = 8;
+          ctx.fillText('❤️', hx, bossHpY);
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 0.35;
+          ctx.fillText('🖤', hx, bossHpY);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+      ctx.restore();
+    }
+
+    // 2. Boss Retreat & Re-entry banners
+    if (this.isRetreating) {
+      ctx.fillStyle = '#fde047';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 10;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡ LÙI LẠI... (-1 MẠNG)', 0, -this.radius - 28);
+      ctx.restore();
+      return;
+    }
+
+    if (this.isReEntering) {
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 10;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔥 KÝ TỰ MỚI! 🔥', 0, -this.radius - 28);
+    }
+
+    if (this.symbolQueue.length === 0) {
+      ctx.restore();
+      return;
+    }
+
     const badgeHeight = 24;
     const badgeWidth = 24;
     const spacing = 6;
@@ -723,7 +1115,11 @@ export class Enemy extends Entity {
       }
 
       ctx.beginPath();
-      ctx.roundRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 6);
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 6);
+      } else {
+        ctx.rect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight);
+      }
       ctx.fill();
       ctx.stroke();
 

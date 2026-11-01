@@ -206,6 +206,12 @@ export const LEVEL_CONFIGS = [
     hasArmored: false,
     bossType: 'BOSS_LIBRARIAN',
     bossName: 'Bóng Ma Thủ Thư (Librarian Ghost)',
+    bossLives: 3,
+    bossPhases: [
+      ['horizontal', 'vertical'],
+      ['vertical', 'horizontal', 'vertical'],
+      ['horizontal', 'vertical', 'horizontal', 'vertical']
+    ],
     bossSymbols: ['horizontal', 'vertical', 'horizontal', 'vertical']
   },
   {
@@ -225,6 +231,12 @@ export const LEVEL_CONFIGS = [
     hasArmored: false,
     bossType: 'BOSS_CHEF',
     bossName: 'Bóng Ma Đầu Bếp (Chef Ghost)',
+    bossLives: 3,
+    bossPhases: [
+      ['caret', 'v_shape'],
+      ['horizontal', 'caret', 'v_shape'],
+      ['v_shape', 'caret', 'horizontal', 'vertical']
+    ],
     bossSymbols: ['caret', 'v_shape', 'horizontal', 'vertical', 'caret']
   },
   {
@@ -244,6 +256,13 @@ export const LEVEL_CONFIGS = [
     hasArmored: true,
     bossType: 'BOSS_PLANETARIUM',
     bossName: 'Bóng Ma Thiên Văn (Astronomy Ghost)',
+    bossLives: 4,
+    bossPhases: [
+      ['v_shape', 'caret'],
+      ['lightning', 'horizontal'],
+      ['caret', 'v_shape', 'lightning'],
+      ['lightning', 'vertical', 'v_shape', 'caret']
+    ],
     bossSymbols: ['v_shape', 'caret', 'lightning', 'horizontal', 'v_shape']
   },
   {
@@ -263,6 +282,13 @@ export const LEVEL_CONFIGS = [
     hasArmored: true,
     bossType: 'BOSS_COACH',
     bossName: 'Bóng Ma Huấn Luyện Viên (Coach Ghost)',
+    bossLives: 4,
+    bossPhases: [
+      ['horizontal', 'caret', 'v_shape'],
+      ['lightning', 'vertical', 'caret'],
+      ['v_shape', 'lightning', 'horizontal', 'vertical'],
+      ['lightning', 'caret', 'v_shape', 'horizontal', 'lightning']
+    ],
     bossSymbols: ['lightning', 'horizontal', 'caret', 'vertical', 'v_shape', 'lightning']
   },
   {
@@ -282,6 +308,14 @@ export const LEVEL_CONFIGS = [
     hasArmored: true,
     bossType: 'BOSS_MASTER',
     bossName: 'Chúa Tể Bóng Ma (Master Ghost)',
+    bossLives: 5,
+    bossPhases: [
+      ['horizontal', 'vertical', 'lightning'],
+      ['caret', 'v_shape', 'lightning', 'horizontal'],
+      ['lightning', 'horizontal', 'vertical', 'lightning'],
+      ['v_shape', 'caret', 'lightning', 'vertical', 'horizontal'],
+      ['lightning', 'caret', 'v_shape', 'horizontal', 'vertical', 'lightning']
+    ],
     bossSymbols: ['lightning', 'horizontal', 'vertical', 'caret', 'v_shape', 'lightning', 'horizontal']
   }
 ];
@@ -358,5 +392,6 @@ export const COMBO_CONFIG = {
 
 export const STORAGE_KEYS = {
   HIGH_SCORE: 'arcane_paws_high_score_v1',
-  UNLOCKED_LEVEL: 'arcane_paws_unlocked_level_v1'
+  UNLOCKED_LEVEL: 'arcane_paws_unlocked_level_v1',
+  TUTORIAL_COMPLETED: 'arcane_paws_tutorial_completed_v1'
 };
