@@ -17,6 +17,7 @@ import { WaveSystem } from '../systems/WaveSystem.js';
 import { ParticleSystem } from '../systems/ParticleSystem.js';
 import { AudioSystem } from '../systems/AudioSystem.js';
 import { InputHandler } from '../systems/InputHandler.js';
+import { BackgroundRenderer } from '../systems/BackgroundRenderer.js';
 import { UIManager } from '../ui/UIManager.js';
 
 export class Game {
@@ -45,6 +46,7 @@ export class Game {
     this.audioSystem = new AudioSystem();
     this.particleSystem = new ParticleSystem(800, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
+    this.backgroundRenderer = new BackgroundRenderer();
 
     // Object Pools for Projectile and Enemy entities
     this.projectilePool = new ObjectPool(
@@ -112,28 +114,55 @@ export class Game {
     this._bindResize();
     this.resize();
 
-    // Hook Wave System events with Screen Shake & Visual Announcements
-    this.waveSystem.onWaveStart = (waveNum) => {
-      this.uiManager.updateWave(waveNum);
-      this.triggerShake(7, 0.4);
+    // Hook Wave & Level System events with Screen Shake & Visual Announcements
+    this.waveSystem.onLevelStart = (lvlNum, lvlData) => {
+      this.uiManager.updateLevel(lvlNum, lvlData);
+      this.triggerShake(8, 0.45);
+      this.uiManager.showLevelTransition(lvlNum, lvlData);
       this.particleSystem.emitFloatingText(
-        `WAVE ${waveNum}`,
+        `CẤP ĐỘ ${lvlNum}: ${lvlData ? lvlData.name.toUpperCase() : ''}`,
         this.width / 2,
         this.height * 0.35,
         '#c084fc',
-        34
+        30
       );
     };
 
-    this.waveSystem.onWaveComplete = (waveNum) => {
-      this.triggerShake(5, 0.3);
+    this.waveSystem.onBossSpawn = (bossType, bossName) => {
+      this.triggerShake(22, 0.85);
+      if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
+        this.audioSystem.soundBossCast();
+      }
       this.particleSystem.emitFloatingText(
-        `WAVE ${waveNum} HOÀN THÀNH!`,
+        `⚡ TRÙM XUẤT HIỆN: ${bossName ? bossName.toUpperCase() : 'CHÚA TỂ BÓNG MA'} ⚡`,
+        this.width / 2,
+        this.height * 0.22,
+        '#f43f5e',
+        26
+      );
+    };
+
+    this.waveSystem.onLevelComplete = (lvlNum, lvlData) => {
+      this.triggerShake(6, 0.35);
+      this.particleSystem.emitFloatingText(
+        `MÀN ${lvlNum} HOÀN THÀNH!`,
         this.width / 2,
         this.height * 0.35,
         '#34d399',
         30
       );
+    };
+
+    this.waveSystem.onGameVictory = () => {
+      this.stateMachine.changeState(GAME_STATES.VICTORY);
+    };
+
+    this.waveSystem.onWaveStart = (waveNum) => {
+      this.uiManager.updateWave(waveNum);
+    };
+
+    this.waveSystem.onWaveComplete = (waveNum) => {
+      this.triggerShake(5, 0.3);
     };
   }
 
@@ -278,6 +307,9 @@ export class Game {
   }
 
   update(dt) {
+    if (this.backgroundRenderer) {
+      this.backgroundRenderer.update(dt);
+    }
     this.stateMachine.update(dt);
   }
 
@@ -288,8 +320,9 @@ export class Game {
     // Clear background
     this.ctx.clearRect(0, 0, this.width, this.height);
 
-    // Draw ambient starfield
-    this._renderBackground(this.ctx);
+    // Render animated Level Environment (Google Doodle 2016)
+    const curLevel = this.waveSystem.currentLevelIndex || 1;
+    this.backgroundRenderer.render(this.ctx, this.width, this.height, curLevel, this.lastTime / 1000);
 
     // Render active state
     this.stateMachine.render(this.ctx);
@@ -327,12 +360,19 @@ export class Game {
     const enemyConfig = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
     if (enemyConfig) {
       const isHeart = enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart'));
+      const isBoss = enemyConfig.isBoss || enemyConfig.archetype === 'BOSS' || (typeof enemyConfig.archetype === 'string' && enemyConfig.archetype.startsWith('BOSS_'));
       let spawnPos;
       if (isHeart) {
         // Stationary Heart Ghost spawns in upper-middle viewable screen
         spawnPos = {
           x: Math.random() * (this.width * 0.6) + this.width * 0.2,
           y: Math.random() * (this.height * 0.28) + this.height * 0.16
+        };
+      } else if (isBoss) {
+        // Boss descends grandly from upper center
+        spawnPos = {
+          x: this.width / 2,
+          y: -75
         };
       } else {
         spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
@@ -351,18 +391,11 @@ export class Game {
       this.enemies.push(newEnemy);
 
       // Boss / Armored entrance screen shake
-      if (enemyConfig.archetype === 'BOSS') {
+      if (isBoss) {
         this.triggerShake(20, 0.75);
         if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
           this.audioSystem.soundBossCast();
         }
-        this.particleSystem.emitFloatingText(
-          '⚡ CHÚA TỂ HẮC ÁM XUẤT HIỆN! ⚡',
-          this.width / 2,
-          this.height * 0.22,
-          '#f43f5e',
-          28
-        );
       } else if (enemyConfig.archetype === 'ARMORED') {
         this.triggerShake(11, 0.55);
         this.particleSystem.emitFloatingText(
@@ -429,15 +462,15 @@ export class Game {
               this.metrics.enemiesDefeated++;
               this.audioSystem.playEnemyDeath();
               
-              const isBoss = proj.targetEnemy.type === 'BOSS';
-              if (isBoss) {
-                this.triggerShake(16, 0.5);
+              const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
+              if (isTargetBoss) {
+                this.triggerShake(22, 0.75);
               }
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
                 proj.targetEnemy.y,
-                proj.targetEnemy.type,
-                28
+                isTargetBoss ? 'BOSS' : proj.targetEnemy.type,
+                isTargetBoss ? 35 : 28
               );
 
               const reward = proj.targetEnemy.scoreValue * this.comboMultiplier;
@@ -737,6 +770,9 @@ export class Game {
       if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
         this.lightningFlashTimer = 0.22;
+        if (this.backgroundRenderer) {
+          this.backgroundRenderer.triggerLightning(0.25);
+        }
         this.triggerShake(14, 0.45);
       }
 

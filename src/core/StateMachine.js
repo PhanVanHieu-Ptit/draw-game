@@ -1,6 +1,6 @@
 /**
  * @file StateMachine.js
- * @description Finite State Machine managing MENU, PLAYING, PAUSE, and GAMEOVER states.
+ * @description Finite State Machine managing MENU, STORY, PLAYING, PAUSE, GAMEOVER, and VICTORY states.
  */
 
 import { GAME_STATES } from './Constants.js';
@@ -32,12 +32,34 @@ export class MenuState extends State {
   }
 
   update(dt) {
-    // Background idle particles
     this.game.particleSystem.update(dt);
   }
 
   render(ctx) {
-    // Render idle player and background particles
+    this.game.player.render(ctx);
+    this.game.particleSystem.render(ctx);
+  }
+}
+
+export class StoryState extends State {
+  constructor(game) {
+    super(GAME_STATES.STORY, game);
+  }
+
+  enter(previousState, payload = {}) {
+    this.game.inputHandler.setEnabled(false);
+    this.game.uiManager.showScreen(GAME_STATES.STORY, payload);
+  }
+
+  exit() {
+    this.game.uiManager.hideScreen(GAME_STATES.STORY);
+  }
+
+  update(dt) {
+    this.game.particleSystem.update(dt);
+  }
+
+  render(ctx) {
     this.game.player.render(ctx);
     this.game.particleSystem.render(ctx);
   }
@@ -48,13 +70,18 @@ export class PlayingState extends State {
     super(GAME_STATES.PLAYING, game);
   }
 
-  enter(previousState) {
+  enter(previousState, payload = {}) {
     this.game.inputHandler.setEnabled(true);
     this.game.uiManager.showScreen(GAME_STATES.PLAYING);
 
     // If starting fresh (not resuming from pause)
     if (previousState !== GAME_STATES.PAUSE) {
-      this.game.resetGameData();
+      if (payload.resetData !== false) {
+        this.game.resetGameData();
+      }
+      if (payload.startLevel) {
+        this.game.waveSystem.initLevel(payload.startLevel);
+      }
     }
 
     if (this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
@@ -106,11 +133,10 @@ export class PauseState extends State {
   }
 
   update(dt) {
-    // Do not advance game world physics, but keep particle decay if any
+    // Game physics paused
   }
 
   render(ctx) {
-    // Render current scene under a dim overlay
     this.game.renderPlaying(ctx);
 
     ctx.save();
@@ -168,6 +194,49 @@ export class GameOverState extends State {
   }
 }
 
+export class VictoryState extends State {
+  constructor(game) {
+    super(GAME_STATES.VICTORY, game);
+  }
+
+  enter(previousState, payload = {}) {
+    this.game.inputHandler.setEnabled(false);
+    this.game.audioSystem.playStart();
+
+    const finalScore = this.game.score;
+    const isNewHighScore = this.game.saveHighScore(finalScore);
+
+    this.game.uiManager.showScreen(GAME_STATES.VICTORY, {
+      score: finalScore,
+      highScore: this.game.highScore,
+      isNewHighScore,
+      spellsCast: this.game.metrics.spellsCast,
+      accuracy: this.game.metrics.spellsCast > 0
+        ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
+        : 100
+    });
+  }
+
+  exit() {
+    this.game.uiManager.hideScreen(GAME_STATES.VICTORY);
+  }
+
+  update(dt) {
+    this.game.particleSystem.update(dt);
+  }
+
+  render(ctx) {
+    this.game.renderPlaying(ctx);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 8, 30, 0.65)';
+    ctx.fillRect(0, 0, this.game.width, this.game.height);
+    ctx.restore();
+
+    this.game.particleSystem.render(ctx);
+  }
+}
+
 export class StateMachine {
   constructor(game) {
     this.game = game;
@@ -176,9 +245,11 @@ export class StateMachine {
 
     // Register all states
     this.registerState(new MenuState(game));
+    this.registerState(new StoryState(game));
     this.registerState(new PlayingState(game));
     this.registerState(new PauseState(game));
     this.registerState(new GameOverState(game));
+    this.registerState(new VictoryState(game));
   }
 
   registerState(stateInstance) {

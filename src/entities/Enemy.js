@@ -56,6 +56,7 @@ export class Enemy extends Entity {
     this.baseColor = archetype.color;
     this.glowColor = archetype.glowColor;
     this.scoreValue = archetype.score;
+    this.isBoss = Boolean(archetype.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
 
     // Fast copy symbol queue without re-allocating array reference
     this.symbolQueue.length = 0;
@@ -97,8 +98,9 @@ export class Enemy extends Entity {
     this.blinkDuration = 0.16;
     this.isBlinking = false;
 
-    this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : (this.type === 'BOSS' ? 1.8 : 2.5);
-    this.oscillationAmplitude = (this.type === 'ARMORED' || this.type === 'BOSS') ? 0.25 : 0.8;
+    const isAnyBoss = this.isBoss || this.type === 'BOSS';
+    this.oscillationFrequency = this.type === 'SPEEDSTER' ? 5 : (isAnyBoss ? 1.8 : 2.5);
+    this.oscillationAmplitude = (this.type === 'ARMORED' || isAnyBoss) ? 0.25 : 0.8;
   }
 
   /**
@@ -366,7 +368,118 @@ export class Enemy extends Entity {
       ctx.lineTo(r * 0.35, -r * 0.7);
       ctx.closePath();
       ctx.fill();
-    } else if (this.type === 'BOSS') {
+    } else if (this.type === 'BOSS_LIBRARIAN') {
+      // 1. Librarian Ghost: Golden spectacles & Mortarboard scholar cap
+      ctx.fillStyle = '#1e3a8a';
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.9, -r * 0.85);
+      ctx.lineTo(r * 0.9, -r * 0.85);
+      ctx.lineTo(0, -r * 1.4);
+      ctx.closePath();
+      ctx.fill();
+      // Cap tassel
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.4);
+      ctx.lineTo(r * 0.85, -r * 1.05);
+      ctx.lineTo(r * 0.85, -r * 0.75);
+      ctx.stroke();
+
+      // Golden reading spectacles
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(-r * 0.35, -r * 0.2, r * 0.24, 0, Math.PI * 2);
+      ctx.arc(r * 0.35, -r * 0.2, r * 0.24, 0, Math.PI * 2);
+      ctx.moveTo(-r * 0.12, -r * 0.2);
+      ctx.lineTo(r * 0.12, -r * 0.2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else if (this.type === 'BOSS_CHEF') {
+      // 2. Chef Ghost: Big puffy white toque hat & giant spoon
+      ctx.fillStyle = '#f8fafc';
+      ctx.shadowColor = '#fdba74';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.ellipse(0, -r * 1.15, r * 0.65, r * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(-r * 0.45, -r * 0.95, r * 0.9, r * 0.35);
+      // Hat band
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(-r * 0.45, -r * 0.72, r * 0.9, 5);
+
+      // Wooden cooking ladle held on side
+      ctx.strokeStyle = '#9a3412';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.85, -r * 0.2);
+      ctx.lineTo(r * 1.25, r * 0.6);
+      ctx.stroke();
+      ctx.fillStyle = '#c2410c';
+      ctx.beginPath();
+      ctx.ellipse(r * 0.82, -r * 0.25, 7, 10, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (this.type === 'BOSS_PLANETARIUM') {
+      // 3. Planetarium Ghost: Orbiting celestial rings and third-eye star
+      ctx.strokeStyle = 'rgba(216, 180, 254, 0.7)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.45, r * 0.5, 0.25, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Mini planets on orbit
+      const pAngle = this.time * 2.5;
+      const px = Math.cos(pAngle) * (r * 1.45);
+      const py = Math.sin(pAngle) * (r * 0.5);
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Third-eye star on forehead
+      ctx.fillStyle = '#facc15';
+      ctx.shadowColor = '#eab308';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.6, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (this.type === 'BOSS_COACH') {
+      // 4. Coach Ghost: Sports whistle & emerald sweatband
+      // Sweatband
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(-r * 0.75, -r * 0.62, r * 1.5, 9);
+      // Lightning bolt on headband
+      ctx.fillStyle = '#fef08a';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillText('⚡', -3, -r * 0.62 + 7);
+
+      // Whistle hanging on red lanyard
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, r * 0.1);
+      ctx.lineTo(0, r * 0.45);
+      ctx.lineTo(r * 0.2, r * 0.1);
+      ctx.stroke();
+
+      // Whistle body
+      ctx.fillStyle = '#e2e8f0';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(0, r * 0.52, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(0, r * 0.48, 8, 4);
+      ctx.shadowBlur = 0;
+    } else if (this.type === 'BOSS_MASTER' || this.type === 'BOSS') {
+      // 5. Final Master Boss Ghost: Demon horns, dark crown & clutching the STOLEN MASTER SPELLBOOK!
       ctx.strokeStyle = '#f43f5e';
       ctx.lineWidth = 4;
       ctx.beginPath();
@@ -377,6 +490,7 @@ export class Enemy extends Entity {
       ctx.shadowColor = '#f43f5e';
       ctx.shadowBlur = 18;
 
+      // Crown horns
       ctx.beginPath();
       ctx.moveTo(-r * 0.85, -r * 0.3);
       ctx.quadraticCurveTo(-r * 1.5, -r * 0.9, -r * 1.45, -r * 1.45);
@@ -397,6 +511,31 @@ export class Enemy extends Entity {
       ctx.quadraticCurveTo(r * 0.9, -r * 1.05, r * 0.35, -r * 0.75);
       ctx.closePath();
       ctx.fill();
+
+      // The Stolen Master Spellbook in its shadowy grasp!
+      const bookW = r * 0.85;
+      const bookH = r * 0.65;
+      const bookX = -bookW / 2;
+      const bookY = r * 0.32;
+
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#e11d48';
+      ctx.shadowBlur = 12;
+      ctx.fillRect(bookX, bookY, bookW, bookH);
+      ctx.strokeRect(bookX, bookY, bookW, bookH);
+
+      // Book eye of dark magic
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.ellipse(0, bookY + bookH / 2, 7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.arc(0, bookY + bookH / 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     // 4. Ghost Face & Expressions (Normal eyes/mouth vs Hit scared scream & sweat drop)

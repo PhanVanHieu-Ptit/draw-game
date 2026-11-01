@@ -1,13 +1,19 @@
 /**
  * @file WaveSystem.js
- * @description Wave progression, enemy spawning interval, difficulty scaling, and archetype selection.
+ * @description Manages 5 progressive story levels matching Google Doodle Halloween 2016,
+ * culminating in unique Boss Battles (Librarian, Chef, Planetarium, Coach, Master Boss),
+ * with fallback to Endless Mode defense after victory.
  */
 
-import { RUNES } from '../core/Constants.js';
+import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES } from '../core/Constants.js';
 
 export class WaveSystem {
   constructor() {
-    this.currentWave = 1;
+    this.gameMode = 'STORY'; // 'STORY' | 'ENDLESS'
+    this.currentLevelIndex = 1;
+    this.currentWave = 1; // Alias for backward compatibility
+    this.levelData = LEVEL_CONFIGS[0];
+
     this.enemiesSpawnedInWave = 0;
     this.totalEnemiesInWave = 0;
     this.spawnTimer = 0;
@@ -16,78 +22,152 @@ export class WaveSystem {
     this.intermissionTimer = 0;
     this.isIntermission = false;
 
+    // Boss state tracking
+    this.isBossSpawned = false;
+    this.isBossDefeated = false;
+
+    // Event hooks
     this.onWaveStart = null;
     this.onWaveComplete = null;
+    this.onLevelStart = null;
+    this.onLevelComplete = null;
+    this.onBossSpawn = null;
+    this.onGameVictory = null;
 
-    this.initWave(1);
+    this.initLevel(1);
   }
 
   reset() {
+    this.gameMode = 'STORY';
+    this.currentLevelIndex = 1;
     this.currentWave = 1;
-    this.initWave(1);
+    this.initLevel(1);
+  }
+
+  setMode(mode = 'STORY') {
+    this.gameMode = mode;
+    this.reset();
   }
 
   /**
-   * Initialize a new wave's parameters based on GDD formulas
-   * @param {number} waveNum 
+   * Initialize a level (1..5) or endless wave
+   * @param {number} levelNum 
    */
-  initWave(waveNum) {
-    this.currentWave = waveNum;
+  initLevel(levelNum) {
+    this.currentLevelIndex = levelNum;
+    this.currentWave = levelNum; // Keep in sync for compatibility
     this.enemiesSpawnedInWave = 0;
-
-    // Total enemies formula: floor(8 + 4 * W^1.18)
-    this.totalEnemiesInWave = Math.floor(8 + 4 * Math.pow(waveNum, 1.18));
-
-    // Spawn interval formula: max(0.65, 2.6 * exp(-0.09 * (W - 1)))
-    this.spawnInterval = Math.max(0.65, 2.6 * Math.exp(-0.09 * (waveNum - 1)));
-
-    // Speed multiplier: min(1.75, 1.0 + 0.05 * (W - 1))
-    this.speedMultiplier = Math.min(1.75, 1.0 + 0.05 * (waveNum - 1));
-
-    this.spawnTimer = 1.0; // small initial breath before first spawn
+    this.isBossSpawned = false;
+    this.isBossDefeated = false;
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
+    if (levelNum <= 5 && this.gameMode === 'STORY') {
+      // 5-Level Story Campaign
+      this.levelData = LEVEL_CONFIGS[levelNum - 1];
+      this.totalEnemiesInWave = this.levelData.totalMinions;
+      this.spawnInterval = this.levelData.baseSpawnInterval;
+      this.speedMultiplier = this.levelData.speedMultiplier;
+    } else {
+      // Endless Mode: GDD Formula Scaling
+      this.levelData = null;
+      this.totalEnemiesInWave = Math.floor(8 + 4 * Math.pow(levelNum, 1.18));
+      this.spawnInterval = Math.max(0.65, 2.6 * Math.exp(-0.09 * (levelNum - 1)));
+      this.speedMultiplier = Math.min(1.75, 1.0 + 0.05 * (levelNum - 1));
+    }
+
+    this.spawnTimer = 1.2; // brief breathing time before first ghost
+
+    if (this.onLevelStart && this.levelData) {
+      this.onLevelStart(this.currentLevelIndex, this.levelData);
+    }
     if (this.onWaveStart) {
       this.onWaveStart(this.currentWave, this.totalEnemiesInWave);
     }
   }
 
   /**
-   * Check if an enemy is ready to be spawned
+   * Alias for backward compatibility
+   * @param {number} waveNum 
+   */
+  initWave(waveNum) {
+    this.initLevel(waveNum);
+  }
+
+  /**
+   * Update level & wave progression loop
    * @param {number} dt 
    * @param {number} playerHp 
    * @param {number} livingEnemiesCount 
-   * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number } | null}
+   * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number, isBoss?: boolean, isHeartGhost?: boolean } | null}
    */
   update(dt, playerHp, livingEnemiesCount) {
-    // Intermission between waves
+    // 1. Intermission between stages or victory transition
     if (this.isIntermission) {
       this.intermissionTimer -= dt;
       if (this.intermissionTimer <= 0) {
-        this.initWave(this.currentWave + 1);
+        if (this.gameMode === 'STORY' && this.currentLevelIndex >= 5) {
+          // Final 5th Level complete -> trigger Victory cutscene
+          if (this.onGameVictory) {
+            this.onGameVictory();
+          }
+        } else {
+          this.initLevel(this.currentLevelIndex + 1);
+        }
       }
       return null;
     }
 
-    // Check if wave finished
-    if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave && livingEnemiesCount === 0) {
-      this.isIntermission = true;
-      this.intermissionTimer = 2.5;
-      if (this.onWaveComplete) {
-        this.onWaveComplete(this.currentWave);
+    // 2. Story Mode: Minions cleared -> Boss Battle
+    if (this.gameMode === 'STORY' && this.levelData) {
+      // If all minions have spawned and died, spawn the Level Boss!
+      if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {
+        if (!this.isBossSpawned && livingEnemiesCount === 0) {
+          this.isBossSpawned = true;
+          if (this.onBossSpawn) {
+            this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
+          }
+          return {
+            archetype: this.levelData.bossType,
+            symbolQueue: [...this.levelData.bossSymbols],
+            isBoss: true,
+            isHeartGhost: false,
+            speedMultiplier: 0.85
+          };
+        }
+
+        // If boss was spawned and now defeated
+        if (this.isBossSpawned && livingEnemiesCount === 0) {
+          this.isIntermission = true;
+          this.intermissionTimer = 2.6;
+          if (this.onLevelComplete) {
+            this.onLevelComplete(this.currentLevelIndex, this.levelData);
+          }
+          if (this.onWaveComplete) {
+            this.onWaveComplete(this.currentWave);
+          }
+          return null;
+        }
       }
-      return null;
+    } else {
+      // Endless mode completion check
+      if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave && livingEnemiesCount === 0) {
+        this.isIntermission = true;
+        this.intermissionTimer = 2.5;
+        if (this.onWaveComplete) {
+          this.onWaveComplete(this.currentWave);
+        }
+        return null;
+      }
     }
 
-    // Spawning timer
+    // 3. Spawning Minions
     if (this.enemiesSpawnedInWave < this.totalEnemiesInWave) {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
-        // Dynamic interval reduction if player HP is low
         let interval = this.spawnInterval;
         if (playerHp <= 2) {
-          interval *= 1.15; // slightly slower spawn when critical
+          interval *= 1.15; // slightly slower when critical
         }
         this.spawnTimer = interval;
         this.enemiesSpawnedInWave++;
@@ -100,38 +180,50 @@ export class WaveSystem {
   }
 
   /**
-   * Generate archetype and random rune sequence for spawned enemy
+   * Generate minion enemy config matching active level pool
    * @param {number} playerHp 
-   * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number }}
    */
   _generateEnemyConfig(playerHp) {
     const W = this.currentWave;
+    const lvl = this.levelData;
     const rand = Math.random();
     let archetype = 'REGULAR';
 
-    if (W === 1) {
-      archetype = 'REGULAR';
-    } else if (W === 2) {
-      archetype = rand < 0.2 ? 'SPEEDSTER' : 'REGULAR';
-    } else if (W <= 4) {
-      if (rand < 0.25) archetype = 'SPEEDSTER';
-      else if (rand < 0.38) archetype = 'ARMORED';
-      else archetype = 'REGULAR';
+    if (lvl) {
+      // Guided Story Level archetype distribution
+      if (lvl.hasSpeedster && rand < 0.28) {
+        archetype = 'SPEEDSTER';
+      } else if (lvl.hasArmored && rand > 0.72) {
+        archetype = 'ARMORED';
+      } else {
+        archetype = 'REGULAR';
+      }
     } else {
-      if (rand < 0.35) archetype = 'SPEEDSTER';
-      else if (rand < 0.60) archetype = 'ARMORED';
-      else archetype = 'REGULAR';
+      // Endless Mode scaling
+      if (W === 1) {
+        archetype = 'REGULAR';
+      } else if (W === 2) {
+        archetype = rand < 0.2 ? 'SPEEDSTER' : 'REGULAR';
+      } else if (W <= 4) {
+        if (rand < 0.25) archetype = 'SPEEDSTER';
+        else if (rand < 0.38) archetype = 'ARMORED';
+        else archetype = 'REGULAR';
+      } else {
+        if (rand < 0.35) archetype = 'SPEEDSTER';
+        else if (rand < 0.60) archetype = 'ARMORED';
+        else archetype = 'REGULAR';
+      }
     }
 
-    // Available standard symbols
-    const basicPool = ['horizontal', 'vertical', 'caret', 'v_shape'];
-    if (W >= 2) basicPool.push('lightning');
+    // Available rune pool
+    const pool = (lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape'];
+    if (!lvl && W >= 2) pool.push('lightning');
 
     const symbolQueue = [];
     let count = 1;
 
     if (archetype === 'REGULAR') {
-      count = (W >= 3 && Math.random() < 0.45) ? 2 : 1;
+      count = (this.currentLevelIndex >= 3 && Math.random() < 0.45) ? 2 : 1;
     } else if (archetype === 'SPEEDSTER') {
       count = 1;
     } else if (archetype === 'ARMORED') {
@@ -139,16 +231,14 @@ export class WaveSystem {
     }
 
     for (let i = 0; i < count; i++) {
-      const rune = basicPool[Math.floor(Math.random() * basicPool.length)];
+      const rune = pool[Math.floor(Math.random() * pool.length)];
       symbolQueue.push(rune);
     }
 
     // Chance to spawn special Heart Ghost (❤️)
-    // Allows players to experience the heart ghost even at full health
-    const heartChance = playerHp < 5 ? (playerHp <= 2 ? 0.28 : 0.16) : 0.09;
+    const heartChance = playerHp < 5 ? (playerHp <= 2 ? 0.28 : 0.16) : 0.08;
     const isHeartGhost = Math.random() < heartChance;
     if (isHeartGhost) {
-      // Dedicated single-symbol heart ghost
       symbolQueue.length = 0;
       symbolQueue.push('heart');
     }
