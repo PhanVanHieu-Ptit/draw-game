@@ -6,6 +6,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
 
 :root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
   --bg-dark: #0a0818;
   --bg-gradient: radial-gradient(circle at 50% 30%, #1c1538 0%, #0d0a1c 60%, #06050e 100%);
   --panel-bg: rgba(18, 14, 38, 0.78);
@@ -36,6 +41,7 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -54,7 +60,9 @@ html, body {
 #game-wrapper {
   position: relative;
   width: 100vw;
+  width: 100dvw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   touch-action: none;
   -webkit-touch-callout: none;
@@ -303,24 +311,48 @@ html, body {
 .modal-overlay {
   align-items: center;
   justify-content: center;
-  background: rgba(8, 6, 20, 0.65);
+  background: rgba(8, 6, 20, 0.68);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: max(16px, var(--sat)) max(16px, var(--sar)) max(16px, var(--sab)) max(16px, var(--sal));
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .glass-card {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 24px;
-  padding: 36px 44px;
+  padding: 32px 36px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px var(--panel-glow);
   display: flex;
   flex-direction: column;
   align-items: center;
   max-width: 580px;
-  width: 90%;
+  width: 92%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 139, 250, 0.3) transparent;
   text-align: center;
   position: relative;
   animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.glass-card::-webkit-scrollbar {
+  width: 4px;
+}
+
+.glass-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass-card::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.35);
+  border-radius: 9999px;
 }
 
 @keyframes cardFadeIn {
@@ -1046,34 +1078,554 @@ html, body {
   margin: 12px 0 16px 0;
 }
 
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .game-title {
-    font-size: 1.8rem;
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM (MOBILE PORTRAIT & LANDSCAPE)
+   ========================================================================== */
+
+/* Mobile Portrait / Tablet Narrow */
+@media (max-width: 768px) {
+  #hud-playing {
+    padding: calc(8px + var(--sat)) calc(10px + var(--sar)) calc(10px + var(--sab)) calc(10px + var(--sal));
   }
-  .glass-card {
-    padding: 24px 20px;
-  }
-  .rune-guide-grid {
-    grid-template-columns: repeat(3, 1fr);
+
+  .hud-top-bar {
+    align-items: center;
     gap: 6px;
   }
+
+  /* Left: Hearts */
+  .hud-hearts-panel {
+    padding: 5px 8px;
+    gap: 2px;
+  }
+
+  .heart-icon {
+    font-size: 1.05rem;
+  }
+
+  /* Center: Score & Stage */
+  .hud-center-panel {
+    max-width: 130px;
+    gap: 1px;
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+
+  .score-counter {
+    font-size: 1.45rem;
+    line-height: 1.1;
+  }
+
+  .wave-badge {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: block;
+  }
+
+  .level-sub-badge {
+    display: none;
+  }
+
+  /* Right: Controls & Combo */
+  .hud-right-panel {
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
+
+  .combo-mult {
+    font-size: 0.95rem;
+  }
+
+  .combo-bar-wrap {
+    width: 60px;
+    height: 5px;
+  }
+
+  /* Bottom feedback */
+  .hud-bottom-bar {
+    padding-bottom: calc(8px + var(--sab));
+  }
+
+  .gesture-pill {
+    padding: 6px 16px;
+    font-size: 0.8rem;
+  }
+
+  /* Modals */
+  .glass-card {
+    padding: 20px 16px;
+    border-radius: 20px;
+    width: 94%;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .game-title {
+    font-size: 1.65rem;
+    margin-bottom: 4px;
+  }
+
+  .game-subtitle {
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    line-height: 1.35;
+  }
+
+  .stage-selector-container {
+    margin-bottom: 12px;
+  }
+
+  .stage-selector-title {
+    font-size: 0.65rem;
+    margin-bottom: 5px;
+  }
+
   .stage-grid {
     gap: 4px;
   }
+
+  .stage-btn {
+    padding: 6px 2px;
+    border-radius: 10px;
+  }
+
+  .stage-icon {
+    font-size: 1.05rem;
+  }
+
   .stage-name {
-    font-size: 0.6rem;
+    font-size: 0.56rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
-  .hud-top-bar {
-    padding: 12px 14px;
+
+  .rune-guide-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
   }
+
+  .guide-item {
+    padding: 6px 4px;
+    border-radius: 10px;
+    gap: 2px;
+  }
+
+  .guide-symbol {
+    font-size: 1.25rem;
+  }
+
+  .guide-name {
+    font-size: 0.68rem;
+  }
+
+  .menu-action-buttons {
+    gap: 8px;
+    width: 100%;
+  }
+
+  .btn-primary {
+    font-size: 1.05rem;
+    padding: 12px 24px;
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .btn-secondary {
+    font-size: 0.95rem;
+    padding: 11px 20px;
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .btn-subtle {
+    font-size: 0.82rem;
+    padding: 8px 18px;
+  }
+
+  .high-score-tag {
+    margin-top: 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Transition Banner */
+  .level-transition-banner {
+    width: 90%;
+    max-width: 320px;
+    padding: 16px 20px;
+    border-radius: 20px;
+  }
+
+  .ltb-level-number {
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+  }
+
   .ltb-level-title {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
   }
+
+  .ltb-level-en {
+    font-size: 0.78rem;
+    margin-bottom: 10px;
+  }
+
   .ltb-prompt {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
   }
+
+  .level-transition-banner.phase-draw .ltb-prompt {
+    font-size: 2.1rem;
+  }
+
+  /* Tutorial Overlay */
+  .tutorial-overlay {
+    top: calc(66px + var(--sat));
+    width: 92%;
+    max-width: 360px;
+  }
+
+  .tutorial-card {
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+
+  .tutorial-title {
+    font-size: 0.98rem;
+  }
+
+  .tutorial-desc {
+    font-size: 0.78rem;
+    margin-bottom: 8px;
+  }
+
+  .tutorial-demo-box {
+    padding: 8px 14px;
+    margin-bottom: 8px;
+  }
+
+  .demo-horizontal {
+    width: 120px;
+    height: 38px;
+  }
+
+  .demo-vertical {
+    width: 60px;
+    height: 60px;
+  }
+
+  .demo-rune {
+    font-size: 1.5rem;
+  }
+
+  .demo-wand-hand {
+    font-size: 1.3rem;
+  }
+
+  .demo-label {
+    font-size: 0.72rem;
+  }
+
+  .tutorial-hint {
+    font-size: 0.68rem;
+  }
+
+  /* Story Modal */
+  .story-card {
+    padding: 16px 18px;
+    width: 95%;
+  }
+
   .story-canvas-wrap {
     height: 160px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+  }
+
+  .story-text-container {
+    min-height: 60px;
+    margin-bottom: 10px;
+  }
+
+  .story-slide-title {
+    font-size: 1.1rem;
+  }
+
+  .story-slide-text {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .story-slide-en {
+    font-size: 0.72rem;
+  }
+
+  .story-dots-row {
+    margin-bottom: 10px;
+  }
+
+  .story-button-group {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .story-button-group .btn-primary,
+  .story-button-group .btn-secondary {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+
+  /* GameOver & Victory */
+  .victory-card {
+    padding: 18px 16px;
+    width: 94%;
+  }
+
+  .victory-title {
+    font-size: 1.65rem;
+  }
+
+  .victory-canvas-wrap {
+    height: 140px;
+    margin: 8px 0 10px 0;
+  }
+
+  .stats-grid {
+    gap: 8px;
+    margin: 12px 0 16px 0;
+  }
+
+  .stat-box {
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+    margin-top: 14px;
+  }
+}
+
+/* Mobile Landscape & Ultra-compact Heights */
+@media (max-height: 520px) {
+  #hud-playing {
+    padding: calc(4px + var(--sat)) calc(12px + var(--sar)) calc(4px + var(--sab)) calc(12px + var(--sal));
+  }
+
+  .hud-top-bar {
+    align-items: center;
+  }
+
+  .hud-hearts-panel {
+    padding: 4px 8px;
+    gap: 2px;
+  }
+
+  .heart-icon {
+    font-size: 0.95rem;
+  }
+
+  .score-counter {
+    font-size: 1.3rem;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .glass-card {
+    padding: 12px 18px;
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px;
+    max-width: 520px;
+  }
+
+  .game-title {
+    font-size: 1.35rem;
+    margin-bottom: 2px;
+  }
+
+  .game-subtitle {
+    font-size: 0.72rem;
+    margin-bottom: 6px;
+  }
+
+  .stage-selector-container {
+    margin-bottom: 6px;
+  }
+
+  .stage-selector-title {
+    font-size: 0.6rem;
+    margin-bottom: 3px;
+  }
+
+  .stage-btn {
+    padding: 3px 2px;
+  }
+
+  .stage-icon {
+    font-size: 0.95rem;
+  }
+
+  .stage-name {
+    font-size: 0.52rem;
+  }
+
+  .rune-guide-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .guide-item {
+    padding: 3px 2px;
+  }
+
+  .guide-symbol {
+    font-size: 1.05rem;
+  }
+
+  .guide-name {
+    font-size: 0.58rem;
+  }
+
+  .menu-action-buttons {
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .menu-action-buttons .btn-primary,
+  .menu-action-buttons .btn-secondary {
+    width: auto;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    min-height: 38px;
+  }
+
+  .btn-subtle {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+
+  .high-score-tag {
+    margin-top: 4px;
+    font-size: 0.72rem;
+  }
+
+  .story-card {
+    padding: 10px 16px;
+  }
+
+  .story-canvas-wrap {
+    height: 105px;
+    margin-bottom: 6px;
+  }
+
+  .story-text-container {
+    min-height: 40px;
+    margin-bottom: 6px;
+  }
+
+  .story-slide-title {
+    font-size: 0.95rem;
+  }
+
+  .story-slide-text {
+    font-size: 0.75rem;
+  }
+
+  .story-slide-en {
+    display: none;
+  }
+
+  .story-dots-row {
+    margin-bottom: 6px;
+  }
+
+  .story-button-group {
+    flex-direction: row;
+    margin-top: 4px;
+    gap: 8px;
+  }
+
+  .story-button-group .btn-primary,
+  .story-button-group .btn-secondary {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    min-height: 34px;
+  }
+
+  .victory-card {
+    padding: 10px 16px;
+  }
+
+  .victory-title {
+    font-size: 1.35rem;
+  }
+
+  .victory-canvas-wrap {
+    height: 95px;
+    margin: 4px 0 6px 0;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin: 6px 0 8px 0;
+  }
+
+  .stat-box {
+    padding: 4px 6px;
+  }
+
+  .stat-label {
+    font-size: 0.58rem;
+  }
+
+  .stat-value {
+    font-size: 1.05rem;
+  }
+
+  .button-group {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .button-group .btn-primary,
+  .button-group .btn-secondary {
+    width: auto;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    min-height: 38px;
   }
 }

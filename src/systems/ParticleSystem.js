@@ -89,7 +89,8 @@ export class ParticleSystem {
       REGULAR: ['#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#c084fc', '#ffffff'],
       SPEEDSTER: ['#ffe4e6', '#fda4af', '#fb7185', '#f43f5e', '#f97316', '#fde047'],
       ARMORED: ['#f3e8ff', '#ddd6fe', '#c084fc', '#a855f7', '#7c3aed', '#fbbf24', '#f59e0b'],
-      BOSS: ['#fecdd3', '#fda4af', '#f43f5e', '#e11d48', '#be123c', '#991b1b', '#fbbf24']
+      BOSS: ['#fecdd3', '#fda4af', '#f43f5e', '#e11d48', '#be123c', '#991b1b', '#fbbf24'],
+      BOSS_MASTER: ['#ffffff', '#fde047', '#fbbf24', '#f43f5e', '#e11d48', '#be123c', '#881337', '#38bdf8']
     };
 
     // Sparkle magic palette for player drawing trail
@@ -226,7 +227,8 @@ export class ParticleSystem {
     const palette = this.ENEMY_PALETTES[enemyType] || this.ENEMY_PALETTES.REGULAR;
     const primaryColor = palette[3] || '#c084fc';
 
-    const isBoss = enemyType === 'BOSS';
+    const isBoss = enemyType === 'BOSS' || (typeof enemyType === 'string' && enemyType.startsWith('BOSS_'));
+    const isFinalBoss = enemyType === 'BOSS_MASTER';
     const isArmored = enemyType === 'ARMORED';
 
     // 1. Expanding shockwave ring
@@ -237,16 +239,34 @@ export class ParticleSystem {
       ring.x = x;
       ring.y = y;
       ring.radius = 8;
-      ring.maxRadius = isBoss ? 110 : (isArmored ? 70 : 52);
-      ring.growth = isBoss ? 280 : (isArmored ? 220 : 170);
+      ring.maxRadius = isFinalBoss ? 260 : (isBoss ? 110 : (isArmored ? 70 : 52));
+      ring.growth = isFinalBoss ? 550 : (isBoss ? 280 : (isArmored ? 220 : 170));
       ring.life = 1.0;
-      ring.decay = isBoss ? 2.2 : 3.2;
+      ring.decay = isFinalBoss ? 1.4 : (isBoss ? 2.2 : 3.2);
       ring.color = primaryColor;
       ring.type = 'ring';
     }
 
-    // 2. 20 - 30 Gravity-bound explosion sparks
-    const particleCount = Math.max(20, Math.min(30, count));
+    // Secondary golden ring for final boss
+    if (isFinalBoss) {
+      const ring2 = this._acquireParticle();
+      if (ring2) {
+        ring2.reset();
+        ring2.active = true;
+        ring2.x = x;
+        ring2.y = y;
+        ring2.radius = 16;
+        ring2.maxRadius = 320;
+        ring2.growth = 420;
+        ring2.life = 1.0;
+        ring2.decay = 1.1;
+        ring2.color = '#fde047';
+        ring2.type = 'ring';
+      }
+    }
+
+    // 2. Gravity-bound explosion sparks
+    const particleCount = isFinalBoss ? 55 : Math.max(20, Math.min(30, count));
     for (let i = 0; i < particleCount; i++) {
       const p = this._acquireParticle();
       if (!p) break;

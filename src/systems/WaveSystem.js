@@ -138,12 +138,14 @@ export class WaveSystem {
 
     // 2. Story Mode: Minions cleared -> Boss Battle
     if (this.gameMode === 'STORY' && this.levelData) {
-      // If all minions have spawned and died, spawn the Level Boss!
-      if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {
-        if (!this.isBossSpawned && livingEnemiesCount === 0) {
+      // In Level 5 (The Rooftop), or when totalMinions is 0, the boss is present immediately from the start!
+      const isImmediateBossLevel = this.currentLevelIndex === 5 || this.totalEnemiesInWave === 0 || this.levelData.bossType === 'BOSS_MASTER';
+
+      if (isImmediateBossLevel || this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {
+        if (!this.isBossSpawned && (isImmediateBossLevel || livingEnemiesCount === 0)) {
           this.isBossSpawned = true;
           this.isBossDefeated = false;
-          this.bossMinionSpawnTimer = 2.2; // Breathing window before first boss minion appears
+          this.bossMinionSpawnTimer = 1.8; // Breathing window before first boss minion appears
           if (this.onBossSpawn) {
             this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
           }
@@ -153,7 +155,7 @@ export class WaveSystem {
               ? [...this.levelData.bossPhases[0]]
               : [...this.levelData.bossSymbols],
             bossPhases: this.levelData.bossPhases ? this.levelData.bossPhases.map(p => [...p]) : null,
-            bossLives: this.levelData.bossLives || 3,
+            bossLives: this.levelData.bossLives || 5,
             isBoss: true,
             isHeartGhost: false,
             speedMultiplier: 0.85
