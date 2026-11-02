@@ -234,6 +234,53 @@ const DEFAULT_RAW_TEMPLATES = {
       { x: 10, y: 40 }, { x: 15, y: 15 }, { x: 35, y: 5 }, { x: 50, y: 25 },
       { x: 65, y: 5 }, { x: 85, y: 15 }, { x: 90, y: 40 }, { x: 50, y: 95 }
     ]
+  ],
+  circle: [
+    // Vòng tròn thuận chiều kim đồng hồ từ đỉnh trên
+    [
+      { x: 50, y: 5 }, { x: 82, y: 18 }, { x: 95, y: 50 }, { x: 82, y: 82 },
+      { x: 50, y: 95 }, { x: 18, y: 82 }, { x: 5, y: 50 }, { x: 18, y: 18 },
+      { x: 50, y: 5 }
+    ],
+    // Vòng tròn ngược chiều kim đồng hồ từ đỉnh trên
+    [
+      { x: 50, y: 5 }, { x: 18, y: 18 }, { x: 5, y: 50 }, { x: 18, y: 82 },
+      { x: 50, y: 95 }, { x: 82, y: 82 }, { x: 95, y: 50 }, { x: 82, y: 18 },
+      { x: 50, y: 5 }
+    ],
+    // Vòng tròn từ cạnh trái
+    [
+      { x: 5, y: 50 }, { x: 18, y: 18 }, { x: 50, y: 5 }, { x: 82, y: 18 },
+      { x: 95, y: 50 }, { x: 82, y: 82 }, { x: 50, y: 95 }, { x: 18, y: 82 },
+      { x: 5, y: 50 }
+    ],
+    // Vòng tròn từ đáy lên
+    [
+      { x: 50, y: 95 }, { x: 82, y: 82 }, { x: 95, y: 50 }, { x: 82, y: 18 },
+      { x: 50, y: 5 }, { x: 18, y: 18 }, { x: 5, y: 50 }, { x: 18, y: 82 },
+      { x: 50, y: 95 }
+    ]
+  ],
+  spiral: [
+    // Xoắn ốc thuận chiều kim đồng hồ (từ ngoài vào tâm)
+    [
+      { x: 50, y: 5 }, { x: 85, y: 20 }, { x: 95, y: 50 }, { x: 85, y: 80 },
+      { x: 50, y: 95 }, { x: 15, y: 80 }, { x: 10, y: 50 }, { x: 25, y: 25 },
+      { x: 50, y: 20 }, { x: 75, y: 35 }, { x: 80, y: 55 }, { x: 65, y: 75 },
+      { x: 50, y: 75 }, { x: 35, y: 65 }, { x: 35, y: 50 }, { x: 50, y: 50 }
+    ],
+    // Xoắn ốc ngược chiều kim đồng hồ (từ ngoài vào tâm)
+    [
+      { x: 50, y: 5 }, { x: 15, y: 20 }, { x: 10, y: 50 }, { x: 15, y: 80 },
+      { x: 50, y: 95 }, { x: 85, y: 80 }, { x: 90, y: 50 }, { x: 75, y: 25 },
+      { x: 50, y: 20 }, { x: 25, y: 35 }, { x: 20, y: 55 }, { x: 35, y: 75 },
+      { x: 50, y: 75 }, { x: 65, y: 65 }, { x: 65, y: 50 }, { x: 50, y: 50 }
+    ],
+    // Nét xoáy bão / cuộn gió (vortex swirl)
+    [
+      { x: 20, y: 10 }, { x: 80, y: 15 }, { x: 90, y: 50 }, { x: 60, y: 85 },
+      { x: 25, y: 75 }, { x: 30, y: 40 }, { x: 65, y: 45 }, { x: 55, y: 60 }
+    ]
   ]
 };
 
@@ -380,6 +427,24 @@ export class GestureEngine {
         // Trái tim: Chiều cao và chiều rộng tương đương, không thể là nét dẹt 1D
         if (aspect < 0.35 || aspect > 2.8) return false;
         return true;
+      }
+
+      case 'circle': {
+        // Vòng tròn (Frost Nova): Tỷ lệ khung tương đối vuông vức (không phải nét 1D)
+        if (aspect < 0.45 || aspect > 2.2) return false;
+        // Điểm đầu và cuối gần như khép kín thành vòng (< 50px trong ô 100x100)
+        const closeDist = distance(normalizedPoints[0], normalizedPoints[31]);
+        if (closeDist > 52) return false;
+        // Chiều dài đường bao quanh đủ lớn để tạo thành vòng tròn
+        const totalCurve = pathLength(normalizedPoints);
+        return totalCurve >= 130;
+      }
+
+      case 'spiral': {
+        // Xoắn ốc / Cơn lốc cuộn gió: Nét vẽ 2D có độ cuộn lượn sóng dài
+        if (aspect < 0.35 || aspect > 2.8) return false;
+        const totalCurve = pathLength(normalizedPoints);
+        return totalCurve >= 125;
       }
 
       default:

@@ -73,6 +73,26 @@ export const RUNES = {
     lightColor: '#ffe4e6',
     baseScore: 200,
     description: 'Hồi phục sinh mệnh'
+  },
+  circle: {
+    id: 'circle',
+    symbol: '❄️',
+    name: 'Frost Nova',
+    color: '#38bdf8',
+    glow: '#0284c7',
+    lightColor: '#e0f2fe',
+    baseScore: 250,
+    description: 'Đóng băng ngưng đọng tất cả u linh'
+  },
+  spiral: {
+    id: 'spiral',
+    symbol: '🌀',
+    name: 'Gale Shockwave',
+    color: '#34d399',
+    glow: '#059669',
+    lightColor: '#d1fae5',
+    baseScore: 250,
+    description: 'Đẩy lùi tất cả u linh ra xa'
   }
 };
 
@@ -87,6 +107,28 @@ export const ENEMY_TYPES = {
     color: '#e0e7ff',
     glowColor: '#818cf8',
     score: 100
+  },
+  FREEZE: {
+    type: 'FREEZE',
+    name: 'U Linh Băng Giá',
+    baseSpeed: 45,
+    minSymbols: 1,
+    maxSymbols: 1,
+    radius: 27,
+    color: '#bae6fd',
+    glowColor: '#38bdf8',
+    score: 300
+  },
+  BLAST: {
+    type: 'BLAST',
+    name: 'U Linh Cuồng Phong',
+    baseSpeed: 48,
+    minSymbols: 1,
+    maxSymbols: 1,
+    radius: 27,
+    color: '#a7f3d0',
+    glowColor: '#10b981',
+    score: 300
   },
   SPEEDSTER: {
     type: 'SPEEDSTER',
@@ -191,7 +233,9 @@ export const DIFFICULTY_LEVELS = {
     badge: '🔥 TIÊU CHUẨN',
     speedMult: 1.0,
     spawnIntervalMult: 1.0,
-    heartMult: 0.85,
+    heartMult: 1.0,
+    freezeMult: 1.0,
+    blastMult: 1.0,
     squadBonus: 0,
     description: 'Thử thách cân bằng: U linh tấn công đông đảo theo bầy, tốc độ vừa phải dễ vẽ.'
   },
@@ -201,7 +245,9 @@ export const DIFFICULTY_LEVELS = {
     badge: '💀 ÁC MỘNG',
     speedMult: 1.15,
     spawnIntervalMult: 0.82,
-    heartMult: 0.45,
+    heartMult: 0.80,
+    freezeMult: 0.85,
+    blastMult: 0.85,
     squadBonus: 1,
     description: 'Ác mộng: Bầy ma đông đúc, ra liên tục nhiều con, ấn ký dài và hiểm!'
   },
@@ -211,7 +257,9 @@ export const DIFFICULTY_LEVELS = {
     badge: '⚡ ĐỊA NGỤC',
     speedMult: 1.30,
     spawnIntervalMult: 0.68,
-    heartMult: 0.25,
+    heartMult: 0.65,
+    freezeMult: 0.75,
+    blastMult: 0.75,
     squadBonus: 2,
     description: 'Thử thách cực hạn: Bão u linh 4-6 con ập vào 4 phía, ấn ký đa dạng!'
   }

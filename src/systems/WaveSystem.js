@@ -391,20 +391,51 @@ export class WaveSystem {
       symbolQueue.push(rune);
     }
 
-    // Chance to spawn special Heart Ghost (❤️) - balanced clutch reward
+    // Tactical Power-Up Ghosts: Heart (❤️), Freeze (❄️), Blast/Pushback (🌀)
     const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
-    const heartChance = (playerHp <= 2 ? 0.10 : (playerHp < 5 ? 0.04 : 0.015)) * diffConfig.heartMult;
-    const isHeartGhost = Math.random() < heartChance;
-    if (isHeartGhost) {
+    const heartMult = diffConfig.heartMult ?? 1.0;
+    const freezeMult = diffConfig.freezeMult ?? 1.0;
+    const blastMult = diffConfig.blastMult ?? 1.0;
+
+    // Much more generous heart spawn rate:
+    // When critical (<=2 HP): ~24%
+    // When wounded (<5 HP): ~15%
+    // When full health (5 HP): ~8%
+    const heartChance = (playerHp <= 2 ? 0.24 : (playerHp < 5 ? 0.15 : 0.08)) * heartMult;
+
+    // Freeze ghost: slows or completely freezes all ghosts on screen
+    const canSpawnTactical = (this.gameMode === 'ENDLESS' || this.currentLevelIndex >= 2 || this.enemiesSpawnedInWave >= 4);
+    const freezeChance = canSpawnTactical ? 0.12 * freezeMult : 0;
+
+    // Blast ghost: knocks back and pushes all ghosts far away from Momo
+    const blastChance = canSpawnTactical ? 0.12 * blastMult : 0;
+
+    const roll = Math.random();
+    let isHeartGhost = false;
+    let isFreezeGhost = false;
+    let isBlastGhost = false;
+
+    if (roll < heartChance) {
+      isHeartGhost = true;
       symbolQueue.length = 0;
       symbolQueue.push('heart');
+    } else if (roll < heartChance + freezeChance) {
+      isFreezeGhost = true;
+      symbolQueue.length = 0;
+      symbolQueue.push('circle');
+    } else if (roll < heartChance + freezeChance + blastChance) {
+      isBlastGhost = true;
+      symbolQueue.length = 0;
+      symbolQueue.push('spiral');
     }
 
     return {
-      archetype: isHeartGhost ? 'REGULAR' : archetype,
+      archetype: isHeartGhost ? 'REGULAR' : (isFreezeGhost ? 'FREEZE' : (isBlastGhost ? 'BLAST' : archetype)),
       symbolQueue,
       isHeartGhost,
-      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier
+      isFreezeGhost,
+      isBlastGhost,
+      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier))
     };
   }
 
@@ -443,21 +474,43 @@ export class WaveSystem {
       symbolQueue.push(rune);
     }
 
-    // Emergency healing Heart Ghost if player is hurting
+    // Emergency healing Heart, Freeze, or Blast Ghost during Boss battles
     const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
-    const heartChance = (playerHp <= 2 ? 0.09 : (playerHp < 5 ? 0.03 : 0.01)) * diffConfig.heartMult;
-    const isHeartGhost = Math.random() < heartChance;
-    if (isHeartGhost) {
+    const heartMult = diffConfig.heartMult ?? 1.0;
+    const freezeMult = diffConfig.freezeMult ?? 1.0;
+    const blastMult = diffConfig.blastMult ?? 1.0;
+
+    const heartChance = (playerHp <= 2 ? 0.22 : (playerHp < 5 ? 0.14 : 0.08)) * heartMult;
+    const freezeChance = 0.11 * freezeMult;
+    const blastChance = 0.11 * blastMult;
+
+    const roll = Math.random();
+    let isHeartGhost = false;
+    let isFreezeGhost = false;
+    let isBlastGhost = false;
+
+    if (roll < heartChance) {
+      isHeartGhost = true;
       symbolQueue.length = 0;
       symbolQueue.push('heart');
+    } else if (roll < heartChance + freezeChance) {
+      isFreezeGhost = true;
+      symbolQueue.length = 0;
+      symbolQueue.push('circle');
+    } else if (roll < heartChance + freezeChance + blastChance) {
+      isBlastGhost = true;
+      symbolQueue.length = 0;
+      symbolQueue.push('spiral');
     }
 
     return {
-      archetype: isHeartGhost ? 'REGULAR' : archetype,
+      archetype: isHeartGhost ? 'REGULAR' : (isFreezeGhost ? 'FREEZE' : (isBlastGhost ? 'BLAST' : archetype)),
       symbolQueue,
       isHeartGhost,
+      isFreezeGhost,
+      isBlastGhost,
       isBoss: false,
-      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier * 0.98
+      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier * 0.98))
     };
   }
 }
