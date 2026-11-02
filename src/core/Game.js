@@ -68,6 +68,10 @@ export class Game {
     this.enemies = [];
     this.projectiles = [];
 
+    // Difficulty state (NORMAL | HARDCORE)
+    this.difficulty = this._loadDifficulty();
+    this.waveSystem.setDifficulty(this.difficulty);
+
     // Scoring & Combo runtime state
     this.score = 0;
     this.displayedScore = 0;
@@ -143,6 +147,22 @@ export class Game {
         '#c084fc',
         30
       );
+
+      // Trigger companion story intro dialogue after transition
+      if (lvlData && lvlData.companion && lvlData.storyIntroQuote) {
+        setTimeout(() => {
+          if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
+            this.uiManager.showDialogue({
+              name: lvlData.companion.name,
+              role: lvlData.companion.role,
+              avatar: lvlData.companion.icon,
+              color: lvlData.companion.color,
+              text: lvlData.storyIntroQuote,
+              duration: 4500
+            });
+          }
+        }, 2200);
+      }
     };
 
     this.waveSystem.onBossSpawn = (bossType, bossName) => {
@@ -161,6 +181,23 @@ export class Game {
         '#f43f5e',
         26
       );
+
+      // Trigger boss battle cry dialogue
+      const lvlData = this.waveSystem.levelData;
+      if (lvlData && lvlData.bossSpawnQuote) {
+        setTimeout(() => {
+          if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
+            this.uiManager.showDialogue({
+              name: lvlData.bossName || bossName,
+              role: 'U Linh Thống Lĩnh',
+              avatar: '👻⚡',
+              color: '#f43f5e',
+              text: lvlData.bossSpawnQuote,
+              duration: 4500
+            });
+          }
+        }, 600);
+      }
     };
 
     this.waveSystem.onLevelComplete = (lvlNum, lvlData) => {
@@ -173,6 +210,18 @@ export class Game {
         '#34d399',
         30
       );
+
+      // Trigger boss purification dialogue
+      if (lvlData && lvlData.bossDefeatQuote) {
+        this.uiManager.showDialogue({
+          name: lvlData.bossName,
+          role: '✨ Đã Được Thanh Tẩy',
+          avatar: '🌟',
+          color: '#34d399',
+          text: lvlData.bossDefeatQuote,
+          duration: 4800
+        });
+      }
     };
 
     this.waveSystem.onGameVictory = () => {
@@ -284,6 +333,29 @@ export class Game {
       return true;
     }
     return false;
+  }
+
+  _loadDifficulty() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DIFFICULTY);
+      if (saved === 'INFERNO' || saved === 'HARDCORE' || saved === 'NORMAL') {
+        return saved;
+      }
+      return 'NORMAL';
+    } catch (e) {
+      return 'NORMAL';
+    }
+  }
+
+  setDifficulty(difficulty = 'NORMAL') {
+    this.difficulty = difficulty;
+    try {
+      localStorage.setItem(STORAGE_KEYS.DIFFICULTY, difficulty);
+    } catch (e) {}
+    this.waveSystem.setDifficulty(difficulty);
+    if (this.uiManager && typeof this.uiManager.updateDifficultyUI === 'function') {
+      this.uiManager.updateDifficultyUI(difficulty);
+    }
   }
 
   resetGameData() {
@@ -404,88 +476,139 @@ export class Game {
       this.lightningFlashTimer -= dt;
     }
 
-    // 2. Wave System Spawner with Pooled Enemy
-    const enemyConfig = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
-    if (enemyConfig) {
-      const isHeart = enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart'));
-      const isBoss = enemyConfig.isBoss || enemyConfig.archetype === 'BOSS' || (typeof enemyConfig.archetype === 'string' && enemyConfig.archetype.startsWith('BOSS_'));
-      let spawnPos;
-      if (isHeart) {
-        // Stationary Heart Ghost spawns around Momo in viewable arena
-        const angle = Math.random() * Math.PI * 2;
-        const dist = Math.min(this.width, this.height) * 0.28;
-        spawnPos = {
-          x: Math.max(60, Math.min(this.width - 60, this.width / 2 + Math.cos(angle) * dist)),
-          y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
-        };
-      } else if (isBoss) {
-        if (enemyConfig.archetype === 'BOSS_MASTER') {
-          // Final Master Boss: Positioned majestically on the RIGHT side of the screen
-          spawnPos = {
-            x: this.width * 0.76,
-            y: this.height * 0.46
-          };
-        } else {
-          // Level 1-4 Bosses descend grandly from upper center
-          spawnPos = {
-            x: this.width / 2,
-            y: -75
-          };
+    // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
+    const spawnResult = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
+    if (spawnResult) {
+      const configs = Array.isArray(spawnResult) ? spawnResult : [spawnResult];
+      const isSquad = configs.length > 1;
+
+      // Filter/rebalance Heart Ghost: at most 1 Heart Ghost active on screen at a time
+      let hasLivingHeart = this.enemies.some(e => e.isHeartGhost);
+
+      // Coordinated edge positions for simultaneous squad members
+      let squadPositions = [];
+      if (isSquad && this.waveSystem.currentLevelIndex !== 5) {
+        squadPositions = Enemy.getSquadEdgePositions(configs.length, this.width, this.height);
+      }
+
+      for (let k = 0; k < configs.length; k++) {
+        const enemyConfig = configs[k];
+        let isHeart = enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart'));
+        if (isHeart && hasLivingHeart) {
+          isHeart = false;
+          enemyConfig.isHeartGhost = false;
+          enemyConfig.symbolQueue = ['horizontal', 'vertical'];
         }
-      } else {
-        // Minions in Level 5 (The Rooftop) spawn from the right border and upper sky towards Momo on the left
-        if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
-          const spawnSide = Math.random();
-          if (spawnSide < 0.65) {
+        if (isHeart) hasLivingHeart = true;
+
+        const isBoss = enemyConfig.isBoss || enemyConfig.archetype === 'BOSS' || (typeof enemyConfig.archetype === 'string' && enemyConfig.archetype.startsWith('BOSS_'));
+        let spawnPos;
+
+        if (isHeart) {
+          // Stationary Heart Ghost spawns around Momo in viewable arena
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.min(this.width, this.height) * 0.28;
+          spawnPos = {
+            x: Math.max(60, Math.min(this.width - 60, this.width / 2 + Math.cos(angle) * dist)),
+            y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
+          };
+        } else if (isBoss) {
+          if (enemyConfig.archetype === 'BOSS_MASTER') {
+            // Final Master Boss: Positioned majestically on the RIGHT side of the screen
             spawnPos = {
-              x: this.width + 40,
-              y: Math.random() * (this.height * 0.65) + 40
+              x: this.width * 0.76,
+              y: this.height * 0.46
             };
           } else {
+            // Level 1-4 Bosses descend grandly from upper center
             spawnPos = {
-              x: this.width * 0.45 + Math.random() * (this.width * 0.55),
-              y: -40
+              x: this.width / 2,
+              y: -75
             };
           }
         } else {
-          spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+          // Minions in Level 5 (The Rooftop) spawn from the right border and upper sky towards Momo on the left
+          if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
+            if (isSquad) {
+              const yRatio = (k + 0.5) / configs.length;
+              spawnPos = {
+                x: this.width + 50 + k * 30,
+                y: Math.max(60, Math.min(this.height - 80, this.height * 0.15 + yRatio * (this.height * 0.68) + (Math.random() - 0.5) * 30))
+              };
+            } else {
+              const spawnSide = Math.random();
+              if (spawnSide < 0.65) {
+                spawnPos = {
+                  x: this.width + 40,
+                  y: Math.random() * (this.height * 0.65) + 40
+                };
+              } else {
+                spawnPos = {
+                  x: this.width * 0.45 + Math.random() * (this.width * 0.55),
+                  y: -40
+                };
+              }
+            }
+          } else {
+            if (isSquad && squadPositions[k]) {
+              spawnPos = squadPositions[k];
+            } else {
+              spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+            }
+          }
+        }
+
+        const newEnemy = this.enemyPool.acquire();
+        newEnemy.init({
+          type: enemyConfig.archetype,
+          x: spawnPos.x,
+          y: spawnPos.y,
+          canvasWidth: this.width,
+          canvasHeight: this.height,
+          isHeartGhost: isHeart,
+          symbolQueue: enemyConfig.symbolQueue,
+          bossPhases: enemyConfig.bossPhases,
+          bossLives: enemyConfig.bossLives,
+          speedMultiplier: enemyConfig.speedMultiplier,
+          targetPlayerPos: this.player
+        });
+        this.enemies.push(newEnemy);
+
+        // Boss / Armored entrance feedback
+        if (isBoss) {
+          this.triggerShake(20, 0.75);
+          if (this.audioSystem) {
+            if (typeof this.audioSystem.playBossRoar === 'function') {
+              this.audioSystem.playBossRoar();
+            } else if (typeof this.audioSystem.soundBossCast === 'function') {
+              this.audioSystem.soundBossCast();
+            }
+          }
+        } else if (enemyConfig.archetype === 'ARMORED') {
+          this.triggerShake(11, 0.55);
+          this.particleSystem.emitFloatingText(
+            '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
+            this.width / 2,
+            this.height * 0.22,
+            '#a855f7',
+            22
+          );
         }
       }
 
-      const newEnemy = this.enemyPool.acquire();
-      newEnemy.init({
-        type: enemyConfig.archetype,
-        x: spawnPos.x,
-        y: spawnPos.y,
-        canvasWidth: this.width,
-        canvasHeight: this.height,
-        isHeartGhost: isHeart,
-        symbolQueue: enemyConfig.symbolQueue,
-        bossPhases: enemyConfig.bossPhases,
-        bossLives: enemyConfig.bossLives,
-        speedMultiplier: enemyConfig.speedMultiplier,
-        targetPlayerPos: this.player
-      });
-      this.enemies.push(newEnemy);
-
-      // Boss / Armored entrance screen shake
-      if (isBoss) {
-        this.triggerShake(20, 0.75);
-        if (this.audioSystem) {
-          if (typeof this.audioSystem.playBossRoar === 'function') {
-            this.audioSystem.playBossRoar();
-          } else if (typeof this.audioSystem.soundBossCast === 'function') {
-            this.audioSystem.soundBossCast();
-          }
-        }
-      } else if (enemyConfig.archetype === 'ARMORED') {
-        this.triggerShake(11, 0.55);
+      // If a squad of 2+ ghosts ambushes together, add an ambient dramatic chime or shake
+      if (configs.length >= 2) {
+        const shakePower = configs.length >= 4 ? 9 : (configs.length === 3 ? 7 : 4);
+        this.triggerShake(shakePower, 0.28);
+        const countText = configs.length >= 3 
+          ? `⚔️ BẦY U LINH TẬP KÍCH! (x${configs.length}) ⚔️`
+          : `⚡ TOÁN U LINH XUẤT HIỆN! (x2) ⚡`;
         this.particleSystem.emitFloatingText(
-          '⚠️ HẮC GIÁP TƯỚNG QUÂN! ⚠️',
+          countText,
           this.width / 2,
-          this.height * 0.22,
-          '#a855f7',
-          22
+          this.height * 0.18,
+          configs.length >= 4 ? '#f43f5e' : (configs.length === 3 ? '#fb923c' : '#38bdf8'),
+          configs.length >= 3 ? 20 : 16
         );
       }
     }

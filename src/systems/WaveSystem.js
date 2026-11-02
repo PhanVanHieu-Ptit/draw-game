@@ -5,11 +5,12 @@
  * with fallback to Endless Mode defense after victory.
  */
 
-import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES } from '../core/Constants.js';
+import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES, DIFFICULTY_LEVELS } from '../core/Constants.js';
 
 export class WaveSystem {
   constructor() {
     this.gameMode = 'STORY'; // 'STORY' | 'ENDLESS'
+    this.difficulty = 'NORMAL'; // 'NORMAL' | 'HARDCORE'
     this.currentLevelIndex = 1;
     this.currentWave = 1; // Alias for backward compatibility
     this.levelData = LEVEL_CONFIGS[0];
@@ -17,8 +18,8 @@ export class WaveSystem {
     this.enemiesSpawnedInWave = 0;
     this.totalEnemiesInWave = 0;
     this.spawnTimer = 0;
-    this.spawnInterval = 2.4;
-    this.speedMultiplier = 1.0;
+    this.spawnInterval = 1.85;
+    this.speedMultiplier = 1.05;
     this.intermissionTimer = 0;
     this.isIntermission = false;
 
@@ -50,6 +51,13 @@ export class WaveSystem {
     this.reset();
   }
 
+  setDifficulty(difficulty = 'NORMAL') {
+    this.difficulty = difficulty;
+    if (this.currentLevelIndex) {
+      this.initLevel(this.currentLevelIndex);
+    }
+  }
+
   /**
    * Initialize a level (1..5) or endless wave
    * @param {number} levelNum 
@@ -64,21 +72,23 @@ export class WaveSystem {
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
+    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
+
     if (levelNum <= 5 && this.gameMode === 'STORY') {
       // 5-Level Story Campaign
       this.levelData = LEVEL_CONFIGS[levelNum - 1];
       this.totalEnemiesInWave = this.levelData.totalMinions;
-      this.spawnInterval = this.levelData.baseSpawnInterval;
-      this.speedMultiplier = this.levelData.speedMultiplier;
+      this.spawnInterval = this.levelData.baseSpawnInterval * diffConfig.spawnIntervalMult;
+      this.speedMultiplier = this.levelData.speedMultiplier * diffConfig.speedMult;
     } else {
       // Endless Mode: GDD Formula Scaling
       this.levelData = null;
-      this.totalEnemiesInWave = Math.floor(8 + 4 * Math.pow(levelNum, 1.18));
-      this.spawnInterval = Math.max(0.65, 2.6 * Math.exp(-0.09 * (levelNum - 1)));
-      this.speedMultiplier = Math.min(1.75, 1.0 + 0.05 * (levelNum - 1));
+      this.totalEnemiesInWave = Math.floor((10 + 5 * Math.pow(levelNum, 1.22)) * (this.difficulty === 'HARDCORE' ? 1.25 : 1.0));
+      this.spawnInterval = Math.max(0.45, (2.2 * Math.exp(-0.11 * (levelNum - 1))) * diffConfig.spawnIntervalMult);
+      this.speedMultiplier = Math.min(2.2, (1.1 + 0.08 * (levelNum - 1)) * diffConfig.speedMult);
     }
 
-    this.spawnTimer = 1.2; // brief breathing time before first ghost
+    this.spawnTimer = 1.0; // brief breathing time before first ghost
 
     if (this.onLevelStart && this.levelData) {
       this.onLevelStart(this.currentLevelIndex, this.levelData);
@@ -117,9 +127,11 @@ export class WaveSystem {
    * @param {number} dt 
    * @param {number} playerHp 
    * @param {number} livingEnemiesCount 
-   * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number, isBoss?: boolean, isHeartGhost?: boolean } | null}
+   * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number, isBoss?: boolean, isHeartGhost?: boolean } | Array<object> | null}
    */
   update(dt, playerHp, livingEnemiesCount) {
+    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
+
     // 1. Intermission between stages or victory transition
     if (this.isIntermission) {
       this.intermissionTimer -= dt;
@@ -145,7 +157,7 @@ export class WaveSystem {
         if (!this.isBossSpawned && (isImmediateBossLevel || livingEnemiesCount === 0)) {
           this.isBossSpawned = true;
           this.isBossDefeated = false;
-          this.bossMinionSpawnTimer = 1.8; // Breathing window before first boss minion appears
+          this.bossMinionSpawnTimer = 1.4; // Breathing window before first boss minion appears
           if (this.onBossSpawn) {
             this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
           }
@@ -158,7 +170,7 @@ export class WaveSystem {
             bossLives: this.levelData.bossLives || 5,
             isBoss: true,
             isHeartGhost: false,
-            speedMultiplier: 0.85
+            speedMultiplier: 0.92 * diffConfig.speedMult
           };
         }
 
@@ -168,20 +180,42 @@ export class WaveSystem {
           return null;
         }
 
-        // WHILE BOSS IS ALIVE: Continue spawning small ghosts ("các con ma nhỏ")!
+        // WHILE BOSS IS ALIVE: Relentlessly spawn small ghosts ("các con ma nhỏ") in squads!
         if (this.isBossSpawned && !this.isBossDefeated) {
           this.bossMinionSpawnTimer -= dt;
           if (this.bossMinionSpawnTimer <= 0) {
             // livingEnemiesCount includes Boss + minions
             const livingMinions = Math.max(0, livingEnemiesCount - 1);
-            const maxMinions = this.currentLevelIndex <= 2 ? 2 : 3;
+            let maxMinions = this.currentLevelIndex <= 2 ? 4 : (this.currentLevelIndex <= 4 ? 6 : 8);
+            if (this.difficulty === 'HARDCORE') maxMinions += 2;
+            if (this.difficulty === 'INFERNO') maxMinions += 4;
+
             if (livingMinions < maxMinions) {
-              const baseInterval = this.levelData.baseSpawnInterval || 2.4;
-              const interval = Math.max(2.0, baseInterval * 1.35) * (playerHp <= 2 ? 1.2 : 1.0);
+              const baseInterval = this.levelData.baseSpawnInterval || 1.1;
+              const interval = Math.max(0.60, baseInterval * 0.90) * (playerHp <= 2 ? 1.12 : 1.0) * diffConfig.spawnIntervalMult;
               this.bossMinionSpawnTimer = interval;
+
+              const remainingSlots = maxMinions - livingMinions;
+              let spawnCount = 1;
+
+              if (this.currentLevelIndex >= 5 && remainingSlots >= 3 && Math.random() < 0.75) {
+                spawnCount = Math.min(remainingSlots, 3 + diffConfig.squadBonus);
+              } else if (this.currentLevelIndex >= 4 && remainingSlots >= 2 && Math.random() < 0.70) {
+                spawnCount = Math.min(remainingSlots, 2 + diffConfig.squadBonus);
+              } else if (this.currentLevelIndex >= 2 && remainingSlots >= 2 && Math.random() < 0.60) {
+                spawnCount = Math.min(remainingSlots, 2);
+              }
+
+              if (spawnCount > 1) {
+                const squad = [];
+                for (let s = 0; s < spawnCount; s++) {
+                  squad.push(this._generateBossMinionConfig(playerHp));
+                }
+                return squad;
+              }
               return this._generateBossMinionConfig(playerHp);
             } else {
-              this.bossMinionSpawnTimer = 0.8; // retry soon once a minion is cleared
+              this.bossMinionSpawnTimer = 0.5; // retry soon once a minion is cleared
             }
           }
         }
@@ -198,18 +232,60 @@ export class WaveSystem {
       }
     }
 
-    // 3. Spawning Minions
+    // 3. Spawning Minions in Dynamic Squads
     if (this.enemiesSpawnedInWave < this.totalEnemiesInWave) {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         let interval = this.spawnInterval;
         if (playerHp <= 2) {
-          interval *= 1.15; // slightly slower when critical
+          interval *= 1.10; // slightly slower when critical
         }
         this.spawnTimer = interval;
-        this.enemiesSpawnedInWave++;
 
-        return this._generateEnemyConfig(playerHp);
+        const remaining = this.totalEnemiesInWave - this.enemiesSpawnedInWave;
+        let squadSize = 1;
+
+        if (this.currentLevelIndex === 1 && this.gameMode === 'STORY') {
+          // Level 1: Clean single spawns for guided tutorial & test compliance
+          squadSize = 1;
+        } else if (this.currentLevelIndex === 2 && this.gameMode === 'STORY') {
+          // Level 2: Frequently twins (2 ghosts) or trios (3 ghosts) appearing together
+          const roll = Math.random();
+          const wantTrio = roll < (this.difficulty === 'INFERNO' ? 0.45 : (this.difficulty === 'HARDCORE' ? 0.35 : 0.22));
+          const wantPair = roll < (this.difficulty === 'INFERNO' ? 0.95 : (this.difficulty === 'HARDCORE' ? 0.90 : 0.82));
+          let targetSize = wantTrio ? 3 : (wantPair ? 2 : 1);
+          if (diffConfig.squadBonus) targetSize += diffConfig.squadBonus;
+          squadSize = Math.min(remaining, targetSize);
+        } else if (this.currentLevelIndex === 3 && this.gameMode === 'STORY') {
+          // Level 3: Flanking squads of 2, 3, or 4 ghosts rushing together
+          const roll = Math.random();
+          const targetSize = roll < 0.40 ? 4 : (roll < 0.85 ? 3 : 2);
+          squadSize = Math.min(remaining, targetSize + diffConfig.squadBonus);
+        } else if (this.currentLevelIndex >= 4 && this.gameMode === 'STORY') {
+          // Level 4: Full ambushes of 3, 4, or 5 ghosts simultaneously surrounding Momo
+          const roll = Math.random();
+          const targetSize = roll < 0.45 ? 5 : (roll < 0.85 ? 4 : 3);
+          squadSize = Math.min(remaining, targetSize + diffConfig.squadBonus);
+        } else {
+          // Endless Mode: Squads scaling with wave index up to 6 ghosts simultaneously
+          const maxSquad = Math.min(6, 2 + Math.floor(this.currentWave * 0.45));
+          const targetSize = Math.floor(Math.random() * (maxSquad - 1)) + 2 + diffConfig.squadBonus;
+          squadSize = Math.min(remaining, targetSize);
+        }
+
+        squadSize = Math.max(1, Math.min(remaining, squadSize));
+
+        if (squadSize === 1) {
+          this.enemiesSpawnedInWave++;
+          return this._generateEnemyConfig(playerHp);
+        } else {
+          const squad = [];
+          for (let s = 0; s < squadSize; s++) {
+            this.enemiesSpawnedInWave++;
+            squad.push(this._generateEnemyConfig(playerHp));
+          }
+          return squad;
+        }
       }
     }
 
@@ -228,10 +304,14 @@ export class WaveSystem {
 
     if (lvl) {
       // Guided Story Level archetype distribution
-      if (lvl.hasSpeedster && rand < 0.28) {
-        archetype = 'SPEEDSTER';
-      } else if (lvl.hasArmored && rand > 0.72) {
-        archetype = 'ARMORED';
+      if (lvl.hasSpeedster && lvl.hasArmored) {
+        if (rand < 0.38) archetype = 'SPEEDSTER';
+        else if (rand < 0.72) archetype = 'ARMORED';
+        else archetype = 'REGULAR';
+      } else if (lvl.hasSpeedster) {
+        archetype = rand < 0.40 ? 'SPEEDSTER' : 'REGULAR';
+      } else if (lvl.hasArmored) {
+        archetype = rand < 0.40 ? 'ARMORED' : 'REGULAR';
       } else {
         archetype = 'REGULAR';
       }
@@ -240,14 +320,14 @@ export class WaveSystem {
       if (W === 1) {
         archetype = 'REGULAR';
       } else if (W === 2) {
-        archetype = rand < 0.2 ? 'SPEEDSTER' : 'REGULAR';
+        archetype = rand < 0.30 ? 'SPEEDSTER' : 'REGULAR';
       } else if (W <= 4) {
-        if (rand < 0.25) archetype = 'SPEEDSTER';
-        else if (rand < 0.38) archetype = 'ARMORED';
-        else archetype = 'REGULAR';
-      } else {
         if (rand < 0.35) archetype = 'SPEEDSTER';
         else if (rand < 0.60) archetype = 'ARMORED';
+        else archetype = 'REGULAR';
+      } else {
+        if (rand < 0.40) archetype = 'SPEEDSTER';
+        else if (rand < 0.75) archetype = 'ARMORED';
         else archetype = 'REGULAR';
       }
     }
@@ -263,14 +343,14 @@ export class WaveSystem {
           archetype: 'REGULAR',
           symbolQueue: ['horizontal'],
           isHeartGhost: false,
-          speedMultiplier: 0.65
+          speedMultiplier: 0.75
         };
       } else if (this.enemiesSpawnedInWave === 2) {
         return {
           archetype: 'REGULAR',
           symbolQueue: ['vertical'],
           isHeartGhost: false,
-          speedMultiplier: 0.70
+          speedMultiplier: 0.80
         };
       }
     }
@@ -279,11 +359,31 @@ export class WaveSystem {
     let count = 1;
 
     if (archetype === 'REGULAR') {
-      count = (this.currentLevelIndex >= 3 && Math.random() < 0.45) ? 2 : 1;
+      if (this.currentLevelIndex === 1) {
+        count = (this.enemiesSpawnedInWave > 4 && Math.random() < 0.40) ? 2 : 1;
+      } else if (this.currentLevelIndex === 2) {
+        count = Math.random() < 0.65 ? 2 : 1;
+      } else if (this.currentLevelIndex === 3) {
+        count = Math.random() < 0.45 ? 3 : 2;
+      } else if (this.currentLevelIndex >= 4) {
+        count = Math.random() < 0.50 ? 4 : 3;
+      } else {
+        count = Math.min(4, Math.floor(Math.random() * 2) + Math.min(3, Math.floor(W * 0.3) + 1));
+      }
     } else if (archetype === 'SPEEDSTER') {
-      count = 1;
+      if (this.currentLevelIndex <= 2) {
+        count = Math.random() < 0.30 ? 2 : 1;
+      } else if (this.currentLevelIndex === 3) {
+        count = Math.random() < 0.55 ? 2 : 1;
+      } else {
+        count = Math.random() < 0.40 ? 3 : 2;
+      }
     } else if (archetype === 'ARMORED') {
-      count = Math.min(4, Math.floor(Math.random() * 2) + 3); // 3 or 4
+      if (this.currentLevelIndex <= 3) {
+        count = Math.floor(Math.random() * 2) + 4; // 4 or 5
+      } else {
+        count = Math.floor(Math.random() * 2) + 5; // 5 or 6
+      }
     }
 
     for (let i = 0; i < count; i++) {
@@ -291,8 +391,9 @@ export class WaveSystem {
       symbolQueue.push(rune);
     }
 
-    // Chance to spawn special Heart Ghost (❤️)
-    const heartChance = playerHp < 5 ? (playerHp <= 2 ? 0.28 : 0.16) : 0.08;
+    // Chance to spawn special Heart Ghost (❤️) - balanced clutch reward
+    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
+    const heartChance = (playerHp <= 2 ? 0.10 : (playerHp < 5 ? 0.04 : 0.015)) * diffConfig.heartMult;
     const isHeartGhost = Math.random() < heartChance;
     if (isHeartGhost) {
       symbolQueue.length = 0;
@@ -318,24 +419,33 @@ export class WaveSystem {
 
     let archetype = 'REGULAR';
     if (lvl) {
-      if (lvl.hasSpeedster && rand < 0.22) {
+      if (lvl.hasSpeedster && rand < 0.38) {
         archetype = 'SPEEDSTER';
-      } else if (lvl.hasArmored && rand > 0.80) {
+      } else if (lvl.hasArmored && rand > 0.68) {
         archetype = 'ARMORED';
       }
     }
 
-    // Minions during boss fight have 1 symbol (or occasionally 2 in later levels)
-    // so player can defeat them fluidly while coordinating against the Boss
     const symbolQueue = [];
-    const count = (this.currentLevelIndex >= 4 && Math.random() < 0.35 && archetype !== 'SPEEDSTER') ? 2 : 1;
+    let count = 1;
+    if (archetype === 'ARMORED') {
+      count = Math.floor(Math.random() * 2) + 4;
+    } else if (this.currentLevelIndex >= 4) {
+      count = Math.random() < 0.60 ? 3 : 2;
+    } else if (this.currentLevelIndex >= 2) {
+      count = Math.random() < 0.55 ? 2 : 1;
+    } else {
+      count = 1;
+    }
+
     for (let i = 0; i < count; i++) {
       const rune = pool[Math.floor(Math.random() * pool.length)];
       symbolQueue.push(rune);
     }
 
-    // Small chance to spawn emergency healing Heart Ghost if player is hurting
-    const heartChance = playerHp <= 2 ? 0.28 : (playerHp < 5 ? 0.12 : 0.04);
+    // Emergency healing Heart Ghost if player is hurting
+    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
+    const heartChance = (playerHp <= 2 ? 0.09 : (playerHp < 5 ? 0.03 : 0.01)) * diffConfig.heartMult;
     const isHeartGhost = Math.random() < heartChance;
     if (isHeartGhost) {
       symbolQueue.length = 0;
@@ -347,8 +457,7 @@ export class WaveSystem {
       symbolQueue,
       isHeartGhost,
       isBoss: false,
-      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier * 0.92
+      speedMultiplier: isHeartGhost ? 0 : this.speedMultiplier * 0.98
     };
   }
 }
-

@@ -31,6 +31,27 @@ export class StoryCanvasRenderer {
         StoryCanvasRenderer._drawSlideGhostTheft(ctx, w, h, time);
         break;
       case 2:
+        StoryCanvasRenderer._drawSlideWandReady(ctx, w, h, time);
+        break;
+      case 3:
+        StoryCanvasRenderer._drawChapter1Scene(ctx, w, h, time);
+        break;
+      case 4:
+        StoryCanvasRenderer._drawChapter2Scene(ctx, w, h, time);
+        break;
+      case 5:
+        StoryCanvasRenderer._drawChapter3Scene(ctx, w, h, time);
+        break;
+      case 6:
+        StoryCanvasRenderer._drawChapter4Scene(ctx, w, h, time);
+        break;
+      case 7:
+        StoryCanvasRenderer._drawChapter5Scene(ctx, w, h, time);
+        break;
+      case 8:
+      case 'victory':
+        StoryCanvasRenderer._drawVictoryScene(ctx, w, h, time);
+        break;
       default:
         StoryCanvasRenderer._drawSlideWandReady(ctx, w, h, time);
         break;
@@ -133,6 +154,46 @@ export class StoryCanvasRenderer {
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('✨ ⚡ ✨', bookX, bookY + 8);
+
+    // Oliver the ginger cat sleeping comfortably on the left side of desk
+    const oliverX = w * 0.40;
+    const oliverY = deskY - 14;
+    const breathe = Math.sin(t * 3) * 1.5;
+
+    // Small plate with cookies
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.ellipse(oliverX - 32, deskY - 2, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(oliverX - 35, deskY - 5, 4, 0, Math.PI * 2);
+    ctx.arc(oliverX - 29, deskY - 5, 4, 0, Math.PI * 2);
+    ctx.arc(oliverX - 32, deskY - 8, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chubby curled body
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.ellipse(oliverX, oliverY + breathe, 22, 16, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Sleeping ears
+    ctx.beginPath();
+    ctx.moveTo(oliverX + 8, oliverY - 12 + breathe);
+    ctx.lineTo(oliverX + 16, oliverY - 22 + breathe);
+    ctx.lineTo(oliverX + 18, oliverY - 8 + breathe);
+    ctx.fill();
+    // Sleeping cute closed eyes (^ ^)
+    ctx.strokeStyle = '#7c2d12';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(oliverX + 10, oliverY - 2 + breathe, 3.5, Math.PI, 0);
+    ctx.arc(oliverX + 17, oliverY - 2 + breathe, 3.5, Math.PI, 0);
+    ctx.stroke();
+    // Soft snoozing Zzz
+    ctx.fillStyle = '#fed7aa';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('z Z z', oliverX + 26, oliverY - 16 + Math.sin(t * 2) * 3);
 
     // Momo sitting behind desk, reading
     const momoX = w * 0.76;
@@ -262,6 +323,49 @@ export class StoryCanvasRenderer {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
+    // Companion Allies rallying in the background (Oliver, Luna, Nyx)
+    // Oliver on the left
+    const oliX = w * 0.22;
+    const oliY = h * 0.72;
+    ctx.save();
+    ctx.fillStyle = '#ea580c';
+    ctx.shadowColor = '#fb923c';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(oliX, oliY, 22, 0, Math.PI * 2);
+    ctx.fill();
+    // Oliver ears
+    ctx.beginPath();
+    ctx.moveTo(oliX - 16, oliY - 12); ctx.lineTo(oliX - 22, oliY - 26); ctx.lineTo(oliX - 6, oliY - 18);
+    ctx.moveTo(oliX + 16, oliY - 12); ctx.lineTo(oliX + 22, oliY - 26); ctx.lineTo(oliX + 6, oliY - 18);
+    ctx.fill();
+    ctx.fillStyle = '#fed7aa';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OLIVER', oliX, oliY + 34);
+    ctx.restore();
+
+    // Luna on the right
+    const lunaX = w * 0.78;
+    const lunaY = h * 0.72;
+    ctx.save();
+    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(lunaX, lunaY, 22, 0, Math.PI * 2);
+    ctx.fill();
+    // Luna ears
+    ctx.beginPath();
+    ctx.moveTo(lunaX - 16, lunaY - 12); ctx.lineTo(lunaX - 22, lunaY - 26); ctx.lineTo(lunaX - 6, lunaY - 18);
+    ctx.moveTo(lunaX + 16, lunaY - 12); ctx.lineTo(lunaX + 22, lunaY - 26); ctx.lineTo(lunaX + 6, lunaY - 18);
+    ctx.fill();
+    ctx.fillStyle = '#bae6fd';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('LUNA', lunaX, lunaY + 34);
+    ctx.restore();
+
     // Heroic central Momo
     const momoX = w / 2;
     const momoY = h * 0.68;
@@ -352,10 +456,90 @@ export class StoryCanvasRenderer {
     ctx.arc(moonX, moonY, 90, 0, Math.PI * 2);
     ctx.fill();
 
+    // Redeemed Spirit of Lord Umbra smiling peacefully in the moon glow
+    const umbraY = moonY - 10 + Math.sin(t * 2.5) * 4;
+    ctx.save();
+    ctx.fillStyle = 'rgba(240, 249, 255, 0.85)';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(moonX, umbraY, 20, 0, Math.PI * 2);
+    ctx.fill();
+    // Knight Spirit ears
+    ctx.beginPath();
+    ctx.moveTo(moonX - 14, umbraY - 10); ctx.lineTo(moonX - 20, umbraY - 24); ctx.lineTo(moonX - 5, umbraY - 16);
+    ctx.moveTo(moonX + 14, umbraY - 10); ctx.lineTo(moonX + 20, umbraY - 24); ctx.lineTo(moonX + 5, umbraY - 16);
+    ctx.fill();
+    // Peaceful curved closed eyes (^ ^)
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(moonX - 7, umbraY - 2, 3.5, Math.PI, 0);
+    ctx.arc(moonX + 7, umbraY - 2, 3.5, Math.PI, 0);
+    ctx.stroke();
+    // Halo / Crown
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(moonX, umbraY - 24, 14, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
     // Cheering Momo holding recovered spellbook overhead
     const momoX = w / 2;
     const momoY = h * 0.72;
     StoryCanvasRenderer._drawCatHead(ctx, momoX, momoY, 34, false, t);
+
+    // Oliver the ginger cat cheering on left
+    const oliVicX = w * 0.24;
+    const oliVicY = h * 0.75 + Math.sin(t * 4) * 3;
+    ctx.save();
+    ctx.fillStyle = '#f97316';
+    ctx.shadowColor = '#fb923c';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(oliVicX, oliVicY, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(oliVicX - 16, oliVicY - 14); ctx.lineTo(oliVicX - 24, oliVicY - 28); ctx.lineTo(oliVicX - 7, oliVicY - 18);
+    ctx.moveTo(oliVicX + 16, oliVicY - 14); ctx.lineTo(oliVicX + 24, oliVicY - 28); ctx.lineTo(oliVicX + 7, oliVicY - 18);
+    ctx.fill();
+    // Big smiling face
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(oliVicX - 7, oliVicY - 4, 2.5, 0, Math.PI * 2);
+    ctx.arc(oliVicX + 7, oliVicY - 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Cookie in paw
+    ctx.fillStyle = '#d97706';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('🍪', oliVicX + 14, oliVicY - 12);
+    ctx.restore();
+
+    // Luna the white cat celebrating on right
+    const lunaVicX = w * 0.76;
+    const lunaVicY = h * 0.75 + Math.cos(t * 4) * 3;
+    ctx.save();
+    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(lunaVicX, lunaVicY, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(lunaVicX - 16, lunaVicY - 14); ctx.lineTo(lunaVicX - 24, lunaVicY - 28); ctx.lineTo(lunaVicX - 7, lunaVicY - 18);
+    ctx.moveTo(lunaVicX + 16, lunaVicY - 14); ctx.lineTo(lunaVicX + 24, lunaVicY - 28); ctx.lineTo(lunaVicX + 7, lunaVicY - 18);
+    ctx.fill();
+    // Heterochromia eyes (blue & gold)
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath(); ctx.arc(lunaVicX - 7, lunaVicY - 4, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath(); ctx.arc(lunaVicX + 7, lunaVicY - 4, 3, 0, Math.PI * 2); ctx.fill();
+    // Magic sparkles
+    ctx.fillStyle = '#e0f2fe';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('✨', lunaVicX - 16, lunaVicY - 14);
+    ctx.restore();
 
     // Master Spellbook held high in paws
     const bookY = momoY - 68 + Math.sin(t * 4) * 4;
@@ -501,6 +685,238 @@ export class StoryCanvasRenderer {
     ctx.moveTo(radius * 0.6, radius * 0.3); ctx.lineTo(radius * 1.2, radius * 0.35);
     ctx.stroke();
 
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // CHAPTER 1 SCENE: THE LIBRARY & MADAME LIBRARIA
+  // -------------------------------------------------------------------------
+  static _drawChapter1Scene(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#1e1b4b');
+    bg.addColorStop(1, '#0b091f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Archmage Barnaby Owl on left
+    const owlX = w * 0.18;
+    const owlY = h * 0.55 + Math.sin(t * 3) * 3;
+    ctx.save();
+    ctx.fillStyle = '#60a5fa';
+    ctx.shadowColor = '#3b82f6';
+    ctx.shadowBlur = 14;
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🦉', owlX, owlY);
+    ctx.fillStyle = '#bfdbfe';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Viện Trưởng Barnaby', owlX, owlY + 22);
+    ctx.restore();
+
+    // Central Momo
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.48, h * 0.65, 30, false, t);
+
+    // Madame Libraria on right
+    const bossX = w * 0.80;
+    const bossY = h * 0.48 + Math.cos(t * 2.5) * 6;
+    ctx.save();
+    ctx.fillStyle = '#38bdf8';
+    ctx.shadowColor = '#60a5fa';
+    ctx.shadowBlur = 18;
+    ctx.font = '36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👻📚', bossX, bossY);
+    ctx.fillStyle = '#93c5fd';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Madame Libraria', bossX, bossY + 26);
+    ctx.restore();
+
+    // Floating Books & Runes [—] and [|]
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('—  |  —  |', w * 0.48, h * 0.35 + Math.sin(t * 4) * 4);
+  }
+
+  // -------------------------------------------------------------------------
+  // CHAPTER 2 SCENE: THE CAFETERIA & CHEF BOUILLON
+  // -------------------------------------------------------------------------
+  static _drawChapter2Scene(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#3f1a08');
+    bg.addColorStop(1, '#180702');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Oliver with cookies on left
+    const oliX = w * 0.18;
+    const oliY = h * 0.58 + Math.sin(t * 3.5) * 3;
+    ctx.save();
+    ctx.fillStyle = '#fb923c';
+    ctx.shadowColor = '#ea580c';
+    ctx.shadowBlur = 14;
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐱🥐', oliX, oliY);
+    ctx.fillStyle = '#fed7aa';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Oliver Cam Cam', oliX, oliY + 22);
+    ctx.restore();
+
+    // Bubbling Cauldron in middle
+    const cauldX = w * 0.48;
+    const cauldY = h * 0.65;
+    ctx.fillStyle = '#1c1917';
+    ctx.beginPath();
+    ctx.arc(cauldX, cauldY, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f43f5e';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('❤️ ∧ ∨ ❤️', cauldX, cauldY - 38 + Math.sin(t * 4) * 4);
+
+    // Chef Bouillon on right
+    const chefX = w * 0.80;
+    const chefY = h * 0.48 + Math.cos(t * 3) * 5;
+    ctx.save();
+    ctx.fillStyle = '#fb923c';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 18;
+    ctx.font = '36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👻🍲', chefX, chefY);
+    ctx.fillStyle = '#fdba74';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Chef Bouillon', chefX, chefY + 26);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // CHAPTER 3 SCENE: THE CLASSROOM & PROFESSOR STELLA
+  // -------------------------------------------------------------------------
+  static _drawChapter3Scene(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#2e1065');
+    bg.addColorStop(1, '#0e0324');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Luna with Starlight on left
+    const lunaX = w * 0.18;
+    const lunaY = h * 0.58 + Math.cos(t * 3) * 3;
+    ctx.save();
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowColor = '#a855f7';
+    ctx.shadowBlur = 14;
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐱✨', lunaX, lunaY);
+    ctx.fillStyle = '#e9d5ff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Luna Bạch Miêu', lunaX, lunaY + 22);
+    ctx.restore();
+
+    // Central Momo channeling lightning
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.48, h * 0.65, 30, false, t);
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ ⚡ ⚡', w * 0.48, h * 0.35 + Math.sin(t * 5) * 5);
+
+    // Professor Stella on right with orbit
+    const stellaX = w * 0.80;
+    const stellaY = h * 0.48 + Math.sin(t * 2.8) * 6;
+    ctx.save();
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowColor = '#e879f9';
+    ctx.shadowBlur = 20;
+    ctx.font = '36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👻🪐', stellaX, stellaY);
+    ctx.fillStyle = '#f0abfc';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Professor Stella', stellaX, stellaY + 26);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // CHAPTER 4 SCENE: THE GYMNASIUM & COACH STRIKER
+  // -------------------------------------------------------------------------
+  static _drawChapter4Scene(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#064e3b');
+    bg.addColorStop(1, '#021e17');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Nyx on left
+    const nyxX = w * 0.18;
+    const nyxY = h * 0.58 + Math.sin(t * 5) * 4;
+    ctx.save();
+    ctx.fillStyle = '#34d399';
+    ctx.shadowColor = '#10b981';
+    ctx.shadowBlur = 14;
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐱⚡', nyxX, nyxY);
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Nyx Tam Thể', nyxX, nyxY + 22);
+    ctx.restore();
+
+    // Central Momo dodging & drawing
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.48, h * 0.65, 30, false, t);
+
+    // Coach Striker with whistle on right
+    const coachX = w * 0.80;
+    const coachY = h * 0.48 + Math.cos(t * 3.5) * 5;
+    ctx.save();
+    ctx.fillStyle = '#34d399';
+    ctx.shadowColor = '#34d399';
+    ctx.shadowBlur = 20;
+    ctx.font = '36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👻🏀', coachX, coachY);
+    ctx.fillStyle = '#6ee7b7';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Coach Striker', coachX, coachY + 26);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // CHAPTER 5 SCENE: THE ROOFTOP & LORD UMBRA
+  // -------------------------------------------------------------------------
+  static _drawChapter5Scene(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#450a0a');
+    bg.addColorStop(1, '#1a0307');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Giant blood moon
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 22;
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.35, 45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Momo on left facing right
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.25, h * 0.68, 32, false, t);
+
+    // Colossal Lord Umbra on right
+    const umbraX = w * 0.76;
+    const umbraY = h * 0.50 + Math.sin(t * 2) * 5;
+    ctx.save();
+    ctx.fillStyle = '#f43f5e';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 28;
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👑👻', umbraX, umbraY);
+    ctx.fillStyle = '#fca5a5';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('Lord Umbra', umbraX, umbraY + 32);
     ctx.restore();
   }
 }
