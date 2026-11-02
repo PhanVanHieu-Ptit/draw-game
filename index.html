@@ -74,7 +74,10 @@
         <!-- Center Score, Stage & Level Info -->
         <div class="hud-center-panel">
           <div class="score-counter" id="score-val">0</div>
-          <div class="wave-badge" id="wave-badge">CẤP 1: THƯ VIỆN</div>
+          <div class="wave-badge-row">
+            <div class="wave-badge" id="wave-badge">CẤP 1: THƯ VIỆN</div>
+            <div class="hud-diff-pill" id="hud-diff-pill">🔥 TIÊU CHUẨN</div>
+          </div>
           <div class="level-sub-badge" id="level-sub-badge">The Library</div>
         </div>
 
@@ -90,6 +93,33 @@
           <button class="icon-btn" id="btn-mute" title="Bật/Tắt âm thanh">🔊</button>
           <button class="icon-btn" id="btn-pause" title="Tạm dừng trận đấu (ESC)">⏸️</button>
         </div>
+      </div>
+
+      <!-- Stage Companion & Mentor Banner -->
+      <div id="hud-companion-badge" class="hud-companion-badge" title="Đồng minh hỗ trợ màn này • Bấm để nghe lời thoại">
+        <div class="companion-avatar-wrap" id="companion-avatar-wrap"></div>
+        <div class="companion-meta">
+          <div class="companion-title-row">
+            <span class="companion-tag">ĐỒNG HÀNH:</span>
+            <span class="companion-name" id="companion-name">Viện Trưởng Barnaby</span>
+          </div>
+          <span class="companion-desc" id="companion-desc">Chỉ dẫn Cổ Ngữ [—] và [|]</span>
+        </div>
+      </div>
+
+      <!-- In-Game Character Dialogue Speech Bubble -->
+      <div id="in-game-dialogue-toast" class="dialogue-toast" aria-live="polite">
+        <div class="dialogue-avatar-wrap" id="diag-avatar-wrap">
+          <span class="dialogue-avatar" id="diag-avatar">🐱</span>
+        </div>
+        <div class="dialogue-body">
+          <div class="dialogue-header">
+            <span class="dialogue-name" id="diag-name">Momo</span>
+            <span class="dialogue-role-badge" id="diag-role">Pháp Sư</span>
+          </div>
+          <p class="dialogue-text" id="diag-text">Sẵn sàng vung đũa phép!</p>
+        </div>
+        <button class="dialogue-close-btn" id="diag-close" title="Đóng nhanh">✕</button>
       </div>
 
       <!-- Bottom Gesture Feedback Pill -->
@@ -129,6 +159,35 @@
               <span class="stage-name">5. Sân Thượng</span>
             </button>
           </div>
+        </div>
+
+        <!-- Difficulty Mode Selector -->
+        <div class="difficulty-selector-container" id="difficulty-selector-container">
+          <div class="difficulty-selector-title">CẤP ĐỘ THỬ THÁCH (ĐỘ KHÓ):</div>
+          <div class="difficulty-grid">
+            <button class="diff-btn active" data-diff="NORMAL" title="Độ khó Tiêu Chuẩn: U linh tấn công theo bầy, nhịp độ kịch tính">
+              <span class="diff-icon">🔥</span>
+              <div class="diff-meta">
+                <span class="diff-name">TIÊU CHUẨN</span>
+                <span class="diff-tag">Cân Bằng</span>
+              </div>
+            </button>
+            <button class="diff-btn" data-diff="HARDCORE" title="Độ khó Ác Mộng: Ma đông đúc 3-5 con, tốc độ cao, ấn ký dài">
+              <span class="diff-icon">💀</span>
+              <div class="diff-meta">
+                <span class="diff-name">ÁC MỘNG</span>
+                <span class="diff-tag">Bão Ma</span>
+              </div>
+            </button>
+            <button class="diff-btn" data-diff="INFERNO" title="Độ khó Địa Ngục: Tốc độ cực hạn, toán 4-6 u linh vây ráp 4 phía">
+              <span class="diff-icon">⚡</span>
+              <div class="diff-meta">
+                <span class="diff-name">ĐỊA NGỤC</span>
+                <span class="diff-tag">Cực Hạn</span>
+              </div>
+            </button>
+          </div>
+          <div class="diff-desc-box" id="diff-desc-box">Thử thách cân bằng: U linh tấn công theo bầy, nhịp độ dồn dập và kịch tính.</div>
         </div>
 
         <!-- Rune Guide Grid -->
@@ -171,6 +230,9 @@
           <button class="btn-subtle" id="btn-view-story">
             <span>🎬 Xem Hoạt Cảnh Cốt Truyện</span>
           </button>
+          <button class="btn-subtle" id="btn-open-codex">
+            <span>🐾 Hồ Sơ Nhân Vật & U Linh</span>
+          </button>
         </div>
 
         <div class="high-score-tag">
@@ -188,9 +250,38 @@
           <button class="btn-text-skip" id="btn-skip-story">Bỏ qua ➔</button>
         </div>
 
+        <!-- Story Chapter / Act Selection Pills for Reviewing Story -->
+        <div class="story-chapter-bar" id="story-chapter-bar">
+          <button class="story-chap-btn active" data-act="intro" data-index="0" title="Khởi Đầu Cốt Truyện">📜 Khởi Đầu</button>
+          <button class="story-chap-btn" data-act="chapter" data-chap="1" title="Chương 1: Thư Viện Cổ Kính">📚 Màn 1</button>
+          <button class="story-chap-btn" data-act="chapter" data-chap="2" title="Chương 2: Nhà Ăn & Bếp Ma">🍲 Màn 2</button>
+          <button class="story-chap-btn" data-act="chapter" data-chap="3" title="Chương 3: Lớp Học Thiên Văn">🔭 Màn 3</button>
+          <button class="story-chap-btn" data-act="chapter" data-chap="4" title="Chương 4: Nhà Thi Đấu">🏀 Màn 4</button>
+          <button class="story-chap-btn" data-act="chapter" data-chap="5" title="Chương 5: Sân Thượng Lâu Đài">🏰 Màn 5</button>
+          <button class="story-chap-btn" data-act="victory" data-index="0" title="Hồi Kết Chiến Thắng">🏆 Hồi Kết</button>
+        </div>
+
         <!-- Illustrated Story Scene Canvas -->
         <div class="story-canvas-wrap">
           <canvas id="storyCanvas" width="480" height="240"></canvas>
+        </div>
+
+        <!-- Story Character Dialogue Callout for Chapters -->
+        <div class="story-dialogue-callout hidden" id="story-dialogue-callout">
+          <div class="sdc-row sdc-companion">
+            <span class="sdc-icon" id="sdc-comp-icon">🦉</span>
+            <div class="sdc-content">
+              <span class="sdc-name" id="sdc-comp-name">Viện Trưởng Barnaby:</span>
+              <p class="sdc-quote" id="sdc-comp-quote">...</p>
+            </div>
+          </div>
+          <div class="sdc-row sdc-boss">
+            <span class="sdc-icon" id="sdc-boss-icon">👻</span>
+            <div class="sdc-content">
+              <span class="sdc-name" id="sdc-boss-name">Madame Libraria:</span>
+              <p class="sdc-quote" id="sdc-boss-quote">...</p>
+            </div>
+          </div>
         </div>
 
         <div class="story-text-container">
@@ -208,6 +299,7 @@
         <div class="button-group story-button-group">
           <button class="btn-secondary" id="btn-story-prev">QUAY LẠI</button>
           <button class="btn-primary" id="btn-story-next">TIẾP TỤC ➜</button>
+          <button class="btn-subtle hidden" id="btn-story-play-level">CHƠI MÀN NÀY ⚔️</button>
         </div>
       </div>
     </div>
@@ -254,11 +346,50 @@
       </div>
     </div>
 
+    <!-- UI Overlay: CHARACTER CODEX & LORE SCREEN -->
+    <div id="codex-screen" class="ui-screen modal-overlay">
+      <div class="glass-card codex-card">
+        <div class="codex-header">
+          <div class="codex-title-wrap">
+            <span class="codex-badge">📜 BIÊN NIÊN SỬ HỌC VIỆN</span>
+            <h2 class="game-title" style="font-size: 1.8rem; margin: 4px 0;">HỒ SƠ NHÂN VẬT & U LINH</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-codex">ĐÓNG ✕</button>
+        </div>
+
+        <!-- Codex Tabs Filter -->
+        <div class="codex-tabs-row" id="codex-tabs">
+          <button class="codex-tab-btn active" data-filter="all">Tất Cả (10)</button>
+          <button class="codex-tab-btn" data-filter="ally">🐾 Hội Bạn Mèo (5)</button>
+          <button class="codex-tab-btn" data-filter="spirit">👻 U Linh & Chúa Tể (5)</button>
+        </div>
+
+        <!-- Codex Cards Container Grid -->
+        <div class="codex-grid" id="codex-grid">
+          <!-- Dynamically populated from ACADEMY_CHARACTERS -->
+        </div>
+
+        <div class="codex-footer">
+          <span class="codex-hint">💡 Chạm vào từng nhân vật để xem câu chuyện và sức mạnh đặc trưng trong Học Viện Arcane Paws!</span>
+        </div>
+      </div>
+    </div>
+
     <!-- UI Overlay: PAUSE SCREEN -->
     <div id="pause-screen" class="ui-screen modal-overlay">
       <div class="glass-card">
         <h2 class="game-title" style="font-size: 2rem;">TẠM DỪNG</h2>
         <p class="game-subtitle">Trận đấu đang tạm dừng. Hãy sẵn sàng đũa phép!</p>
+
+        <!-- Pause screen quick difficulty selector -->
+        <div class="pause-diff-panel">
+          <span class="pause-diff-label">ĐỘ KHÓ HIỆN TẠI:</span>
+          <div class="pause-diff-buttons" id="pause-diff-buttons">
+            <button class="pause-diff-btn active" data-diff="NORMAL">🔥 Tiêu Chuẩn</button>
+            <button class="pause-diff-btn" data-diff="HARDCORE">💀 Ác Mộng</button>
+            <button class="pause-diff-btn" data-diff="INFERNO">⚡ Địa Ngục</button>
+          </div>
+        </div>
 
         <div class="button-group">
           <button class="btn-primary" id="btn-resume">TIẾP TỤC</button>

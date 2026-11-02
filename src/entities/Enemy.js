@@ -242,6 +242,83 @@ export class Enemy extends Entity {
   }
 
   /**
+   * Calculate coordinated edge spawn positions for a squad of enemies appearing simultaneously,
+   * dispersing them along different borders so they do not overlap and surround Momo dynamically.
+   * @param {number} count 
+   * @param {number} canvasWidth 
+   * @param {number} canvasHeight 
+   * @returns {Array<{x: number, y: number}>}
+   */
+  static getSquadEdgePositions(count, canvasWidth, canvasHeight) {
+    if (count <= 1) {
+      return [Enemy.getRandomEdgePosition(canvasWidth, canvasHeight)];
+    }
+
+    const margin = 60;
+    const positions = [];
+    // Edges: 0: Top, 1: Bottom, 2: Left, 3: Right
+    let chosenEdges = [];
+
+    if (count === 2) {
+      // 2 ghosts: 50% opposite edges (Left & Right or Top & Bottom), 50% adjacent
+      const roll = Math.random();
+      if (roll < 0.5) {
+        chosenEdges = Math.random() < 0.5 ? [2, 3] : [0, 1]; // Left & Right or Top & Bottom
+      } else {
+        const first = Math.floor(Math.random() * 4);
+        const second = (first + 1 + Math.floor(Math.random() * 2)) % 4;
+        chosenEdges = [first, second];
+      }
+    } else if (count === 3) {
+      // 3 ghosts: pick 3 distinct edges out of 4
+      const omit = Math.floor(Math.random() * 4);
+      chosenEdges = [0, 1, 2, 3].filter(e => e !== omit);
+    } else if (count === 4) {
+      // 4 ghosts: all 4 borders (ambush from every side!)
+      chosenEdges = [0, 1, 2, 3];
+    } else {
+      // 5+ ghosts: distribute across all 4 borders
+      chosenEdges = [];
+      for (let i = 0; i < count; i++) {
+        chosenEdges.push(i % 4);
+      }
+    }
+
+    // Shuffle edges so assignment isn't deterministic
+    for (let i = chosenEdges.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chosenEdges[i], chosenEdges[j]] = [chosenEdges[j], chosenEdges[i]];
+    }
+
+    for (let i = 0; i < count; i++) {
+      const edge = chosenEdges[i];
+      let x, y;
+      switch (edge) {
+        case 0: // Top
+          x = Math.random() * (canvasWidth - 100) + 50;
+          y = -margin;
+          break;
+        case 1: // Bottom
+          x = Math.random() * (canvasWidth - 100) + 50;
+          y = canvasHeight + margin;
+          break;
+        case 2: // Left
+          x = -margin;
+          y = Math.random() * (canvasHeight - 100) + 50;
+          break;
+        case 3: // Right
+        default:
+          x = canvasWidth + margin;
+          y = Math.random() * (canvasHeight - 100) + 50;
+          break;
+      }
+      positions.push({ x, y });
+    }
+
+    return positions;
+  }
+
+  /**
    * Legacy factory for backward compatibility
    */
   static spawnFromRandomEdge(canvasWidth, canvasHeight, playerPos, enemyType, symbolQueue, speedMultiplier = 1.0) {
@@ -315,11 +392,11 @@ export class Enemy extends Entity {
           };
         }
       } else {
-        // Ghost was hit and survived: SLOW DOWN significantly and CHANGE FACIAL EXPRESSION!
-        this.slowTimer = 2.4;
+        // Ghost was hit and survived: briefly flinch and CHANGE FACIAL EXPRESSION without freezing
+        this.slowTimer = 0.75;
         this.slowFactor = 0.35;
-        this.expressionTimer = 2.4;
-        this.shiverTimer = 0.45;
+        this.expressionTimer = 1.2;
+        this.shiverTimer = 0.35;
         return {
           matched: true,
           destroyed: false,
@@ -497,7 +574,13 @@ export class Enemy extends Entity {
       // Normal perpendicular vector for wavy oscillation
       const px = -ny;
       const py = nx;
-      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0);
+
+      // Close Danger warning: when within 175px of Momo, show warning visual without unfair speed spike
+      const isCloseDanger = dist < 175 && !this.isBoss && !this.isHeartGhost;
+      this.isCloseDanger = isCloseDanger;
+      const surgeMult = 1.0;
+
+      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult;
       const wave = Math.sin(this.time * this.oscillationFrequency + this.phase) * (currentSpeed * this.oscillationAmplitude);
 
       this.x += (nx * currentSpeed + px * wave) * dt;
@@ -568,6 +651,13 @@ export class Enemy extends Entity {
 
       ctx.closePath();
       ctx.fill();
+
+      // Danger surge aura when closing in fast to Momo
+      if (this.isCloseDanger && !isHeart) {
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
 
       // Heart ghost cute chest heart & rosy cheeks
       if (isHeart) {

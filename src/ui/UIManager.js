@@ -4,8 +4,9 @@
  * level transition banners (Ready... Set... Draw!), Story Cutscenes, and Victory screens.
  */
 
-import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORAGE_KEYS } from '../core/Constants.js';
+import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS } from '../core/Constants.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
+import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
 
 export class UIManager {
   constructor(game) {
@@ -52,6 +53,12 @@ export class UIManager {
     this.stageButtons = document.querySelectorAll('.stage-btn');
     this.selectedStage = 1;
 
+    // Difficulty Selection Elements
+    this.diffButtons = document.querySelectorAll('.diff-btn');
+    this.pauseDiffButtons = document.querySelectorAll('.pause-diff-btn');
+    this.diffDescBox = document.getElementById('diff-desc-box');
+    this.hudDiffPill = document.getElementById('hud-diff-pill');
+
     // Story Cutscene Elements
     this.storyCanvas = document.getElementById('storyCanvas');
     this.storyStepBadge = document.getElementById('story-step-badge');
@@ -62,6 +69,19 @@ export class UIManager {
     this.btnStoryNext = document.getElementById('btn-story-next');
     this.btnStoryPrev = document.getElementById('btn-story-prev');
     this.btnSkipStory = document.getElementById('btn-skip-story');
+    this.storyChapterBar = document.getElementById('story-chapter-bar');
+    this.storyDialogueCallout = document.getElementById('story-dialogue-callout');
+    this.sdcCompIcon = document.getElementById('sdc-comp-icon');
+    this.sdcCompName = document.getElementById('sdc-comp-name');
+    this.sdcCompQuote = document.getElementById('sdc-comp-quote');
+    this.sdcBossIcon = document.getElementById('sdc-boss-icon');
+    this.sdcBossName = document.getElementById('sdc-boss-name');
+    this.sdcBossQuote = document.getElementById('sdc-boss-quote');
+    this.btnStoryPlayLevel = document.getElementById('btn-story-play-level');
+    this.isStoryPreviewMode = false;
+    this.currentStoryAct = 'intro'; // 'intro' | 'chapter' | 'victory'
+    this.currentChapterIndex = 1;
+    this.currentRenderSlideIndex = 0;
     this.currentStoryIndex = 0;
     this.storyAnimTimer = 0;
     this._storyAnimHandle = null;
@@ -80,6 +100,31 @@ export class UIManager {
     this.goWave = document.getElementById('go-wave');
     this.goAccuracy = document.getElementById('go-accuracy');
     this.goNewRecord = document.getElementById('go-new-record');
+
+    // In-Game Dialogue Toast Elements
+    this.dialogueToast = document.getElementById('in-game-dialogue-toast');
+    this.diagAvatar = document.getElementById('diag-avatar');
+    this.diagAvatarWrap = document.getElementById('diag-avatar-wrap');
+    this.diagName = document.getElementById('diag-name');
+    this.diagRole = document.getElementById('diag-role');
+    this.diagText = document.getElementById('diag-text');
+    this.diagClose = document.getElementById('diag-close');
+    this._dialogueTimeout = null;
+
+    // Companion Badge Elements (Playing HUD)
+    this.hudCompanionBadge = document.getElementById('hud-companion-badge');
+    this.companionAvatarWrap = document.getElementById('companion-avatar-wrap');
+    this.companionName = document.getElementById('companion-name');
+    this.companionDesc = document.getElementById('companion-desc');
+    this.currentLevelNum = 1;
+
+    // Codex Screen Elements
+    this.codexScreen = document.getElementById('codex-screen');
+    this.btnOpenCodex = document.getElementById('btn-open-codex');
+    this.btnCloseCodex = document.getElementById('btn-close-codex');
+    this.codexTabs = document.getElementById('codex-tabs');
+    this.codexGrid = document.getElementById('codex-grid');
+    this.currentCodexFilter = 'all';
 
     this._bindButtonEvents();
     this._bindKeyboardEvents();
@@ -119,11 +164,67 @@ export class UIManager {
     // Story Cutscene Controls
     if (this.btnStoryNext) {
       this.btnStoryNext.addEventListener('click', () => {
-        const slides = STORY_SLIDES.INTRO;
-        if (this.currentStoryIndex < slides.length - 1) {
-          this.showStorySlide(this.currentStoryIndex + 1);
+        if (this.currentStoryAct === 'intro') {
+          const slides = STORY_SLIDES.INTRO;
+          if (this.currentStoryIndex < slides.length - 1) {
+            this.showStorySlide(this.currentStoryIndex + 1);
+          } else if (this.isStoryPreviewMode) {
+            // In preview mode, advance into Chapter 1
+            this.showStoryChapter(1);
+          } else {
+            // Finished slides -> Launch Game into Level!
+            this.game.audioSystem.playStart();
+            this.game.waveSystem.setMode('STORY');
+            this.game.stateMachine.changeState(GAME_STATES.PLAYING, {
+              resetData: true,
+              startLevel: this.selectedStage || 1
+            });
+          }
+        } else if (this.currentStoryAct === 'chapter') {
+          if (this.currentChapterIndex < 5) {
+            this.showStoryChapter(this.currentChapterIndex + 1);
+          } else {
+            // After chapter 5, show Victory!
+            this.showStoryVictorySlide(0);
+          }
+        } else if (this.currentStoryAct === 'victory') {
+          const vicSlides = STORY_SLIDES.VICTORY;
+          if (this.currentStoryIndex < vicSlides.length - 1) {
+            this.showStoryVictorySlide(this.currentStoryIndex + 1);
+          } else {
+            this.game.stateMachine.changeState(GAME_STATES.MENU);
+          }
+        }
+      });
+    }
+
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.addEventListener('click', () => {
+        if (this.currentStoryAct === 'intro') {
+          if (this.currentStoryIndex > 0) {
+            this.showStorySlide(this.currentStoryIndex - 1);
+          }
+        } else if (this.currentStoryAct === 'chapter') {
+          if (this.currentChapterIndex > 1) {
+            this.showStoryChapter(this.currentChapterIndex - 1);
+          } else {
+            this.showStorySlide(2);
+          }
+        } else if (this.currentStoryAct === 'victory') {
+          if (this.currentStoryIndex > 0) {
+            this.showStoryVictorySlide(this.currentStoryIndex - 1);
+          } else {
+            this.showStoryChapter(5);
+          }
+        }
+      });
+    }
+
+    if (this.btnSkipStory) {
+      this.btnSkipStory.addEventListener('click', () => {
+        if (this.isStoryPreviewMode) {
+          this.game.stateMachine.changeState(GAME_STATES.MENU);
         } else {
-          // Finished slides -> Launch Game into Level!
           this.game.audioSystem.playStart();
           this.game.waveSystem.setMode('STORY');
           this.game.stateMachine.changeState(GAME_STATES.PLAYING, {
@@ -134,21 +235,32 @@ export class UIManager {
       });
     }
 
-    if (this.btnStoryPrev) {
-      this.btnStoryPrev.addEventListener('click', () => {
-        if (this.currentStoryIndex > 0) {
-          this.showStorySlide(this.currentStoryIndex - 1);
-        }
+    // Story Chapter Navigation Bar Pills
+    if (this.storyChapterBar) {
+      const chapBtns = this.storyChapterBar.querySelectorAll('.story-chap-btn');
+      chapBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const act = btn.getAttribute('data-act');
+          if (act === 'intro') {
+            this.showStorySlide(0);
+          } else if (act === 'chapter') {
+            const chapNum = parseInt(btn.getAttribute('data-chap'), 10) || 1;
+            this.showStoryChapter(chapNum);
+          } else if (act === 'victory') {
+            this.showStoryVictorySlide(0);
+          }
+        });
       });
     }
 
-    if (this.btnSkipStory) {
-      this.btnSkipStory.addEventListener('click', () => {
+    // Play Level button from story chapter review
+    if (this.btnStoryPlayLevel) {
+      this.btnStoryPlayLevel.addEventListener('click', () => {
         this.game.audioSystem.playStart();
         this.game.waveSystem.setMode('STORY');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, {
           resetData: true,
-          startLevel: this.selectedStage || 1
+          startLevel: this.currentChapterIndex || 1
         });
       });
     }
@@ -169,6 +281,51 @@ export class UIManager {
         this.game.audioSystem.playStart();
         this.game.waveSystem.setMode('ENDLESS');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+      });
+    }
+
+    // Codex Buttons & Tabs
+    if (this.btnOpenCodex) {
+      this.btnOpenCodex.addEventListener('click', () => {
+        this.openCodex();
+      });
+    }
+
+    if (this.btnCloseCodex) {
+      this.btnCloseCodex.addEventListener('click', () => {
+        this.closeCodex();
+      });
+    }
+
+    if (this.codexTabs) {
+      const tabBtns = this.codexTabs.querySelectorAll('.codex-tab-btn');
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const filter = btn.getAttribute('data-filter') || 'all';
+          this.renderCodex(filter);
+        });
+      });
+    }
+
+    // Dialogue Toast Click to dismiss
+    if (this.dialogueToast) {
+      this.dialogueToast.addEventListener('click', () => {
+        this.hideDialogue();
+      });
+    }
+
+    if (this.diagClose) {
+      this.diagClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hideDialogue();
+      });
+    }
+
+    if (this.hudCompanionBadge) {
+      this.hudCompanionBadge.addEventListener('click', () => {
+        this._onCompanionClicked();
       });
     }
 
@@ -231,6 +388,73 @@ export class UIManager {
         btnMute.title = isMuted ? 'Bật âm thanh' : 'Tắt âm thanh';
       });
     }
+
+    // Difficulty Buttons (Menu)
+    if (this.diffButtons) {
+      this.diffButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const diff = btn.getAttribute('data-diff') || 'NORMAL';
+          this.game.setDifficulty(diff);
+          if (this.game.audioSystem && typeof this.game.audioSystem.playSpell === 'function') {
+            this.game.audioSystem.playSpell('horizontal');
+          }
+        });
+      });
+    }
+
+    // Difficulty Buttons (Pause)
+    if (this.pauseDiffButtons) {
+      this.pauseDiffButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const diff = btn.getAttribute('data-diff') || 'NORMAL';
+          this.game.setDifficulty(diff);
+          if (this.game.audioSystem && typeof this.game.audioSystem.playSpell === 'function') {
+            this.game.audioSystem.playSpell('horizontal');
+          }
+        });
+      });
+    }
+
+    this.updateDifficultyUI(this.game.difficulty || 'NORMAL');
+  }
+
+  /**
+   * Synchronize difficulty selector buttons, description, and HUD badge
+   * @param {string} difficulty 
+   */
+  updateDifficultyUI(difficulty = 'NORMAL') {
+    const diffInfo = DIFFICULTY_LEVELS[difficulty] || DIFFICULTY_LEVELS.NORMAL;
+
+    if (this.diffButtons) {
+      this.diffButtons.forEach(btn => {
+        const d = btn.getAttribute('data-diff');
+        if (d === difficulty) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    if (this.pauseDiffButtons) {
+      this.pauseDiffButtons.forEach(btn => {
+        const d = btn.getAttribute('data-diff');
+        if (d === difficulty) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    if (this.diffDescBox) {
+      this.diffDescBox.textContent = diffInfo.description;
+    }
+
+    if (this.hudDiffPill) {
+      this.hudDiffPill.textContent = diffInfo.badge;
+      this.hudDiffPill.className = `hud-diff-pill diff-${difficulty.toLowerCase()}`;
+    }
   }
 
   _bindStageSelector() {
@@ -286,8 +510,16 @@ export class UIManager {
       this._stopStoryAnim();
       this._stopVictoryAnim();
     } else if (stateName === GAME_STATES.STORY) {
-      this.currentStoryIndex = 0;
-      this.showStorySlide(0);
+      this.isStoryPreviewMode = !!payload.previewOnly;
+      if (this.btnSkipStory) {
+        this.btnSkipStory.textContent = this.isStoryPreviewMode ? 'Về Menu ✕' : 'Bỏ qua ➔';
+      }
+      if (payload.startChapter) {
+        this.showStoryChapter(payload.startChapter);
+      } else {
+        this.currentStoryIndex = 0;
+        this.showStorySlide(0);
+      }
       this._startStoryAnim();
     } else if (stateName === GAME_STATES.VICTORY) {
       this._stopStoryAnim();
@@ -318,6 +550,7 @@ export class UIManager {
     if (target) {
       target.classList.remove('active');
     }
+    this.hideDialogue();
     if (stateName === GAME_STATES.STORY) {
       this._stopStoryAnim();
     } else if (stateName === GAME_STATES.VICTORY) {
@@ -326,25 +559,36 @@ export class UIManager {
   }
 
   // =========================================================================
-  // STORY CUTSCENE SLIDES
+  // STORY CUTSCENE SLIDES & CHAPTER REVIEW
   // =========================================================================
   showStorySlide(index) {
     const slides = STORY_SLIDES.INTRO;
     if (index < 0 || index >= slides.length) return;
+    this.currentStoryAct = 'intro';
     this.currentStoryIndex = index;
+    this.currentRenderSlideIndex = index;
     const slide = slides[index];
 
-    if (this.storyStepBadge) this.storyStepBadge.textContent = `CỐT TRUYỆN • ${index + 1}/${slides.length}`;
+    if (this.storyStepBadge) this.storyStepBadge.textContent = `KHỞI ĐẦU • ${index + 1}/${slides.length}`;
     if (this.storySlideTitle) this.storySlideTitle.textContent = slide.title;
     if (this.storySlideText) this.storySlideText.textContent = slide.text;
     if (this.storySlideEn) this.storySlideEn.textContent = slide.enText;
 
+    if (this.storyDialogueCallout) this.storyDialogueCallout.classList.add('hidden');
+    if (this.btnStoryPlayLevel) this.btnStoryPlayLevel.classList.add('hidden');
+
     if (this.btnStoryNext) {
-      this.btnStoryNext.innerHTML = `<span>${slide.actionPrompt || 'Tiếp Tục ➜'}</span>`;
+      if (this.isStoryPreviewMode && index === slides.length - 1) {
+        this.btnStoryNext.innerHTML = `<span>Xem Màn 1 ➜</span>`;
+      } else {
+        this.btnStoryNext.innerHTML = `<span>${slide.actionPrompt || 'Tiếp Tục ➜'}</span>`;
+      }
     }
     if (this.btnStoryPrev) {
       this.btnStoryPrev.style.visibility = index === 0 ? 'hidden' : 'visible';
     }
+
+    this._updateStoryPills('intro');
 
     // Update dots
     if (this.storyDots) {
@@ -358,11 +602,97 @@ export class UIManager {
     StoryCanvasRenderer.renderSlide(this.storyCanvas, index, performance.now() / 1000);
   }
 
+  showStoryChapter(chapNum) {
+    const chapter = STORY_CHAPTERS.find(c => c.chapter === chapNum) || STORY_CHAPTERS[0];
+    if (!chapter) return;
+    this.currentStoryAct = 'chapter';
+    this.currentChapterIndex = chapNum;
+    this.currentRenderSlideIndex = chapter.slideIndex;
+
+    if (this.storyStepBadge) this.storyStepBadge.textContent = chapter.badge;
+    if (this.storySlideTitle) this.storySlideTitle.textContent = chapter.title;
+    if (this.storySlideText) this.storySlideText.textContent = chapter.text;
+    if (this.storySlideEn) this.storySlideEn.textContent = chapter.enText;
+
+    // Show dialogue quotes callout
+    if (this.storyDialogueCallout) {
+      this.storyDialogueCallout.classList.remove('hidden');
+      if (this.sdcCompIcon) this.sdcCompIcon.textContent = chapter.companion.icon;
+      if (this.sdcCompName) this.sdcCompName.textContent = `${chapter.companion.name}:`;
+      if (this.sdcCompQuote) this.sdcCompQuote.textContent = `“${chapter.quotes.intro}”`;
+      if (this.sdcBossIcon) this.sdcBossIcon.textContent = chapter.bossIcon;
+      if (this.sdcBossName) this.sdcBossName.textContent = `${chapter.bossName}:`;
+      if (this.sdcBossQuote) this.sdcBossQuote.textContent = `“${chapter.quotes.boss}”`;
+    }
+
+    if (this.btnStoryPlayLevel) {
+      this.btnStoryPlayLevel.classList.remove('hidden');
+      this.btnStoryPlayLevel.textContent = `CHƠI MÀN ${chapNum} ⚔️`;
+    }
+
+    if (this.btnStoryNext) {
+      this.btnStoryNext.innerHTML = `<span>${chapNum < 5 ? `Chương ${chapNum + 1} ➜` : 'Hồi Kết ➜'}</span>`;
+    }
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.style.visibility = 'visible';
+    }
+
+    this._updateStoryPills('chapter', chapNum);
+
+    StoryCanvasRenderer.renderSlide(this.storyCanvas, chapter.slideIndex, performance.now() / 1000);
+  }
+
+  showStoryVictorySlide(index) {
+    const slides = STORY_SLIDES.VICTORY;
+    if (index < 0 || index >= slides.length) return;
+    this.currentStoryAct = 'victory';
+    this.currentStoryIndex = index;
+    this.currentRenderSlideIndex = 'victory';
+    const slide = slides[index];
+
+    if (this.storyStepBadge) this.storyStepBadge.textContent = `HỒI KẾT CHIẾN THẮNG • ${index + 1}/${slides.length}`;
+    if (this.storySlideTitle) this.storySlideTitle.textContent = slide.title;
+    if (this.storySlideText) this.storySlideText.textContent = slide.text;
+    if (this.storySlideEn) this.storySlideEn.textContent = slide.enText;
+
+    if (this.storyDialogueCallout) this.storyDialogueCallout.classList.add('hidden');
+    if (this.btnStoryPlayLevel) this.btnStoryPlayLevel.classList.add('hidden');
+
+    if (this.btnStoryNext) {
+      this.btnStoryNext.innerHTML = `<span>${index < slides.length - 1 ? 'Tiếp Tục ➜' : 'Về Menu 🏠'}</span>`;
+    }
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.style.visibility = 'visible';
+    }
+
+    this._updateStoryPills('victory');
+
+    StoryCanvasRenderer.renderVictory(this.storyCanvas, performance.now() / 1000);
+  }
+
+  _updateStoryPills(act, chapNum = 1) {
+    if (!this.storyChapterBar) return;
+    const btns = this.storyChapterBar.querySelectorAll('.story-chap-btn');
+    btns.forEach(btn => {
+      const bAct = btn.getAttribute('data-act');
+      const bChap = parseInt(btn.getAttribute('data-chap'), 10);
+      if (bAct === act && (act !== 'chapter' || bChap === chapNum)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
   _startStoryAnim() {
     this._stopStoryAnim();
     const tick = () => {
       const time = performance.now() / 1000;
-      StoryCanvasRenderer.renderSlide(this.storyCanvas, this.currentStoryIndex, time);
+      if (this.currentRenderSlideIndex === 'victory') {
+        StoryCanvasRenderer.renderVictory(this.storyCanvas, time);
+      } else {
+        StoryCanvasRenderer.renderSlide(this.storyCanvas, this.currentRenderSlideIndex, time);
+      }
       this._storyAnimHandle = requestAnimationFrame(tick);
     };
     this._storyAnimHandle = requestAnimationFrame(tick);
@@ -528,12 +858,51 @@ export class UIManager {
   // HUD UPDATES
   // =========================================================================
   updateLevel(levelNum, levelData) {
+    this.currentLevelNum = levelNum;
     if (this.waveBadge) {
       this.waveBadge.textContent = levelData ? `CẤP ${levelNum}: ${levelData.name.toUpperCase()}` : `ĐỢT ${levelNum}`;
     }
     if (this.levelSubBadge) {
       this.levelSubBadge.textContent = levelData ? levelData.enName : 'Vô Tận (Endless)';
     }
+    this.updateCompanion(levelNum, levelData);
+  }
+
+  updateCompanion(levelNum, levelData) {
+    const comp = getCompanionForLevel(levelNum);
+    if (!comp || !this.hudCompanionBadge) return;
+
+    if (this.companionAvatarWrap) {
+      this.companionAvatarWrap.innerHTML = comp.svg;
+      this.companionAvatarWrap.style.setProperty('--companion-color', comp.color);
+    }
+    if (this.companionName) {
+      this.companionName.textContent = comp.name;
+      this.companionName.style.color = comp.color;
+    }
+    if (this.companionDesc) {
+      this.companionDesc.textContent = comp.actionHint;
+    }
+    this.hudCompanionBadge.style.setProperty('--companion-color', comp.color);
+  }
+
+  _onCompanionClicked() {
+    const comp = getCompanionForLevel(this.currentLevelNum);
+    const quotes = {
+      1: 'Momo! Madame Libraria đang bị sương mù u linh làm mờ mắt. Hãy dùng nét vẽ [—] và [|] giải trừ tà khí!',
+      2: 'Momo ơi! Tớ đem bánh quy và nồi súp hồi máu [❤️] tiếp tế đây! Hãy cẩn thận các nét [∧] và [∨]!',
+      3: 'Các chòm sao đang hỗn loạn! Hãy vẽ Ấn Ký Sét [⚡] để đập tan lớp giáp ma của các hành tinh lạc lối!',
+      4: 'Xem ai nhanh hơn nào Momo! Lũ ma siêu tốc lượn lách ghê lắm, vung đũa thật dứt khoát vào nhé!',
+      5: 'Oliver, Luna, Nyx và Viện Trưởng Barnaby cùng truyền sức mạnh! Đỉnh tháp trăng máu - trận chiến định mệnh!'
+    };
+    this.showDialogue({
+      name: comp.name,
+      role: comp.role,
+      characterId: comp.id,
+      color: comp.color,
+      text: quotes[this.currentLevelNum] || comp.actionHint,
+      duration: 4500
+    });
   }
 
   updateWave(waveNum) {
@@ -602,5 +971,151 @@ export class UIManager {
     this._feedbackTimeout = setTimeout(() => {
       this.gestureFeedback.classList.remove('show');
     }, 1200);
+  }
+
+  // =========================================================================
+  // IN-GAME CHARACTER DIALOGUE & SPEECH TOAST
+  // =========================================================================
+  showDialogue({ name, role, text, avatar = '🐱', characterId = null, color = '#c084fc', duration = 3800 } = {}) {
+    if (!this.dialogueToast) return;
+    clearTimeout(this._dialogueTimeout);
+
+    // Resolve characterId if not explicitly provided
+    if (!characterId && name) {
+      const lower = name.toLowerCase();
+      if (lower.includes('momo')) characterId = 'momo';
+      else if (lower.includes('oliver') || lower.includes('cam cam')) characterId = 'oliver';
+      else if (lower.includes('luna') || lower.includes('bạch miêu')) characterId = 'luna';
+      else if (lower.includes('nyx') || lower.includes('tam thể')) characterId = 'nyx';
+      else if (lower.includes('barnaby') || lower.includes('cú')) characterId = 'barnaby';
+      else if (lower.includes('libraria') || lower.includes('thủ thư')) characterId = 'boss_librarian';
+      else if (lower.includes('bouillon') || lower.includes('đầu bếp')) characterId = 'boss_chef';
+      else if (lower.includes('stella') || lower.includes('thiên văn')) characterId = 'boss_planetarium';
+      else if (lower.includes('striker') || lower.includes('huấn luyện viên')) characterId = 'boss_coach';
+      else if (lower.includes('umbra') || lower.includes('chúa tể')) characterId = 'boss_master';
+    }
+
+    if (this.diagName) this.diagName.textContent = name || 'Momo';
+    if (this.diagRole) {
+      this.diagRole.textContent = role || 'Đồng Hành';
+      this.diagRole.style.color = color;
+      this.diagRole.style.background = `${color}25`;
+    }
+
+    if (this.diagAvatarWrap) {
+      this.diagAvatarWrap.style.setProperty('--dialogue-accent', color);
+      if (characterId) {
+        this.diagAvatarWrap.innerHTML = getCharacterPortraitSvg(characterId, 44);
+      } else {
+        this.diagAvatarWrap.innerHTML = `<span class="dialogue-avatar" id="diag-avatar">${avatar}</span>`;
+      }
+    }
+    if (this.diagText) this.diagText.textContent = text || '';
+
+    this.dialogueToast.style.borderColor = `${color}66`;
+    this.dialogueToast.classList.add('show');
+
+    this._dialogueTimeout = setTimeout(() => {
+      this.hideDialogue();
+    }, duration);
+  }
+
+  hideDialogue() {
+    clearTimeout(this._dialogueTimeout);
+    if (this.dialogueToast) {
+      this.dialogueToast.classList.remove('show');
+    }
+  }
+
+  // =========================================================================
+  // ACADEMY CHARACTER CODEX & LORE
+  // =========================================================================
+  openCodex() {
+    if (!this.codexScreen) return;
+    this.renderCodex(this.currentCodexFilter || 'all');
+    this.codexScreen.classList.add('active');
+  }
+
+  closeCodex() {
+    if (!this.codexScreen) return;
+    this.codexScreen.classList.remove('active');
+  }
+
+  renderCodex(filter = 'all') {
+    if (!this.codexGrid) return;
+    this.currentCodexFilter = filter;
+    this.codexGrid.innerHTML = '';
+
+    const list = ACADEMY_CHARACTERS.filter(char => {
+      if (filter === 'all') return true;
+      return char.faction === filter;
+    });
+
+    list.forEach(char => {
+      const lore = CHARACTER_LORE_DATA[char.id] || {};
+      const card = document.createElement('div');
+      card.className = 'codex-char-card';
+      card.style.setProperty('--card-accent', char.themeColor || '#c084fc');
+
+      const isAlly = char.faction === 'ally';
+      const factionLabel = isAlly ? '🐾 ĐỒNG MINH HỌC VIỆN' : '👻 LINH HỒN CỔ XƯA';
+      const factionClass = isAlly ? 'faction-ally' : 'faction-spirit';
+      const avatarSvg = getCharacterPortraitSvg(char.id, 62);
+      const runesList = (lore.runes || []).map(r => `<span class="codex-rune-pill">${r}</span>`).join(' ');
+
+      card.innerHTML = `
+        <div class="codex-card-header">
+          <div class="codex-card-avatar" style="box-shadow: 0 0 16px ${char.themeColor}35; border-color: ${char.themeColor};">
+            ${avatarSvg}
+          </div>
+          <div class="codex-card-meta">
+            <span class="codex-faction-tag ${factionClass}">${factionLabel}</span>
+            <div class="codex-card-name">${char.name}</div>
+            <div class="codex-card-title">${char.title}</div>
+            <div class="codex-card-elem" style="color: ${char.themeColor};">✨ ${char.element}</div>
+          </div>
+        </div>
+
+        <div class="codex-card-specs">
+          <div class="codex-spec-item">
+            <span class="codex-spec-label">📍 Xuất Hiện:</span>
+            <span class="codex-spec-val">${lore.location || 'Học Viện Arcane'}</span>
+          </div>
+          <div class="codex-spec-item">
+            <span class="codex-spec-label">⚔️ Pháp Bảo:</span>
+            <span class="codex-spec-val">${lore.equipment || 'Đũa Phép Thuật'}</span>
+          </div>
+          ${runesList ? `
+          <div class="codex-spec-item">
+            <span class="codex-spec-label">🪄 Ấn Ký:</span>
+            <div class="codex-runes-wrap">${runesList}</div>
+          </div>` : ''}
+        </div>
+
+        <div class="codex-card-quote">“${char.quote}”</div>
+        <p class="codex-card-bio">${char.bio}</p>
+
+        <button class="codex-story-btn" data-chapter="${lore.chapterIndex || 1}" title="Xem chương cốt truyện của ${char.name}">
+          <span>📖 Xem Cốt Truyện</span>
+          <span>➔</span>
+        </button>
+      `;
+
+      // Jump to Story Chapter on click
+      const btnJump = card.querySelector('.codex-story-btn');
+      if (btnJump) {
+        btnJump.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetChapter = parseInt(btnJump.getAttribute('data-chapter'), 10) || 1;
+          this.closeCodex();
+          this.game.stateMachine.changeState(GAME_STATES.STORY, {
+            previewOnly: true,
+            startChapter: targetChapter
+          });
+        });
+      }
+
+      this.codexGrid.appendChild(card);
+    });
   }
 }
