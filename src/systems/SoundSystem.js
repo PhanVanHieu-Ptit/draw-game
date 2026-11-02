@@ -512,6 +512,12 @@ export class SoundSystem {
       chimePitches = [1046.50, 1318.51, 1567.98, 1760.00]; // Electric Brilliant Chime
     } else if (gesture === 'heart') {
       chimePitches = [880, 1174.66, 1396.91, 1567.98]; // Fairy Blessing Chime
+    } else if (gesture === 'circle') {
+      chimePitches = [1046.50, 1318.51, 1567.98, 2093.00]; // High Icy Crystalline Chime
+      this.soundFreeze();
+    } else if (gesture === 'spiral') {
+      chimePitches = [523.25, 659.25, 783.99, 1046.50]; // Tempest Gale Chime
+      this.soundBlast();
     }
 
     chimePitches.forEach((freq, idx) => {
@@ -1792,6 +1798,113 @@ export class SoundSystem {
 
   playLightning() {
     this.soundLightning();
+  }
+
+  /* -------------------------------------------------------------------------
+   * Freeze & Blast Synthesizer Methods
+   * ------------------------------------------------------------------------- */
+
+  /**
+   * Shimmering crystalline ice freeze sound effect: high glass bell chime + frosty sub-chill sweep
+   */
+  soundFreeze() {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    // Glassy ice-crack click transient
+    const crackOsc = ctx.createOscillator();
+    const crackGain = ctx.createGain();
+    crackOsc.type = 'square';
+    crackOsc.frequency.setValueAtTime(3200, now);
+    crackOsc.frequency.exponentialRampToValueAtTime(800, now + 0.04);
+    crackGain.gain.setValueAtTime(0.24, now);
+    crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    crackOsc.connect(crackGain);
+    crackGain.connect(this.masterGain);
+    crackOsc.start(now);
+    crackOsc.stop(now + 0.05);
+
+    // Frost chimes arpeggio (C6, E6, G6, B6, D7)
+    const frostFrequencies = [1046.5, 1318.5, 1567.9, 1975.5, 2349.3];
+    frostFrequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.03);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(freq, now + i * 0.03);
+      filter.Q.setValueAtTime(6.0, now + i * 0.03);
+
+      const tStart = now + i * 0.03;
+      gain.gain.setValueAtTime(0.001, tStart);
+      gain.gain.linearRampToValueAtTime(0.20 / (1 + i * 0.2), tStart + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, tStart + 0.65);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(tStart);
+      osc.stop(tStart + 0.65);
+    });
+  }
+
+  /**
+   * Heavy concussive gale blast / whirlwind shockwave sound effect
+   */
+  soundBlast() {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    // Concussive sub-bass impact (180Hz downward pitch sweep)
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(180, now);
+    subOsc.frequency.exponentialRampToValueAtTime(38, now + 0.35);
+
+    subGain.gain.setValueAtTime(0.40, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(now);
+    subOsc.stop(now + 0.40);
+
+    // Rushing gale wind whoosh
+    const windOsc = ctx.createOscillator();
+    const windGain = ctx.createGain();
+    const windFilter = ctx.createBiquadFilter();
+
+    windOsc.type = 'triangle';
+    windOsc.frequency.setValueAtTime(420, now);
+    windOsc.frequency.exponentialRampToValueAtTime(95, now + 0.45);
+
+    windFilter.type = 'lowpass';
+    windFilter.frequency.setValueAtTime(800, now);
+    windFilter.frequency.exponentialRampToValueAtTime(150, now + 0.45);
+
+    windGain.gain.setValueAtTime(0.35, now);
+    windGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    windOsc.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(this.masterGain);
+
+    windOsc.start(now);
+    windOsc.stop(now + 0.45);
+  }
+
+  playFreeze() {
+    this.soundFreeze();
+  }
+
+  playBlast() {
+    this.soundBlast();
   }
 
   playEnemyDeath() {

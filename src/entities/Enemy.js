@@ -31,8 +31,16 @@ export class Enemy extends Entity {
     this.expressionTimer = 0;
     this.shiverTimer = 0;
     this.isHeartGhost = false;
+    this.isFreezeGhost = false;
+    this.isBlastGhost = false;
+    this.isFrozen = false;
+    this.freezeTimer = 0;
+    this.thawTimer = 0;
+    this.knockbackVx = 0;
+    this.knockbackVy = 0;
+    this.knockbackTimer = 0;
 
-    if (config.type || config.isHeartGhost || config.symbolQueue) {
+    if (config.type || config.isHeartGhost || config.isFreezeGhost || config.isBlastGhost || config.symbolQueue) {
       this.init(config);
     }
   }
@@ -90,13 +98,31 @@ export class Enemy extends Entity {
     this.expressionTimer = 0;
     this.shiverTimer = 0;
 
-    // Heart ghost special stationary behavior
-    this.isHeartGhost = config.isHeartGhost || this.symbolQueue.includes('heart');
+    // Special power-up ghosts: Heart (❤️), Freeze (❄️), Blast (🌀)
+    this.isHeartGhost = Boolean(config.isHeartGhost || (this.symbolQueue && this.symbolQueue.includes('heart')));
+    this.isFreezeGhost = Boolean(config.isFreezeGhost || (this.symbolQueue && this.symbolQueue.includes('circle')) || this.type === 'FREEZE');
+    this.isBlastGhost = Boolean(config.isBlastGhost || (this.symbolQueue && this.symbolQueue.includes('spiral')) || this.type === 'BLAST');
+
+    this.isFrozen = false;
+    this.freezeTimer = 0;
+    this.thawTimer = 0;
+    this.knockbackVx = 0;
+    this.knockbackVy = 0;
+    this.knockbackTimer = 0;
+
     if (this.isHeartGhost) {
       this.speed = 0;
       this.baseSpeed = 0;
       this.baseColor = '#fbcfe8';
       this.glowColor = '#f43f5e';
+    } else if (this.isFreezeGhost) {
+      this.speed = this.baseSpeed * (config.speedMultiplier !== undefined ? config.speedMultiplier : 0.40);
+      this.baseColor = '#bae6fd';
+      this.glowColor = '#38bdf8';
+    } else if (this.isBlastGhost) {
+      this.speed = this.baseSpeed * (config.speedMultiplier !== undefined ? config.speedMultiplier : 0.45);
+      this.baseColor = '#a7f3d0';
+      this.glowColor = '#10b981';
     }
 
     // Multi-phase Boss tracking
@@ -189,6 +215,44 @@ export class Enemy extends Entity {
     this.maxBossLives = 1;
     this.currentPhaseIndex = 0;
     this.phaseClearedOnRetreat = false;
+    this.isHeartGhost = false;
+    this.isFreezeGhost = false;
+    this.isBlastGhost = false;
+    this.isFrozen = false;
+    this.freezeTimer = 0;
+    this.thawTimer = 0;
+    this.knockbackVx = 0;
+    this.knockbackVy = 0;
+    this.knockbackTimer = 0;
+  }
+
+  /**
+   * Freeze this enemy completely solid in place
+   * @param {number} duration Freeze duration in seconds
+   */
+  freeze(duration = 4.5) {
+    this.isFrozen = true;
+    this.freezeTimer = duration;
+    this.thawTimer = 0;
+    this.slowTimer = 0;
+    this.expressionTimer = duration + 0.8;
+    this.shiverTimer = 0.5;
+  }
+
+  /**
+   * Knockback this enemy violently away from Momo
+   * @param {number} dirX Direction unit vector X away from player
+   * @param {number} dirY Direction unit vector Y away from player
+   * @param {number} [distance=300] Pushback distance in pixels
+   * @param {number} [duration=0.42] Slide duration in seconds
+   */
+  knockback(dirX, dirY, distance = 300, duration = 0.42) {
+    const dist = this.isBoss ? distance * 0.5 : distance;
+    this.knockbackVx = (dirX * dist) / duration;
+    this.knockbackVy = (dirY * dist) / duration;
+    this.knockbackTimer = duration;
+    this.shiverTimer = 0.6;
+    this.expressionTimer = 0.8;
   }
 
   /**
@@ -535,10 +599,35 @@ export class Enemy extends Entity {
       }
     }
 
+    // Knockback physics impulse: slide backwards away from Momo
+    if (this.knockbackTimer > 0) {
+      this.knockbackTimer -= dt;
+      this.x += this.knockbackVx * dt;
+      this.y += this.knockbackVy * dt;
+      this.knockbackVx *= Math.pow(0.12, dt);
+      this.knockbackVy *= Math.pow(0.12, dt);
+    }
+
+    // Freeze state machine: when frozen solid, enemy cannot advance at all!
+    if (this.freezeTimer > 0) {
+      this.freezeTimer -= dt;
+      if (this.freezeTimer <= 0) {
+        this.isFrozen = false;
+        this.thawTimer = 1.5; // Thaw transition with 50% slow
+      }
+      return;
+    }
+    if (this.thawTimer > 0) {
+      this.thawTimer -= dt;
+    }
+
     // Heart ghost stays stationary in one place!
     if (this.isHeartGhost || this.symbolQueue.includes('heart')) {
       return;
     }
+
+    // Thaw multiplier reduces speed during gradual defrost
+    const thawMult = this.thawTimer > 0 ? 0.50 : 1.0;
 
     // Final Boss advances menacingly towards Momo on the left to take Momo's life!
     if (this.isFinalBoss) {
@@ -553,7 +642,7 @@ export class Enemy extends Entity {
         // Normal perpendicular vector for menacing undulating flight motion
         const px = -ny;
         const py = nx;
-        const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0);
+        const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * thawMult;
         const wave = Math.sin(this.time * 2.0 + this.phase) * (currentSpeed * 0.35);
 
         this.x += (nx * currentSpeed + px * wave) * dt;
@@ -580,7 +669,7 @@ export class Enemy extends Entity {
       this.isCloseDanger = isCloseDanger;
       const surgeMult = 1.0;
 
-      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult;
+      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult * thawMult;
       const wave = Math.sin(this.time * this.oscillationFrequency + this.phase) * (currentSpeed * this.oscillationAmplitude);
 
       this.x += (nx * currentSpeed + px * wave) * dt;
@@ -681,6 +770,71 @@ export class Enemy extends Entity {
         ctx.bezierCurveTo(hx + hs * 3, hy + hs, hx + hs * 2, hy - hs * 2, hx, hy);
         ctx.fill();
         ctx.shadowBlur = 0;
+      } else if (this.isFreezeGhost) {
+        // Frosty cheeks & glowing snowflake chest crest
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.beginPath();
+        ctx.arc(-r * 0.42, r * 0.04, 5, 0, Math.PI * 2);
+        ctx.arc(r * 0.42, r * 0.04, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0284c7';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('❄️', 0, r * 0.40);
+        ctx.shadowBlur = 0;
+      } else if (this.isBlastGhost) {
+        // Tempest cheeks & swirling gale vortex chest crest
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.45)';
+        ctx.beginPath();
+        ctx.arc(-r * 0.42, r * 0.04, 5, 0, Math.PI * 2);
+        ctx.arc(r * 0.42, r * 0.04, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#059669';
+        ctx.shadowColor = '#34d399';
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🌀', 0, r * 0.40);
+        ctx.shadowBlur = 0;
+      }
+
+      // FROZEN SOLID ICE BLOCK VISUAL CASING
+      if (this.isFrozen || this.freezeTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.38)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#0284c7';
+        ctx.shadowBlur = 12;
+
+        const ir = r * 1.35;
+        ctx.beginPath();
+        for (let a = 0; a < 6; a++) {
+          const angle = (a / 6) * Math.PI * 2 + Math.PI / 6;
+          const px = Math.cos(angle) * ir;
+          const py = Math.sin(angle) * (ir * 1.08);
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Shimmering internal facet reflection lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-ir * 0.45, -ir * 0.7);
+        ctx.lineTo(-ir * 0.15, -ir * 0.15);
+        ctx.lineTo(ir * 0.5, -ir * 0.4);
+        ctx.stroke();
+        ctx.restore();
       }
 
       // 3. Armored details if Armored archetype
@@ -866,26 +1020,27 @@ export class Enemy extends Entity {
     const eyeRadiusX = isScared ? r * 0.25 : (isAnyBoss ? r * 0.24 : r * 0.20);
     const eyeRadiusY = isScared ? r * 0.28 : Math.max(2, (r * 0.22) * eyeScaleY);
 
-    if (isHeart) {
-      // Gentle, friendly healing spirit face
+    if (isHeart || this.isFreezeGhost || this.isBlastGhost) {
+      // Gentle, friendly spirit face for special power-up companions
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.ellipse(-eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
       ctx.ellipse(eyeOffsetX, eyeOffsetY, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Soft happy pupil
+      // Soft pupil colored by power-up type
       const pupilShift = r * 0.05;
       const px = Math.cos(angleToPlayer) * pupilShift;
       const py = Math.sin(angleToPlayer) * pupilShift * eyeScaleY;
-      ctx.fillStyle = '#f43f5e';
+      const pupilColor = isHeart ? '#f43f5e' : (this.isFreezeGhost ? '#0284c7' : '#059669');
+      ctx.fillStyle = pupilColor;
       ctx.beginPath();
       ctx.arc(-eyeOffsetX + px, eyeOffsetY + py, eyeRadiusX * 0.55, 0, Math.PI * 2);
       ctx.arc(eyeOffsetX + px, eyeOffsetY + py, eyeRadiusX * 0.55, 0, Math.PI * 2);
       ctx.fill();
 
       // Cute smile
-      ctx.strokeStyle = '#f43f5e';
+      ctx.strokeStyle = pupilColor;
       ctx.lineWidth = 1.8;
       ctx.lineCap = 'round';
       ctx.beginPath();

@@ -88,8 +88,9 @@ export class Game {
       enemiesDefeated: 0
     };
 
-    // Lightning screen flash timer
+    // Screen visual flash & freeze overlay timers
     this.lightningFlashTimer = 0;
+    this.freezeOverlayTimer = 0;
 
     // Level 1 Tutorial interactive tracking
     this.isTutorialActive = false;
@@ -371,6 +372,8 @@ export class Game {
       damageTaken: 0,
       enemiesDefeated: 0
     };
+    this.freezeOverlayTimer = 0;
+    this.lightningFlashTimer = 0;
 
     this.player.resize(this.width, this.height);
     this.player.reset();
@@ -471,9 +474,12 @@ export class Game {
     this.player.setDrawing(this.inputHandler.isDrawing, this.inputHandler.lastPoint);
     this.player.update(dt, this.enemies);
 
-    // Countdown lightning electric screen flash
+    // Countdown lightning electric screen flash and frost freeze overlay
     if (this.lightningFlashTimer > 0) {
       this.lightningFlashTimer -= dt;
+    }
+    if (this.freezeOverlayTimer > 0) {
+      this.freezeOverlayTimer -= dt;
     }
 
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
@@ -482,8 +488,10 @@ export class Game {
       const configs = Array.isArray(spawnResult) ? spawnResult : [spawnResult];
       const isSquad = configs.length > 1;
 
-      // Filter/rebalance Heart Ghost: at most 1 Heart Ghost active on screen at a time
-      let hasLivingHeart = this.enemies.some(e => e.isHeartGhost);
+      // Count living special tactical ghosts on screen
+      let livingHeartCount = this.enemies.filter(e => e.isHeartGhost && !e.isDead).length;
+      let livingFreezeCount = this.enemies.filter(e => e.isFreezeGhost && !e.isDead).length;
+      let livingBlastCount = this.enemies.filter(e => e.isBlastGhost && !e.isDead).length;
 
       // Coordinated edge positions for simultaneous squad members
       let squadPositions = [];
@@ -493,24 +501,45 @@ export class Game {
 
       for (let k = 0; k < configs.length; k++) {
         const enemyConfig = configs[k];
-        let isHeart = enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart'));
-        if (isHeart && hasLivingHeart) {
+        let isHeart = Boolean(enemyConfig.isHeartGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('heart')));
+        let isFreeze = Boolean(enemyConfig.isFreezeGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('circle')));
+        let isBlast = Boolean(enemyConfig.isBlastGhost || (enemyConfig.symbolQueue && enemyConfig.symbolQueue.includes('spiral')));
+
+        // Rebalance heart limit: allow up to 2 hearts active simultaneously when wounded (<= 3 HP), or 1 when healthy
+        const maxHeartsAllowed = this.player.hp <= 3 ? 2 : 1;
+        if (isHeart && livingHeartCount >= maxHeartsAllowed) {
           isHeart = false;
           enemyConfig.isHeartGhost = false;
           enemyConfig.symbolQueue = ['horizontal', 'vertical'];
         }
-        if (isHeart) hasLivingHeart = true;
+        if (isHeart) livingHeartCount++;
+
+        // Allow up to 1 active Freeze ghost at a time
+        if (isFreeze && livingFreezeCount >= 1) {
+          isFreeze = false;
+          enemyConfig.isFreezeGhost = false;
+          enemyConfig.symbolQueue = ['caret', 'v_shape'];
+        }
+        if (isFreeze) livingFreezeCount++;
+
+        // Allow up to 1 active Blast ghost at a time
+        if (isBlast && livingBlastCount >= 1) {
+          isBlast = false;
+          enemyConfig.isBlastGhost = false;
+          enemyConfig.symbolQueue = ['horizontal', 'lightning'];
+        }
+        if (isBlast) livingBlastCount++;
 
         const isBoss = enemyConfig.isBoss || enemyConfig.archetype === 'BOSS' || (typeof enemyConfig.archetype === 'string' && enemyConfig.archetype.startsWith('BOSS_'));
         let spawnPos;
 
-        if (isHeart) {
-          // Stationary Heart Ghost spawns around Momo in viewable arena
+        if (isHeart || isFreeze || isBlast) {
+          // Special tactical power-up ghosts spawn in arena around Momo so player can see them clearly
           const angle = Math.random() * Math.PI * 2;
-          const dist = Math.min(this.width, this.height) * 0.28;
+          const dist = Math.min(this.width, this.height) * (isHeart ? 0.28 : 0.36);
           spawnPos = {
-            x: Math.max(60, Math.min(this.width - 60, this.width / 2 + Math.cos(angle) * dist)),
-            y: Math.max(60, Math.min(this.height - 60, this.height / 2 + Math.sin(angle) * dist))
+            x: Math.max(70, Math.min(this.width - 70, this.width / 2 + Math.cos(angle) * dist)),
+            y: Math.max(70, Math.min(this.height - 70, this.height / 2 + Math.sin(angle) * dist))
           };
         } else if (isBoss) {
           if (enemyConfig.archetype === 'BOSS_MASTER') {
@@ -566,6 +595,8 @@ export class Game {
           canvasWidth: this.width,
           canvasHeight: this.height,
           isHeartGhost: isHeart,
+          isFreezeGhost: isFreeze,
+          isBlastGhost: isBlast,
           symbolQueue: enemyConfig.symbolQueue,
           bossPhases: enemyConfig.bossPhases,
           bossLives: enemyConfig.bossLives,
@@ -748,6 +779,19 @@ export class Game {
               } else {
                 this.audioSystem.playEnemyDeath();
               }
+              // Special power-up effects on enemy defeat
+              if (proj.targetEnemy.isFreezeGhost || proj.gesture === 'circle') {
+                this.triggerFreezeAll(4.5);
+              } else if (proj.targetEnemy.isBlastGhost || proj.gesture === 'spiral') {
+                this.triggerPushbackAll(320);
+              } else if (proj.targetEnemy.isHeartGhost || proj.gesture === 'heart') {
+                const healed = this.player.heal(1);
+                if (healed) {
+                  this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
+                  this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+                }
+              }
+
               this.particleSystem.emitMonsterDeathExplosion(
                 proj.targetEnemy.x,
                 proj.targetEnemy.y,
@@ -1114,6 +1158,52 @@ export class Game {
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
     }
+
+    // 7. Frost Nova Ice Vignette Overlay
+    if (this.freezeOverlayTimer > 0) {
+      ctx.save();
+      const frostAlpha = Math.min(0.55, this.freezeOverlayTimer * 0.22 + 0.12);
+      const frostGrad = ctx.createRadialGradient(
+        this.width / 2, this.height / 2, Math.min(this.width, this.height) * 0.22,
+        this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.70
+      );
+      frostGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+      frostGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.14)');
+      frostGrad.addColorStop(1, `rgba(186, 230, 253, ${frostAlpha})`);
+      ctx.fillStyle = frostGrad;
+      ctx.fillRect(0, 0, this.width, this.height);
+
+      // Frost decorative corner ice brackets
+      ctx.strokeStyle = `rgba(224, 242, 254, ${Math.min(1.0, frostAlpha * 1.5)})`;
+      ctx.lineWidth = 3;
+      const cornerSize = 48;
+      // Top-left corner
+      ctx.beginPath();
+      ctx.moveTo(10, cornerSize);
+      ctx.lineTo(10, 10);
+      ctx.lineTo(cornerSize, 10);
+      ctx.stroke();
+      // Top-right corner
+      ctx.beginPath();
+      ctx.moveTo(this.width - 10, cornerSize);
+      ctx.lineTo(this.width - 10, 10);
+      ctx.lineTo(this.width - cornerSize, 10);
+      ctx.stroke();
+      // Bottom-left corner
+      ctx.beginPath();
+      ctx.moveTo(10, this.height - cornerSize);
+      ctx.lineTo(10, this.height - 10);
+      ctx.lineTo(cornerSize, this.height - 10);
+      ctx.stroke();
+      // Bottom-right corner
+      ctx.beginPath();
+      ctx.moveTo(this.width - 10, this.height - cornerSize);
+      ctx.lineTo(this.width - 10, this.height - 10);
+      ctx.lineTo(this.width - cornerSize, this.height - 10);
+      ctx.stroke();
+
+      ctx.restore();
+    }
   }
 
   /**
@@ -1163,6 +1253,14 @@ export class Game {
         }
       }
 
+      if (gesture === 'circle') {
+        this.triggerFreezeAll(4.5);
+      }
+
+      if (gesture === 'spiral') {
+        this.triggerPushbackAll(320);
+      }
+
       // Fire pooled projectile to each matching enemy
       const wandTip = this.player.getWandTip();
       for (let i = 0; i < matchingEnemies.length; i++) {
@@ -1208,6 +1306,12 @@ export class Game {
         } else {
           this.audioSystem.playSpell(gesture);
         }
+      } else if (gesture === 'circle') {
+        this.triggerFreezeAll(4.5);
+        this.audioSystem.playSpell('circle');
+      } else if (gesture === 'spiral') {
+        this.triggerPushbackAll(320);
+        this.audioSystem.playSpell('spiral');
       } else if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
         this.lightningFlashTimer = 0.16;
@@ -1219,6 +1323,50 @@ export class Game {
       this.uiManager.showGestureFeedback(gesture, result.score, false);
       this._fizzleCombo();
     }
+  }
+
+  /**
+   * Freeze all active enemies on the battlefield for the given duration
+   * @param {number} [duration=4.5] 
+   */
+  triggerFreezeAll(duration = 4.5) {
+    this.freezeOverlayTimer = duration;
+    let frozenCount = 0;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (!e.isDead) {
+        e.freeze(e.isBoss ? Math.max(2.5, duration - 1.0) : duration);
+        frozenCount++;
+      }
+    }
+    this.audioSystem.soundFreeze();
+    this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#38bdf8', 32);
+    this.particleSystem.emitFloatingText('❄️ ĐÓNG BĂNG TOÀN DIỆN! (4.5s)', this.player.x, this.player.y - 75, '#38bdf8', 26);
+    this.triggerShake(6, 0.3);
+  }
+
+  /**
+   * Knockback and push all active enemies away from Momo
+   * @param {number} [force=320] 
+   */
+  triggerPushbackAll(force = 320) {
+    let pushedCount = 0;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (!e.isDead && !e.isHeartGhost) {
+        const dx = e.x - this.player.x;
+        const dy = e.y - this.player.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const dirX = dx / dist;
+        const dirY = dy / dist;
+        e.knockback(dirX, dirY, e.isBoss ? force * 0.55 : force);
+        pushedCount++;
+      }
+    }
+    this.audioSystem.soundBlast();
+    this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#34d399', 38);
+    this.particleSystem.emitFloatingText('💥 CUỒNG PHONG ĐẨY LÙI!', this.player.x, this.player.y - 75, '#34d399', 26);
+    this.triggerShake(16, 0.45);
   }
 
   _fizzleCombo() {
