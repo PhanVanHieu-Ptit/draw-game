@@ -3,7 +3,7 @@
    Modern Glassmorphism & Neon Arcade Aesthetics
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap');
 
 :root {
   --sat: env(safe-area-inset-top, 0px);
@@ -11,23 +11,28 @@
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
 
-  --bg-dark: #0a0818;
-  --bg-gradient: radial-gradient(circle at 50% 30%, #1c1538 0%, #0d0a1c 60%, #06050e 100%);
-  --panel-bg: rgba(18, 14, 38, 0.78);
-  --panel-border: rgba(167, 139, 250, 0.2);
-  --panel-glow: rgba(167, 139, 250, 0.15);
+  /* Eerie & Ancient Gothic Grimoire Palette */
+  --bg-dark: #07050d;
+  --bg-gradient: radial-gradient(circle at 50% 30%, #150f24 0%, #090614 60%, #040208 100%);
+  --panel-bg: rgba(14, 10, 26, 0.88);
+  --panel-border: rgba(217, 119, 6, 0.38); /* Antique gold trim */
+  --panel-border-inner: rgba(192, 132, 252, 0.16);
+  --panel-glow: rgba(147, 51, 234, 0.22);
   
-  --primary: #a855f7;
-  --primary-glow: #9333ea;
+  --primary: #9333ea;
+  --primary-glow: #7e22ce;
+  --antique-gold: #f59e0b;
+  --antique-gold-glow: #d97706;
   --accent-pink: #ec4899;
   --accent-cyan: #38bdf8;
   --accent-gold: #fbbf24;
-  --accent-emerald: #34d399;
+  --accent-emerald: #10b981;
   --accent-red: #ef4444;
 
   --text-main: #f8fafc;
   --text-dim: #94a3b8;
   --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-antique: 'Cinzel', 'Outfit', Georgia, serif;
 }
 
 * {
@@ -408,19 +413,22 @@ html, body {
 }
 
 .game-title {
-  font-size: 2.4rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #c084fc 0%, #f472b6 50%, #fbbf24 100%);
+  font-family: var(--font-antique);
+  font-size: 2.35rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #fef08a 0%, #fbbf24 45%, #f59e0b 80%, #b45309 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 6px;
+  text-shadow: 0 0 24px rgba(245, 158, 11, 0.35);
 }
 
 .game-subtitle {
   font-size: 0.95rem;
-  color: var(--text-dim);
-  margin-bottom: 24px;
+  color: #cbd5e1;
+  margin-bottom: 22px;
+  line-height: 1.45;
 }
 
 /* Rune Cheat Sheet Grid in Menu */
@@ -461,50 +469,64 @@ html, body {
   color: var(--text-dim);
 }
 
-/* Primary Neon Buttons */
+/* Primary & Secondary Antique Arcane Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #7e22ce 0%, #9333ea 50%, #6b21a8 100%);
   color: #ffffff;
-  border: none;
-  font-family: inherit;
-  font-size: 1.15rem;
-  font-weight: 800;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  font-family: var(--font-antique);
+  font-size: 1.12rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 14px 40px;
+  padding: 13px 38px;
   border-radius: 9999px;
   cursor: pointer;
-  box-shadow: 0 8px 28px rgba(168, 85, 247, 0.45);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 24px rgba(126, 34, 206, 0.45), inset 0 1px 0 rgba(254, 240, 138, 0.3);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 12px 36px rgba(236, 72, 153, 0.6);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 32px rgba(147, 51, 234, 0.6);
+  border-color: #fbbf24;
 }
 
 .btn-primary:active {
-  transform: translateY(1px) scale(0.98);
+  transform: scale(0.96);
+  filter: brightness(1.2);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  font-family: inherit;
-  font-size: 1rem;
+  background: rgba(22, 16, 40, 0.88);
+  color: #fef08a;
+  border: 1px solid rgba(217, 119, 6, 0.38);
+  font-family: var(--font-antique);
+  font-size: 0.98rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
   padding: 12px 28px;
   border-radius: 9999px;
   cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: var(--primary);
+  background: rgba(34, 24, 62, 0.95);
+  border-color: #f59e0b;
+  color: #ffffff;
+}
+
+.btn-secondary:active {
+  transform: scale(0.96);
+  filter: brightness(1.15);
 }
 
 .button-group {
@@ -1879,15 +1901,26 @@ html, body {
     display: none;
   }
 
-  /* Right: Controls & Combo */
+  /* Right: Controls & Combo with WCAG-compliant touch targets */
   .hud-right-panel {
-    gap: 6px;
+    gap: 8px;
+    align-items: center;
   }
 
   .icon-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 0.95rem;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.15rem;
+    border-radius: 50%;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .icon-btn:active {
+    transform: scale(0.94);
+    filter: brightness(1.2);
   }
 
   .combo-mult {
@@ -1895,26 +1928,28 @@ html, body {
   }
 
   .combo-bar-wrap {
-    width: 60px;
+    width: 55px;
     height: 5px;
   }
 
   /* Bottom feedback */
   .hud-bottom-bar {
-    padding-bottom: calc(8px + var(--sab));
+    padding-bottom: calc(10px + var(--sab));
   }
 
   .gesture-pill {
-    padding: 6px 16px;
-    font-size: 0.8rem;
+    padding: 6px 18px;
+    font-size: 0.85rem;
   }
 
   .hud-companion-badge {
-    top: calc(var(--sat) + 54px);
+    top: calc(var(--sat) + 52px);
     left: 8px;
-    padding: 3px 10px 3px 4px;
+    padding: 4px 10px 4px 5px;
     gap: 6px;
     max-width: calc(100% - 16px);
+    background: rgba(14, 10, 26, 0.92);
+    border: 1px solid rgba(217, 119, 6, 0.35);
   }
 
   .companion-avatar-wrap {
@@ -1995,24 +2030,40 @@ html, body {
   }
 
   .stage-grid {
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    width: 100%;
   }
 
   .stage-btn {
-    padding: 6px 2px;
-    border-radius: 10px;
+    padding: 8px 3px;
+    border-radius: 12px;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .stage-btn:active {
+    transform: scale(0.95);
+    filter: brightness(1.2);
   }
 
   .stage-icon {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
   }
 
   .stage-name {
-    font-size: 0.56rem;
+    font-size: 0.65rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    margin-top: 2px;
   }
 
   .rune-guide-grid {
@@ -2232,6 +2283,56 @@ html, body {
     width: 100%;
     gap: 8px;
     margin-top: 14px;
+  }
+
+  /* Codex Modal Mobile Optimization */
+  .codex-card {
+    padding: 16px 14px;
+    width: 96%;
+  }
+
+  .codex-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    max-height: calc(86dvh - 170px);
+    padding-right: 2px;
+  }
+
+  .codex-tab-btn {
+    padding: 6px 12px;
+    font-size: 0.76rem;
+  }
+
+  .codex-title-wrap h2 {
+    font-size: 1.4rem !important;
+  }
+
+  /* Dialogue Toast Mobile Ergonomics (prevent blocking center battlefield) */
+  .dialogue-toast {
+    top: calc(var(--sat) + 54px);
+    width: calc(100% - 20px);
+    max-width: 420px;
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: 14px;
+  }
+
+  .dialogue-avatar-wrap {
+    width: 32px;
+    height: 32px;
+  }
+
+  .dialogue-avatar {
+    font-size: 1.25rem;
+  }
+
+  .dialogue-name {
+    font-size: 0.85rem;
+  }
+
+  .dialogue-text {
+    font-size: 0.78rem;
+    line-height: 1.28;
   }
 }
 
