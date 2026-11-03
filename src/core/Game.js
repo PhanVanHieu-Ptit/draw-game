@@ -25,16 +25,26 @@ export class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    // Cap DPR at 2.0 to balance Retina clarity with mobile GPU fillrate efficiency
-    const rawDpr = window.devicePixelRatio || 1;
-    this.dpr = Math.min(rawDpr, 2.0);
+    // Detect mobile device environment
+    const isMobile = typeof window !== 'undefined' && (
+      window.innerWidth <= 768 ||
+      ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)
+    );
+    this.isMobile = isMobile;
 
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    // Cap DPR at 1.5 on mobile to avoid 3x retina fillrate throttling, 2.0 on desktop
+    const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    this.dpr = isMobile ? Math.min(rawDpr, 1.5) : Math.min(rawDpr, 2.0);
 
-    // Offscreen Lightmap Canvas for Dynamic Lighting & Vignette Masking
-    this.lightCanvas = document.createElement('canvas');
-    this.lightCtx = this.lightCanvas.getContext('2d');
+    this.width = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    this.height = typeof window !== 'undefined' ? window.innerHeight : 720;
+
+    // Offscreen Lightmap Canvas for Dynamic Lighting & Vignette Masking (half resolution for 4x fillrate performance)
+    this.lightScale = 0.5;
+    this.lightCanvas = typeof document !== 'undefined' && document.createElement ? document.createElement('canvas') : null;
+    this.lightCtx = this.lightCanvas ? this.lightCanvas.getContext('2d') : null;
+    this._initLightSprites();
 
     // Subsystems
     this.gestureEngine = new GestureEngine({
@@ -44,7 +54,8 @@ export class Game {
       boxSize: 100
     });
     this.audioSystem = new AudioSystem();
-    this.particleSystem = new ParticleSystem(800, 50); // Pooled particle system
+    const particleBudget = isMobile ? 380 : 800;
+    this.particleSystem = new ParticleSystem(particleBudget, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
     this.backgroundRenderer = new BackgroundRenderer();
 
@@ -250,6 +261,63 @@ export class Game {
     }
   }
 
+  _initLightSprites() {
+    if (typeof document === 'undefined' || !document.createElement) return;
+
+    const createStamp = (size, innerR, stops) => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        if (!ctx) return null;
+        const half = size / 2;
+        const grad = ctx.createRadialGradient(half, half, innerR, half, half, half);
+        for (const [pos, col] of stops) {
+          grad.addColorStop(pos, col);
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(half, half, half, 0, Math.PI * 2);
+        ctx.fill();
+        return c;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // Cutout stamps for destination-out
+    this.playerLightStamp = createStamp(128, 4, [
+      [0, 'rgba(0, 0, 0, 1.0)'],
+      [0.45, 'rgba(0, 0, 0, 0.88)'],
+      [0.78, 'rgba(0, 0, 0, 0.42)'],
+      [1.0, 'rgba(0, 0, 0, 0)']
+    ]);
+
+    this.projectileLightStamp = createStamp(64, 3, [
+      [0, 'rgba(0, 0, 0, 1.0)'],
+      [0.45, 'rgba(0, 0, 0, 0.82)'],
+      [0.8, 'rgba(0, 0, 0, 0.35)'],
+      [1.0, 'rgba(0, 0, 0, 0)']
+    ]);
+
+    this.enemyLightStamp = createStamp(64, 3, [
+      [0, 'rgba(0, 0, 0, 0.68)'],
+      [0.6, 'rgba(0, 0, 0, 0.3)'],
+      [1.0, 'rgba(0, 0, 0, 0)']
+    ]);
+
+    this.strokeLightStamp = createStamp(32, 2, [
+      [0, 'rgba(0, 0, 0, 0.6)'],
+      [1.0, 'rgba(0, 0, 0, 0)']
+    ]);
+
+    this.playerHaloStamp = createStamp(128, 4, [
+      [0, 'rgba(192, 132, 252, 0.22)'],
+      [1.0, 'rgba(0, 0, 0, 0)']
+    ]);
+  }
+
   _bindResize() {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => {
@@ -266,8 +334,15 @@ export class Game {
    * Guarantees crystal-clear Retina graphics while locking logical coordinates
    */
   resize() {
-    const rawDpr = window.devicePixelRatio || 1;
-    this.dpr = Math.min(rawDpr, 2.0);
+    const isMobile = typeof window !== 'undefined' && (
+      window.innerWidth <= 768 ||
+      ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)
+    );
+    this.isMobile = isMobile;
+
+    const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    this.dpr = this.isMobile ? Math.min(rawDpr, 1.5) : Math.min(rawDpr, 2.0);
 
     const parent = this.canvas.parentElement;
     this.width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
@@ -281,9 +356,11 @@ export class Game {
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
 
-    // Resize lightmap canvas at logical size for maximum GPU fillrate performance
-    this.lightCanvas.width = Math.round(this.width);
-    this.lightCanvas.height = Math.round(this.height);
+    // Resize lightmap canvas at half-resolution for 4x GPU fillrate & zero thermal throttling
+    if (this.lightCanvas) {
+      this.lightCanvas.width = Math.max(1, Math.round(this.width * this.lightScale));
+      this.lightCanvas.height = Math.max(1, Math.round(this.height * this.lightScale));
+    }
 
     if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
       const isMobile = this.width < 600;
@@ -665,6 +742,11 @@ export class Game {
           this.particleSystem.emitMonsterDeathExplosion(enemy.x, enemy.y, enemy.type, 26);
           this.particleSystem.emitFloatingText('-1 HP', this.player.x, this.player.y - 40, '#ef4444', 24);
 
+          // Mobile haptic pulse for damage taken
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate([28, 35, 28]); } catch (e) {}
+          }
+
           // Break combo
           this.comboCount = 0;
           this.comboMultiplier = 1;
@@ -1002,26 +1084,30 @@ export class Game {
     const w = this.width;
     const h = this.height;
 
-    if (!lCanvas || w <= 0 || h <= 0) return;
+    if (!lCanvas || !lCtx || w <= 0 || h <= 0) return;
+
+    const s = this.lightScale || 0.5;
+    const lw = lCanvas.width;
+    const lh = lCanvas.height;
 
     lCtx.save();
-    lCtx.clearRect(0, 0, w, h);
+    lCtx.clearRect(0, 0, lw, lh);
 
     // Step A: Base Ambient Darkness
     lCtx.fillStyle = 'rgba(6, 4, 16, 0.78)';
-    lCtx.fillRect(0, 0, w, h);
+    lCtx.fillRect(0, 0, lw, lh);
 
     // Step B: Heavy Vignette Gradient towards canvas borders
-    const maxDim = Math.max(w, h);
+    const maxDim = Math.max(lw, lh);
     const vignette = lCtx.createRadialGradient(
-      w / 2, h / 2, maxDim * 0.22,
-      w / 2, h / 2, maxDim * 0.75
+      lw / 2, lh / 2, maxDim * 0.22,
+      lw / 2, lh / 2, maxDim * 0.75
     );
     vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
     vignette.addColorStop(0.6, 'rgba(3, 2, 8, 0.55)');
     vignette.addColorStop(1, 'rgba(2, 1, 5, 0.95)');
     lCtx.fillStyle = vignette;
-    lCtx.fillRect(0, 0, w, h);
+    lCtx.fillRect(0, 0, lw, lh);
 
     // Step C: Carve out light sources using destination-out
     lCtx.globalCompositeOperation = 'destination-out';
@@ -1032,119 +1118,105 @@ export class Game {
     const breatheLight = Math.sin(this.lastTime * 0.003) * 14;
     const playerLightRadius = isCasting ? 270 : (isHurt ? 165 : 215 + breatheLight);
 
-    const playerGlow = lCtx.createRadialGradient(
-      this.player.x, this.player.y, 8,
-      this.player.x, this.player.y, playerLightRadius
-    );
-    playerGlow.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-    playerGlow.addColorStop(0.4, 'rgba(0, 0, 0, 0.88)');
-    playerGlow.addColorStop(0.75, 'rgba(0, 0, 0, 0.45)');
-    playerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    lCtx.fillStyle = playerGlow;
-    lCtx.beginPath();
-    lCtx.arc(this.player.x, this.player.y, playerLightRadius, 0, Math.PI * 2);
-    lCtx.fill();
+    if (this.playerLightStamp) {
+      lCtx.drawImage(
+        this.playerLightStamp,
+        (this.player.x - playerLightRadius) * s,
+        (this.player.y - playerLightRadius) * s,
+        playerLightRadius * 2 * s,
+        playerLightRadius * 2 * s
+      );
+    }
 
     // Wand tip extra flare when casting
-    if (isCasting) {
+    if (isCasting && this.playerLightStamp) {
       const tip = this.player.getWandTip();
-      const tipGlow = lCtx.createRadialGradient(tip.x, tip.y, 2, tip.x, tip.y, 140);
-      tipGlow.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-      tipGlow.addColorStop(0.6, 'rgba(0, 0, 0, 0.75)');
-      tipGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      lCtx.fillStyle = tipGlow;
-      lCtx.beginPath();
-      lCtx.arc(tip.x, tip.y, 140, 0, Math.PI * 2);
-      lCtx.fill();
+      const tipRadius = 140;
+      lCtx.drawImage(
+        this.playerLightStamp,
+        (tip.x - tipRadius) * s,
+        (tip.y - tipRadius) * s,
+        tipRadius * 2 * s,
+        tipRadius * 2 * s
+      );
     }
 
-    // 2. Local Light around Spell Projectiles
-    for (let i = 0; i < this.projectiles.length; i++) {
-      const proj = this.projectiles[i];
+    // 2. Local Light around Spell Projectiles (Zero GC Allocation)
+    if (this.projectileLightStamp) {
       const projRadius = 125;
-      const projLight = lCtx.createRadialGradient(
-        proj.x, proj.y, 6,
-        proj.x, proj.y, projRadius
-      );
-      projLight.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-      projLight.addColorStop(0.45, 'rgba(0, 0, 0, 0.82)');
-      projLight.addColorStop(0.8, 'rgba(0, 0, 0, 0.35)');
-      projLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-      lCtx.fillStyle = projLight;
-      lCtx.beginPath();
-      lCtx.arc(proj.x, proj.y, projRadius, 0, Math.PI * 2);
-      lCtx.fill();
+      for (let i = 0; i < this.projectiles.length; i++) {
+        const proj = this.projectiles[i];
+        lCtx.drawImage(
+          this.projectileLightStamp,
+          (proj.x - projRadius) * s,
+          (proj.y - projRadius) * s,
+          projRadius * 2 * s,
+          projRadius * 2 * s
+        );
+      }
     }
 
-    // 3. Eerie Phosphor Glow around Monsters
-    for (let i = 0; i < this.enemies.length; i++) {
-      const enemy = this.enemies[i];
-      const eRadius = enemy.radius * 2.5;
-      const enemyLight = lCtx.createRadialGradient(
-        enemy.x, enemy.y, 4,
-        enemy.x, enemy.y, eRadius
-      );
-      enemyLight.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
-      enemyLight.addColorStop(0.6, 'rgba(0, 0, 0, 0.3)');
-      enemyLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-      lCtx.fillStyle = enemyLight;
-      lCtx.beginPath();
-      lCtx.arc(enemy.x, enemy.y, eRadius, 0, Math.PI * 2);
-      lCtx.fill();
+    // 3. Eerie Phosphor Glow around Monsters (Zero GC Allocation)
+    if (this.enemyLightStamp) {
+      for (let i = 0; i < this.enemies.length; i++) {
+        const enemy = this.enemies[i];
+        const eRadius = enemy.radius * 2.5;
+        lCtx.drawImage(
+          this.enemyLightStamp,
+          (enemy.x - eRadius) * s,
+          (enemy.y - eRadius) * s,
+          eRadius * 2 * s,
+          eRadius * 2 * s
+        );
+      }
     }
 
     // 4. Subtle Trail Glow along Player's current active drawing path
-    if (this.inputHandler.isDrawing && this.inputHandler.currentPoints.length > 0) {
+    if (this.strokeLightStamp && this.inputHandler.isDrawing && this.inputHandler.currentPoints.length > 0) {
       const pts = this.inputHandler.currentPoints;
       const step = Math.max(1, Math.floor(pts.length / 10));
       for (let i = 0; i < pts.length; i += step) {
         const pt = pts[i];
-        const strokeLight = lCtx.createRadialGradient(pt.x, pt.y, 2, pt.x, pt.y, 50);
-        strokeLight.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
-        strokeLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        lCtx.fillStyle = strokeLight;
-        lCtx.beginPath();
-        lCtx.arc(pt.x, pt.y, 50, 0, Math.PI * 2);
-        lCtx.fill();
+        const rad = 45;
+        lCtx.drawImage(
+          this.strokeLightStamp,
+          (pt.x - rad) * s,
+          (pt.y - rad) * s,
+          rad * 2 * s,
+          rad * 2 * s
+        );
       }
     }
 
     lCtx.restore();
 
     // Step D: Composite the darkness lightmap over the main canvas
-    ctx.drawImage(lCanvas, 0, 0);
+    ctx.drawImage(lCanvas, 0, 0, this.width, this.height);
 
     // Step E: Additive Glow Halos (Atmospheric Bloom)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // Player warmth halo
-    const haloColor = isHurt 
-      ? 'rgba(239, 68, 68, 0.32)' 
-      : (isCasting ? 'rgba(236, 72, 153, 0.28)' : 'rgba(192, 132, 252, 0.18)');
-    const playerHalo = ctx.createRadialGradient(
-      this.player.x, this.player.y, 5,
-      this.player.x, this.player.y, 160
-    );
-    playerHalo.addColorStop(0, haloColor);
-    playerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = playerHalo;
-    ctx.beginPath();
-    ctx.arc(this.player.x, this.player.y, 160, 0, Math.PI * 2);
-    ctx.fill();
+    if (this.playerHaloStamp) {
+      const haloR = 160;
+      ctx.drawImage(
+        this.playerHaloStamp,
+        this.player.x - haloR,
+        this.player.y - haloR,
+        haloR * 2,
+        haloR * 2
+      );
+    }
 
     // Spell projectile color bloom
     for (let i = 0; i < this.projectiles.length; i++) {
       const proj = this.projectiles[i];
-      const halo = ctx.createRadialGradient(proj.x, proj.y, 4, proj.x, proj.y, 70);
+      const halo = ctx.createRadialGradient(proj.x, proj.y, 4, proj.x, proj.y, 65);
       halo.addColorStop(0, `${proj.color}50`);
       halo.addColorStop(1, 'transparent');
       ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.arc(proj.x, proj.y, 70, 0, Math.PI * 2);
+      ctx.arc(proj.x, proj.y, 65, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1235,6 +1307,11 @@ export class Game {
       this.audioSystem.playSpell(gesture);
 
       this.triggerShake(3.5, 0.15);
+
+      // Subtle mobile haptic feedback on successful spell strike
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(14); } catch (e) {}
+      }
 
       if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
@@ -1343,6 +1420,9 @@ export class Game {
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#38bdf8', 32);
     this.particleSystem.emitFloatingText('❄️ ĐÓNG BĂNG TOÀN DIỆN! (4.5s)', this.player.x, this.player.y - 75, '#38bdf8', 26);
     this.triggerShake(6, 0.3);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(20); } catch (e) {}
+    }
   }
 
   /**
@@ -1367,6 +1447,9 @@ export class Game {
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#34d399', 38);
     this.particleSystem.emitFloatingText('💥 CUỒNG PHONG ĐẨY LÙI!', this.player.x, this.player.y - 75, '#34d399', 26);
     this.triggerShake(16, 0.45);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(20); } catch (e) {}
+    }
   }
 
   _fizzleCombo() {

@@ -123,6 +123,11 @@ export class InputHandler {
       if (this.particleSystem) {
         this.particleSystem.emitMagicSparks(pt.x, pt.y, 5, '#f472b6');
       }
+
+      // Subtle mobile touch haptic on wand ignition
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(6); } catch (err) {}
+      }
     });
 
     this.canvas.addEventListener('pointermove', (e) => {
@@ -232,7 +237,7 @@ export class InputHandler {
   }
 
   /**
-   * Draw stroke with multi-layered neon glow and solid white core
+   * Draw stroke with smooth quadratic curve interpolation, multi-layered neon glow, and solid white core
    */
   _drawStrokeLine(ctx, points, glowColor, alpha) {
     if (points.length < 2) return;
@@ -242,29 +247,47 @@ export class InputHandler {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    const isMobile = typeof window !== 'undefined' && (
+      window.innerWidth <= 768 || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0)
+    );
+    const strokeScale = isMobile ? 1.25 : 1.0;
+
+    // Helper to trace smoothed path with quadratic mid-points
+    const traceSmoothPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      if (points.length === 2) {
+        ctx.lineTo(points[1].x, points[1].y);
+      } else {
+        for (let i = 1; i < points.length - 1; i++) {
+          const xc = (points[i].x + points[i + 1].x) / 2;
+          const yc = (points[i].y + points[i + 1].y) / 2;
+          ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+      }
+    };
+
     // Layer 1: Wide Ambient Glow
     ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 22;
-    ctx.lineWidth = 8;
+    ctx.shadowBlur = 22 * strokeScale;
+    ctx.lineWidth = 8.5 * strokeScale;
     ctx.strokeStyle = glowColor;
-
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
+    traceSmoothPath();
     ctx.stroke();
 
     // Layer 2: Medium Radiant Glow
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 4.5;
+    ctx.shadowBlur = 10 * strokeScale;
+    ctx.lineWidth = 4.8 * strokeScale;
     ctx.strokeStyle = '#f472b6';
+    traceSmoothPath();
     ctx.stroke();
 
     // Layer 3: Inner bright white hot core
     ctx.shadowBlur = 0;
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 2.4 * strokeScale;
     ctx.strokeStyle = '#ffffff';
+    traceSmoothPath();
     ctx.stroke();
 
     ctx.restore();
