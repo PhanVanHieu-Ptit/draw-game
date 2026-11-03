@@ -165,6 +165,103 @@ export function pathDistance(pts1, pts2) {
 }
 
 /**
+ * Tạo tập mẫu thô cho hình tròn ở mọi góc bắt đầu (12 góc quanh đồng hồ) và 2 chiều vẽ (CW, CCW)
+ * kèm theo các nét vòng tròn vẽ nhanh khép góc 80%-85%.
+ * @returns {Array<Array<{x: number, y: number}>>}
+ */
+function generateCircleRawTemplates() {
+  const list = [];
+  // 12 góc quanh đồng hồ (mỗi góc 30 độ), thuận và ngược chiều kim đồng hồ
+  for (let deg = 0; deg < 360; deg += 30) {
+    const rad = (deg * Math.PI) / 180;
+    for (const cw of [true, false]) {
+      const stroke = [];
+      const steps = 24;
+      for (let s = 0; s <= steps; s++) {
+        const a = rad + (cw ? 1 : -1) * (s / steps) * Math.PI * 2;
+        stroke.push({
+          x: Number((50 + 44 * Math.cos(a)).toFixed(1)),
+          y: Number((50 + 44 * Math.sin(a)).toFixed(1))
+        });
+      }
+      list.push(stroke);
+    }
+  }
+  // Thêm các vòng khép 80%-85% (người chơi vẽ nhanh không kịp khép kín 100%)
+  for (let deg = 0; deg < 360; deg += 90) {
+    const rad = (deg * Math.PI) / 180;
+    for (const cw of [true, false]) {
+      const stroke = [];
+      const steps = 20;
+      for (let s = 0; s <= steps; s++) {
+        const a = rad + (cw ? 1 : -1) * (s / steps) * Math.PI * 1.65;
+        stroke.push({
+          x: Number((50 + 44 * Math.cos(a)).toFixed(1)),
+          y: Number((50 + 44 * Math.sin(a)).toFixed(1))
+        });
+      }
+      list.push(stroke);
+    }
+  }
+  return list;
+}
+
+/**
+ * Tạo tập mẫu thô cho nét xoắn ốc (hỗ trợ cả cuộn từ ngoài vào trong và xoắn từ trong tâm ra ngoài)
+ * @returns {Array<Array<{x: number, y: number}>>}
+ */
+function generateSpiralRawTemplates() {
+  const list = [];
+  const startAngles = [0, 90, 180, 270];
+  const turnOptions = [1.25, 1.55, 1.85];
+
+  for (const deg of startAngles) {
+    const startRad = (deg * Math.PI) / 180;
+    for (const turns of turnOptions) {
+      for (const cw of [true, false]) {
+        // 1. Cuộn từ ngoài vào trong tâm (Outside -> In)
+        const rawIn = [];
+        const steps = 30;
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const a = startRad + (cw ? 1 : -1) * t * turns * Math.PI * 2;
+          const r = (1 - 0.72 * t) * 44;
+          rawIn.push({
+            x: Number((50 + r * Math.cos(a)).toFixed(1)),
+            y: Number((50 + r * Math.sin(a)).toFixed(1))
+          });
+        }
+        list.push(rawIn);
+
+        // 2. Xoắn từ trong tâm ra ngoài (Inside -> Out)
+        const rawOut = [];
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const a = startRad + (cw ? 1 : -1) * t * turns * Math.PI * 2;
+          const r = (0.12 + 0.88 * t) * 44;
+          rawOut.push({
+            x: Number((50 + r * Math.cos(a)).toFixed(1)),
+            y: Number((50 + r * Math.sin(a)).toFixed(1))
+          });
+        }
+        list.push(rawOut);
+      }
+    }
+  }
+
+  // Nét xoáy bão / cuộn gió casual
+  list.push([
+    { x: 20, y: 10 }, { x: 80, y: 15 }, { x: 90, y: 50 }, { x: 60, y: 85 },
+    { x: 25, y: 75 }, { x: 30, y: 40 }, { x: 65, y: 45 }, { x: 55, y: 60 }
+  ]);
+  list.push([
+    { x: 80, y: 10 }, { x: 20, y: 15 }, { x: 10, y: 50 }, { x: 40, y: 85 },
+    { x: 75, y: 75 }, { x: 70, y: 40 }, { x: 35, y: 45 }, { x: 45, y: 60 }
+  ]);
+  return list;
+}
+
+/**
  * DANH SÁCH KHUNG MẪU GỐC (RAW TEMPLATES) TRONG HỆ TOẠ ĐỘ 100x100
  * Bao gồm các biến thể chiều vẽ (thuận, nghịch, clockwise, counter-clockwise)
  * đảm bảo người dùng vẽ chiều nào cũng được nhận diện chính xác.
@@ -195,14 +292,28 @@ const DEFAULT_RAW_TEMPLATES = {
     [{ x: 95, y: 95 }, { x: 50, y: 5 }, { x: 5, y: 95 }]
   ],
   lightning: [
-    // Zic-zac dạng tia sét cổ điển (Z-shape)
-    [{ x: 15, y: 10 }, { x: 85, y: 15 }, { x: 15, y: 80 }, { x: 85, y: 90 }],
-    // Tia sét góc nhọn từ trên chéo xuống
+    // 1. Zic-zac dạng tia sét cổ điển (Z-shape: Trái -> Phải -> Chéo trái -> Phải)
+    [{ x: 10, y: 15 }, { x: 90, y: 15 }, { x: 10, y: 85 }, { x: 90, y: 85 }],
+    // 2. Chữ Z tự nhiên có độ nghiêng nhẹ
+    [{ x: 20, y: 10 }, { x: 80, y: 18 }, { x: 25, y: 78 }, { x: 85, y: 90 }],
+    // 3. Chữ Z đảo hướng (Phải -> Trái -> Chéo phải -> Trái)
+    [{ x: 90, y: 15 }, { x: 10, y: 15 }, { x: 90, y: 85 }, { x: 10, y: 85 }],
+    // 4. Chữ Z vẽ ngược từ dưới lên
+    [{ x: 10, y: 85 }, { x: 90, y: 85 }, { x: 10, y: 15 }, { x: 90, y: 15 }],
+    // 5. Tia sét thẳng đứng kinh điển 3 đoạn (Harry Potter / Google Doodle)
+    [{ x: 55, y: 5 }, { x: 25, y: 45 }, { x: 75, y: 45 }, { x: 45, y: 95 }],
+    [{ x: 45, y: 5 }, { x: 75, y: 45 }, { x: 25, y: 45 }, { x: 55, y: 95 }],
+    // 6. Tia sét thẳng đứng vẽ từ dưới lên
+    [{ x: 45, y: 95 }, { x: 75, y: 45 }, { x: 25, y: 45 }, { x: 55, y: 5 }],
+    // 7. Tia sét góc nhọn từ trên chéo xuống
     [{ x: 30, y: 0 }, { x: 80, y: 35 }, { x: 20, y: 55 }, { x: 75, y: 100 }],
-    // Tia sét zic-zac thẳng đứng 3 đoạn
-    [{ x: 50, y: 0 }, { x: 25, y: 40 }, { x: 75, y: 40 }, { x: 45, y: 100 }],
-    // Tia sét đảo hướng
-    [{ x: 70, y: 0 }, { x: 20, y: 35 }, { x: 80, y: 55 }, { x: 25, y: 100 }]
+    [{ x: 70, y: 0 }, { x: 20, y: 35 }, { x: 80, y: 55 }, { x: 25, y: 100 }],
+    // 8. Tia sét zic-zac 2 đoạn gập nhọn
+    [{ x: 20, y: 15 }, { x: 80, y: 50 }, { x: 20, y: 85 }],
+    [{ x: 80, y: 15 }, { x: 20, y: 50 }, { x: 80, y: 85 }],
+    // 9. Nét vẩy sét nhanh trong thực chiến
+    [{ x: 75, y: 10 }, { x: 35, y: 45 }, { x: 65, y: 45 }, { x: 25, y: 90 }],
+    [{ x: 25, y: 10 }, { x: 65, y: 45 }, { x: 35, y: 45 }, { x: 75, y: 90 }]
   ],
   heart: [
     // Mẫu 1: Bắt đầu từ rãnh trên (top cleft), vẽ cánh trái trước -> chóp nhọn -> cánh phải -> về rãnh
@@ -235,53 +346,8 @@ const DEFAULT_RAW_TEMPLATES = {
       { x: 65, y: 5 }, { x: 85, y: 15 }, { x: 90, y: 40 }, { x: 50, y: 95 }
     ]
   ],
-  circle: [
-    // Vòng tròn thuận chiều kim đồng hồ từ đỉnh trên
-    [
-      { x: 50, y: 5 }, { x: 82, y: 18 }, { x: 95, y: 50 }, { x: 82, y: 82 },
-      { x: 50, y: 95 }, { x: 18, y: 82 }, { x: 5, y: 50 }, { x: 18, y: 18 },
-      { x: 50, y: 5 }
-    ],
-    // Vòng tròn ngược chiều kim đồng hồ từ đỉnh trên
-    [
-      { x: 50, y: 5 }, { x: 18, y: 18 }, { x: 5, y: 50 }, { x: 18, y: 82 },
-      { x: 50, y: 95 }, { x: 82, y: 82 }, { x: 95, y: 50 }, { x: 82, y: 18 },
-      { x: 50, y: 5 }
-    ],
-    // Vòng tròn từ cạnh trái
-    [
-      { x: 5, y: 50 }, { x: 18, y: 18 }, { x: 50, y: 5 }, { x: 82, y: 18 },
-      { x: 95, y: 50 }, { x: 82, y: 82 }, { x: 50, y: 95 }, { x: 18, y: 82 },
-      { x: 5, y: 50 }
-    ],
-    // Vòng tròn từ đáy lên
-    [
-      { x: 50, y: 95 }, { x: 82, y: 82 }, { x: 95, y: 50 }, { x: 82, y: 18 },
-      { x: 50, y: 5 }, { x: 18, y: 18 }, { x: 5, y: 50 }, { x: 18, y: 82 },
-      { x: 50, y: 95 }
-    ]
-  ],
-  spiral: [
-    // Xoắn ốc thuận chiều kim đồng hồ (từ ngoài vào tâm)
-    [
-      { x: 50, y: 5 }, { x: 85, y: 20 }, { x: 95, y: 50 }, { x: 85, y: 80 },
-      { x: 50, y: 95 }, { x: 15, y: 80 }, { x: 10, y: 50 }, { x: 25, y: 25 },
-      { x: 50, y: 20 }, { x: 75, y: 35 }, { x: 80, y: 55 }, { x: 65, y: 75 },
-      { x: 50, y: 75 }, { x: 35, y: 65 }, { x: 35, y: 50 }, { x: 50, y: 50 }
-    ],
-    // Xoắn ốc ngược chiều kim đồng hồ (từ ngoài vào tâm)
-    [
-      { x: 50, y: 5 }, { x: 15, y: 20 }, { x: 10, y: 50 }, { x: 15, y: 80 },
-      { x: 50, y: 95 }, { x: 85, y: 80 }, { x: 90, y: 50 }, { x: 75, y: 25 },
-      { x: 50, y: 20 }, { x: 25, y: 35 }, { x: 20, y: 55 }, { x: 35, y: 75 },
-      { x: 50, y: 75 }, { x: 65, y: 65 }, { x: 65, y: 50 }, { x: 50, y: 50 }
-    ],
-    // Nét xoáy bão / cuộn gió (vortex swirl)
-    [
-      { x: 20, y: 10 }, { x: 80, y: 15 }, { x: 90, y: 50 }, { x: 60, y: 85 },
-      { x: 25, y: 75 }, { x: 30, y: 40 }, { x: 65, y: 45 }, { x: 55, y: 60 }
-    ]
-  ]
+  circle: generateCircleRawTemplates(),
+  spiral: generateSpiralRawTemplates()
 };
 
 /**
@@ -298,7 +364,7 @@ export class GestureEngine {
    * @param {number} [options.boxSize=100] Kích thước hộp chuẩn hóa
    */
   constructor(options = {}) {
-    this.minScore = options.minScore ?? 0.70;
+    this.minScore = options.minScore ?? 0.65;
     this.minPathLength = options.minPathLength ?? 15;
     this.pointCount = options.pointCount ?? 32;
     this.boxSize = options.boxSize ?? 100;
@@ -410,17 +476,26 @@ export class GestureEngine {
       }
 
       case 'lightning': {
-        // Tia sét: Nét vẽ ziczac phải có sự đảo chiều trên trục X hoặc Y
-        let xDirectionChanges = 0;
-        for (let i = 2; i < normalizedPoints.length; i++) {
-          const dx1 = normalizedPoints[i - 1].x - normalizedPoints[i - 2].x;
-          const dx2 = normalizedPoints[i].x - normalizedPoints[i - 1].x;
-          if ((dx1 > 1.5 && dx2 < -1.5) || (dx1 < -1.5 && dx2 > 1.5)) {
-            xDirectionChanges++;
+        // Tia sét: Nét vẽ ziczac phải có ít nhất 1 lần gập góc / đảo chiều trên trục X hoặc Y
+        // (Ví dụ Z-shape: Trái -> Phải -> Chéo trái -> Phải: 2 lần đảo chiều X)
+        // (Hoặc tia sét thẳng đứng: Đi xuống -> Chéo lên/ngang -> Đi xuống: đảo chiều X hoặc Y)
+        let dirX = 0, xReversals = 0;
+        let dirY = 0, yReversals = 0;
+        for (let i = 1; i < normalizedPoints.length; i++) {
+          const dx = normalizedPoints[i].x - normalizedPoints[i - 1].x;
+          const dy = normalizedPoints[i].y - normalizedPoints[i - 1].y;
+          if (Math.abs(dx) > 1.2) {
+            const sx = Math.sign(dx);
+            if (dirX !== 0 && sx !== dirX) xReversals++;
+            dirX = sx;
+          }
+          if (Math.abs(dy) > 1.2) {
+            const sy = Math.sign(dy);
+            if (dirY !== 0 && sy !== dirY) yReversals++;
+            dirY = sy;
           }
         }
-        // Cần ít nhất 1 điểm gập góc đảo chiều
-        return xDirectionChanges >= 1;
+        return (xReversals >= 1 || yReversals >= 1);
       }
 
       case 'heart': {
@@ -431,20 +506,21 @@ export class GestureEngine {
 
       case 'circle': {
         // Vòng tròn (Frost Nova): Tỷ lệ khung tương đối vuông vức (không phải nét 1D)
-        if (aspect < 0.45 || aspect > 2.2) return false;
-        // Điểm đầu và cuối gần như khép kín thành vòng (< 50px trong ô 100x100)
+        if (aspect < 0.35 || aspect > 2.8) return false;
+        // Điểm đầu và cuối tương đối gần nhau (< 72px trong ô 100x100 cho phép vẽ nhanh 75%-85% vòng)
         const closeDist = distance(normalizedPoints[0], normalizedPoints[31]);
-        if (closeDist > 52) return false;
-        // Chiều dài đường bao quanh đủ lớn để tạo thành vòng tròn
+        if (closeDist > 72) return false;
+        // Chiều dài đường bao quanh đủ lớn để tạo thành đường cong khép góc
         const totalCurve = pathLength(normalizedPoints);
-        return totalCurve >= 130;
+        return totalCurve >= 115;
       }
 
       case 'spiral': {
-        // Xoắn ốc / Cơn lốc cuộn gió: Nét vẽ 2D có độ cuộn lượn sóng dài
+        // Xoắn ốc / Cơn lốc cuộn gió (Gale Shockwave):
+        // Nét vẽ 2D dạng cuộn xoáy dài (hỗ trợ cả vẽ cuộn vào trong lẫn xoắn từ tâm ra ngoài)
         if (aspect < 0.35 || aspect > 2.8) return false;
         const totalCurve = pathLength(normalizedPoints);
-        return totalCurve >= 125;
+        return totalCurve >= 115;
       }
 
       default:

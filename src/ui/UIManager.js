@@ -47,6 +47,10 @@ export class UIManager {
     this.tutorialStep2 = document.getElementById('tutorial-step-2');
     this.btnSkipTutorial = document.getElementById('btn-skip-tutorial');
     this.btnTutorialHUD = document.getElementById('btn-tutorial');
+    this.tabTutStep = document.getElementById('tab-btn-tut-step');
+    this.tabTutSpells = document.getElementById('tab-btn-tut-spells');
+    this.tutStepView = document.getElementById('tutorial-step-view');
+    this.tutSpellsView = document.getElementById('tutorial-spells-view');
 
     // Menu Elements
     this.menuHighScore = document.getElementById('menu-high-score');
@@ -373,9 +377,19 @@ export class UIManager {
       });
     }
 
+    if (this.tabTutStep && this.tabTutSpells) {
+      this.tabTutStep.addEventListener('click', () => {
+        this.switchTutorialTab('step');
+      });
+      this.tabTutSpells.addEventListener('click', () => {
+        this.switchTutorialTab('spells');
+      });
+    }
+
     if (this.btnTutorialHUD) {
       this.btnTutorialHUD.addEventListener('click', () => {
-        this.showTutorial(1);
+        const isAdvancedLevel = this.game && this.game.waveSystem && this.game.waveSystem.currentLevelIndex > 1;
+        this.showTutorial(1, isAdvancedLevel);
       });
     }
 
@@ -815,21 +829,40 @@ export class UIManager {
     }
   }
 
-  showTutorial(step = 1) {
+  switchTutorialTab(tab = 'step') {
+    if (tab === 'step') {
+      if (this.tabTutStep) this.tabTutStep.classList.add('active');
+      if (this.tabTutSpells) this.tabTutSpells.classList.remove('active');
+      if (this.tutStepView) this.tutStepView.classList.remove('hidden');
+      if (this.tutSpellsView) this.tutSpellsView.classList.add('hidden');
+    } else {
+      if (this.tabTutStep) this.tabTutStep.classList.remove('active');
+      if (this.tabTutSpells) this.tabTutSpells.classList.add('active');
+      if (this.tutStepView) this.tutStepView.classList.add('hidden');
+      if (this.tutSpellsView) this.tutSpellsView.classList.remove('hidden');
+    }
+  }
+
+  showTutorial(step = 1, forceSpellsTab = false) {
     if (!this.tutorialOverlay) return;
     this.tutorialOverlay.classList.add('show');
 
-    if (step === 1) {
-      if (this.tutorialStep1) this.tutorialStep1.classList.remove('hidden');
-      if (this.tutorialStep2) this.tutorialStep2.classList.add('hidden');
-    } else if (step === 2) {
-      if (this.tutorialStep1) this.tutorialStep1.classList.add('hidden');
-      if (this.tutorialStep2) this.tutorialStep2.classList.remove('hidden');
+    if (forceSpellsTab) {
+      this.switchTutorialTab('spells');
+    } else {
+      this.switchTutorialTab('step');
+      if (step === 1) {
+        if (this.tutorialStep1) this.tutorialStep1.classList.remove('hidden');
+        if (this.tutorialStep2) this.tutorialStep2.classList.add('hidden');
+      } else if (step === 2) {
+        if (this.tutorialStep1) this.tutorialStep1.classList.add('hidden');
+        if (this.tutorialStep2) this.tutorialStep2.classList.remove('hidden');
+      }
     }
 
     if (this.game) {
-      this.game.isTutorialActive = true;
-      this.game.tutorialStep = step;
+      this.game.isTutorialActive = !forceSpellsTab;
+      this.game.tutorialStep = forceSpellsTab ? 0 : step;
     }
   }
 
@@ -837,7 +870,7 @@ export class UIManager {
     if (nextStep >= 3) {
       this.hideTutorial();
     } else {
-      this.showTutorial(nextStep);
+      this.showTutorial(nextStep, false);
     }
   }
 

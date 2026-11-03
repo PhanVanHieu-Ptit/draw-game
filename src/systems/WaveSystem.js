@@ -27,6 +27,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
+    this.bossSpawnGraceTimer = 2.5; // Grace window before Boss forcefully emerges
 
     // Event hooks
     this.onWaveStart = null;
@@ -69,6 +70,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
+    this.bossSpawnGraceTimer = 2.5;
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
@@ -123,13 +125,22 @@ export class WaveSystem {
   }
 
   /**
+   * Pause minion spawning during boss phase transitions / retreat
+   * @param {number} [duration=1.4]
+   */
+  pauseBossMinionSpawns(duration = 1.4) {
+    this.bossMinionSpawnTimer = Math.max(this.bossMinionSpawnTimer, duration);
+  }
+
+  /**
    * Update level & wave progression loop
    * @param {number} dt 
    * @param {number} playerHp 
    * @param {number} livingEnemiesCount 
+   * @param {number} [hostileEnemiesCount]
    * @returns {{ archetype: string, symbolQueue: string[], speedMultiplier: number, isBoss?: boolean, isHeartGhost?: boolean } | Array<object> | null}
    */
-  update(dt, playerHp, livingEnemiesCount) {
+  update(dt, playerHp, livingEnemiesCount, hostileEnemiesCount = livingEnemiesCount) {
     const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
 
     // 1. Intermission between stages or victory transition
@@ -154,7 +165,20 @@ export class WaveSystem {
       const isImmediateBossLevel = this.currentLevelIndex === 5 || this.totalEnemiesInWave === 0 || this.levelData.bossType === 'BOSS_MASTER';
 
       if (isImmediateBossLevel || this.enemiesSpawnedInWave >= this.totalEnemiesInWave) {
-        if (!this.isBossSpawned && (isImmediateBossLevel || livingEnemiesCount === 0)) {
+        let shouldSpawnBoss = false;
+        if (isImmediateBossLevel) {
+          shouldSpawnBoss = true;
+        } else if (hostileEnemiesCount === 0) {
+          shouldSpawnBoss = true;
+        } else {
+          // Lingering hostile minions: count down grace timer to ensure boss always arrives without dead halts
+          this.bossSpawnGraceTimer -= dt;
+          if (this.bossSpawnGraceTimer <= 0) {
+            shouldSpawnBoss = true;
+          }
+        }
+
+        if (!this.isBossSpawned && shouldSpawnBoss) {
           this.isBossSpawned = true;
           this.isBossDefeated = false;
           this.bossMinionSpawnTimer = 1.4; // Breathing window before first boss minion appears

@@ -48,7 +48,7 @@ export class Game {
 
     // Subsystems
     this.gestureEngine = new GestureEngine({
-      minScore: 0.68,
+      minScore: 0.65,
       minPathLength: 15,
       pointCount: 32,
       boxSize: 100
@@ -560,7 +560,9 @@ export class Game {
     }
 
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
-    const spawnResult = this.waveSystem.update(dt, this.player.hp, this.enemies.length);
+    const livingEnemiesCount = this.enemies.filter(e => !e.isDead).length;
+    const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost).length;
+    const spawnResult = this.waveSystem.update(dt, this.player.hp, livingEnemiesCount, hostileEnemiesCount);
     if (spawnResult) {
       const configs = Array.isArray(spawnResult) ? spawnResult : [spawnResult];
       const isSquad = configs.length > 1;
@@ -678,13 +680,45 @@ export class Game {
           bossPhases: enemyConfig.bossPhases,
           bossLives: enemyConfig.bossLives,
           speedMultiplier: enemyConfig.speedMultiplier,
-          targetPlayerPos: this.player
+          targetPlayerPos: this.player,
+          levelIndex: this.waveSystem ? this.waveSystem.currentLevelIndex : 1,
+          levelId: (this.waveSystem && this.waveSystem.levelData) ? this.waveSystem.levelData.id : 'library'
         });
         this.enemies.push(newEnemy);
 
         // Boss / Armored entrance feedback
         if (isBoss) {
-          this.triggerShake(20, 0.75);
+          // Boss Entrance Cleansing Shockwave: wipe lingering minion ghosts from pre-boss wave
+          let cleansedCount = 0;
+          for (let m = 0; m < this.enemies.length; m++) {
+            const minion = this.enemies[m];
+            if (minion !== newEnemy && !minion.isDead && !minion.isBoss) {
+              minion.isDead = true;
+              if (minion.isHeartGhost) {
+                // Heart ghost automatically converts into +1 HP heal for Momo!
+                const healed = this.player.heal(1);
+                if (healed) {
+                  this.particleSystem.emitFloatingText('+1 HP ❤️ (THU HOẠCH TIM)', this.player.x, this.player.y - 60, '#f43f5e', 24);
+                  this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+                }
+                this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, 'HEART', 20);
+              } else {
+                this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, minion.type, 24);
+                const reward = (minion.scoreValue || 100) * this.comboMultiplier;
+                this.score += reward;
+                this.particleSystem.emitFloatingText(`+${reward}`, minion.x, minion.y - 18, '#fde047', 18);
+              }
+              cleansedCount++;
+            }
+          }
+
+          if (cleansedCount > 0) {
+            this.triggerShake(24, 0.85);
+            this.particleSystem.emitFloatingText('⚡ UY LỰC TRÙM QUÉT SẠCH U LINH! ⚡', this.width / 2, this.height * 0.28, '#f43f5e', 24);
+          } else {
+            this.triggerShake(20, 0.75);
+          }
+
           if (this.audioSystem) {
             if (typeof this.audioSystem.playBossRoar === 'function') {
               this.audioSystem.playBossRoar();
@@ -728,6 +762,23 @@ export class Game {
 
       // Check collision with Player
       if (enemy.collidesWith(this.player)) {
+        if (enemy.isHeartGhost) {
+          // Touching Heart Ghost peacefully heals Momo!
+          const healed = this.player.heal(1);
+          if (healed) {
+            this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
+            this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+          }
+          if (this.audioSystem && typeof this.audioSystem.playSpell === 'function') {
+            this.audioSystem.playSpell('heart');
+          }
+          this.particleSystem.emitHitBurst(enemy.x, enemy.y, '#f43f5e', 20);
+          this.enemyPool.release(enemy);
+          this.enemies[i] = this.enemies[this.enemies.length - 1];
+          this.enemies.pop();
+          continue;
+        }
+
         const damageTaken = this.player.takeDamage(1);
         if (damageTaken) {
           this.metrics.damageTaken++;
@@ -825,6 +876,9 @@ export class Game {
                   '#fde047',
                   22
                 );
+
+                // All other enemies must retreat backwards along with the Boss!
+                this.retreatAllMinionsWithBoss(proj.targetEnemy);
               }
             } else if (hitResult.destroyed) {
               this.metrics.enemiesDefeated++;
@@ -1449,6 +1503,45 @@ export class Game {
     this.triggerShake(16, 0.45);
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(20); } catch (e) {}
+    }
+  }
+
+  /**
+   * Push back and retreat all active minion enemies when the Boss loses 1 life
+   * @param {Enemy} [bossEnemy]
+   */
+  retreatAllMinionsWithBoss(bossEnemy) {
+    let retreatedCount = 0;
+    for (let k = 0; k < this.enemies.length; k++) {
+      const otherEnemy = this.enemies[k];
+      if (otherEnemy !== bossEnemy && !otherEnemy.isDead && !otherEnemy.isHeartGhost) {
+        if (typeof otherEnemy.retreatWithBoss === 'function') {
+          otherEnemy.retreatWithBoss(this.player, 1.35, 260);
+        } else if (typeof otherEnemy.knockback === 'function') {
+          const dx = otherEnemy.x - this.player.x;
+          const dy = otherEnemy.y - this.player.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          otherEnemy.knockback(dx / dist, dy / dist, 320, 0.8);
+        }
+        if (this.particleSystem && typeof this.particleSystem.emitMagicSparks === 'function') {
+          this.particleSystem.emitMagicSparks(otherEnemy.x, otherEnemy.y, 4, '#fbbf24');
+        }
+        retreatedCount++;
+      }
+    }
+
+    // Pause new minion spawns for a breathing window during boss retreat
+    if (this.waveSystem && typeof this.waveSystem.pauseBossMinionSpawns === 'function') {
+      this.waveSystem.pauseBossMinionSpawns(1.4);
+    }
+
+    if (retreatedCount > 0) {
+      if (this.audioSystem && typeof this.audioSystem.soundBlast === 'function') {
+        this.audioSystem.soundBlast();
+      }
+      if (this.particleSystem && typeof this.particleSystem.emitFloatingText === 'function') {
+        this.particleSystem.emitFloatingText('💨 BẦY QUÁI LÙI LẠI!', this.player.x, this.player.y - 75, '#fbbf24', 22);
+      }
     }
   }
 

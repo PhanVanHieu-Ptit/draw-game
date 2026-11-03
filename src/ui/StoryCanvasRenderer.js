@@ -719,16 +719,12 @@ export class StoryCanvasRenderer {
     // Madame Libraria on right
     const bossX = w * 0.80;
     const bossY = h * 0.48 + Math.cos(t * 2.5) * 6;
+    StoryCanvasRenderer._drawMadameLibrariaFigure(ctx, bossX, bossY, 32, t);
     ctx.save();
-    ctx.fillStyle = '#38bdf8';
-    ctx.shadowColor = '#60a5fa';
-    ctx.shadowBlur = 18;
-    ctx.font = '36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👻📚', bossX, bossY);
     ctx.fillStyle = '#93c5fd';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('Madame Libraria', bossX, bossY + 26);
+    ctx.textAlign = 'center';
+    ctx.fillText('Madame Libraria', bossX, bossY + 44);
     ctx.restore();
 
     // Floating Books & Runes [—] and [|]
@@ -777,16 +773,12 @@ export class StoryCanvasRenderer {
     // Chef Bouillon on right
     const chefX = w * 0.80;
     const chefY = h * 0.48 + Math.cos(t * 3) * 5;
+    StoryCanvasRenderer._drawChefBouillonFigure(ctx, chefX, chefY, 32, t);
     ctx.save();
-    ctx.fillStyle = '#fb923c';
-    ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 18;
-    ctx.font = '36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👻🍲', chefX, chefY);
     ctx.fillStyle = '#fdba74';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('Chef Bouillon', chefX, chefY + 26);
+    ctx.textAlign = 'center';
+    ctx.fillText('Chef Bouillon', chefX, chefY + 44);
     ctx.restore();
   }
 
@@ -825,16 +817,12 @@ export class StoryCanvasRenderer {
     // Professor Stella on right with orbit
     const stellaX = w * 0.80;
     const stellaY = h * 0.48 + Math.sin(t * 2.8) * 6;
+    StoryCanvasRenderer._drawProfessorStellaFigure(ctx, stellaX, stellaY, 32, t);
     ctx.save();
-    ctx.fillStyle = '#c084fc';
-    ctx.shadowColor = '#e879f9';
-    ctx.shadowBlur = 20;
-    ctx.font = '36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👻🪐', stellaX, stellaY);
     ctx.fillStyle = '#f0abfc';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('Professor Stella', stellaX, stellaY + 26);
+    ctx.textAlign = 'center';
+    ctx.fillText('Professor Stella', stellaX, stellaY + 44);
     ctx.restore();
   }
 
@@ -869,16 +857,12 @@ export class StoryCanvasRenderer {
     // Coach Striker with whistle on right
     const coachX = w * 0.80;
     const coachY = h * 0.48 + Math.cos(t * 3.5) * 5;
+    StoryCanvasRenderer._drawCoachStrikerFigure(ctx, coachX, coachY, 32, t);
     ctx.save();
-    ctx.fillStyle = '#34d399';
-    ctx.shadowColor = '#34d399';
-    ctx.shadowBlur = 20;
-    ctx.font = '36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👻🏀', coachX, coachY);
     ctx.fillStyle = '#6ee7b7';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('Coach Striker', coachX, coachY + 26);
+    ctx.textAlign = 'center';
+    ctx.fillText('Coach Striker', coachX, coachY + 44);
     ctx.restore();
   }
 
@@ -907,16 +891,434 @@ export class StoryCanvasRenderer {
     // Colossal Lord Umbra on right
     const umbraX = w * 0.76;
     const umbraY = h * 0.50 + Math.sin(t * 2) * 5;
+    StoryCanvasRenderer._drawLordUmbraFigure(ctx, umbraX, umbraY, 44, t);
     ctx.save();
-    ctx.fillStyle = '#f43f5e';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 28;
-    ctx.font = '48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👑👻', umbraX, umbraY);
     ctx.fillStyle = '#fca5a5';
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('Lord Umbra', umbraX, umbraY + 32);
+    ctx.textAlign = 'center';
+    ctx.fillText('Lord Umbra', umbraX, umbraY + 52);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // PROCEDURAL SPIRIT BOSS FIGURES FOR STORY SCENES
+  // -------------------------------------------------------------------------
+  static _drawMadameLibrariaFigure(ctx, x, y, r, t) {
+    ctx.save();
+    // Spectral blue aura
+    const grad = ctx.createRadialGradient(x, y, 5, x, y, r * 1.4);
+    grad.addColorStop(0, '#67e8f9');
+    grad.addColorStop(0.7, '#0284c7');
+    grad.addColorStop(1, 'rgba(2, 132, 199, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ghost body
+    ctx.fillStyle = '#0ea5e9';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.2, r * 0.7, Math.PI, 0, false);
+    ctx.quadraticCurveTo(x + r * 0.7, y + r * 0.8, x + r * 0.35, y + r * 0.7 + Math.sin(t * 3) * 3);
+    ctx.quadraticCurveTo(x, y + r * 0.9, x - r * 0.35, y + r * 0.7 + Math.cos(t * 3) * 3);
+    ctx.quadraticCurveTo(x - r * 0.7, y + r * 0.8, x - r * 0.7, y - r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Scholar bun on head with quill
+    ctx.fillStyle = '#0369a1';
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.85, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.3, y - r * 0.75);
+    ctx.lineTo(x + r * 0.35, y - r * 1.05);
+    ctx.stroke();
+
+    // Spectacles with chain
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + r * 0.25, y - r * 0.25, r * 0.16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.09, y - r * 0.25);
+    ctx.lineTo(x + r * 0.09, y - r * 0.25);
+    ctx.stroke();
+
+    // Glowing cyan eyes
+    ctx.fillStyle = '#e0f2fe';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.08, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.25, y - r * 0.25, r * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Open Ancient Grimoire in front
+    const bookY = y + r * 0.35 + Math.sin(t * 4) * 2;
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x - r * 0.7, bookY - r * 0.25, r * 1.4, r * 0.45);
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(x - r * 0.65, bookY - r * 0.22, r * 0.62, r * 0.4);
+    ctx.fillRect(x + r * 0.03, bookY - r * 0.22, r * 0.62, r * 0.4);
+
+    // Glowing runes on pages
+    ctx.fillStyle = '#0284c7';
+    ctx.font = `bold ${Math.round(r * 0.32)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('—', x - r * 0.34, bookY + r * 0.06);
+    ctx.fillText('|', x + r * 0.34, bookY + r * 0.06);
+    ctx.restore();
+  }
+
+  static _drawChefBouillonFigure(ctx, x, y, r, t) {
+    ctx.save();
+    // Fiery aura
+    const grad = ctx.createRadialGradient(x, y, 5, x, y, r * 1.4);
+    grad.addColorStop(0, '#f97316');
+    grad.addColorStop(0.7, '#ea580c');
+    grad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Round plump fiery ghost body
+    ctx.fillStyle = '#c2410c';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.15, r * 0.75, Math.PI, 0, false);
+    ctx.quadraticCurveTo(x + r * 0.8, y + r * 0.8, x + r * 0.4, y + r * 0.7 + Math.sin(t * 3.5) * 3);
+    ctx.quadraticCurveTo(x, y + r * 0.95, x - r * 0.4, y + r * 0.7 + Math.cos(t * 3.5) * 3);
+    ctx.quadraticCurveTo(x - r * 0.8, y + r * 0.8, x - r * 0.75, y - r * 0.15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pleated Chef Toque
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.3, y - r * 0.9, r * 0.26, 0, Math.PI * 2);
+    ctx.arc(x, y - r * 1.05, r * 0.32, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.3, y - r * 0.9, r * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(x - r * 0.45, y - r * 0.75, r * 0.9, r * 0.22);
+    // Golden hat band
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(x - r * 0.45, y - r * 0.62, r * 0.9, r * 0.08);
+
+    // Glowing eyes
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.09, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.25, y - r * 0.25, r * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Signature curling mustache
+    ctx.strokeStyle = '#451a03';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r * 0.06);
+    ctx.quadraticCurveTo(x - r * 0.35, y - r * 0.12, x - r * 0.55, y - r * 0.28);
+    ctx.moveTo(x, y - r * 0.06);
+    ctx.quadraticCurveTo(x + r * 0.35, y - r * 0.12, x + r * 0.55, y - r * 0.28);
+    ctx.stroke();
+
+    // Big iron soup ladle
+    const ladleX = x + r * 0.65;
+    const ladleY = y + r * 0.1 + Math.sin(t * 4) * 3;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.2, y + r * 0.4);
+    ctx.lineTo(ladleX, ladleY - r * 0.4);
+    ctx.stroke();
+    // Ladle bowl with simmering soup
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.arc(ladleX, ladleY - r * 0.4, r * 0.24, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(ladleX, ladleY - r * 0.4, r * 0.18, 0, Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  static _drawProfessorStellaFigure(ctx, x, y, r, t) {
+    ctx.save();
+    // Galaxy nebula aura
+    const grad = ctx.createRadialGradient(x, y, 5, x, y, r * 1.5);
+    grad.addColorStop(0, '#c084fc');
+    grad.addColorStop(0.7, '#7e22ce');
+    grad.addColorStop(1, 'rgba(126, 34, 206, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Celestial ghost body
+    ctx.fillStyle = '#6b21a8';
+    ctx.shadowColor = '#d8b4fe';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.15, r * 0.72, Math.PI, 0, false);
+    ctx.quadraticCurveTo(x + r * 0.75, y + r * 0.8, x + r * 0.35, y + r * 0.7 + Math.sin(t * 3) * 3);
+    ctx.quadraticCurveTo(x, y + r * 0.9, x - r * 0.35, y + r * 0.7 + Math.cos(t * 3) * 3);
+    ctx.quadraticCurveTo(x - r * 0.75, y + r * 0.8, x - r * 0.72, y - r * 0.15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Star-shaped twinkling eyes
+    ctx.fillStyle = '#fef08a';
+    ctx.font = `bold ${Math.round(r * 0.4)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', x - r * 0.25, y - r * 0.15);
+    ctx.fillText('✦', x + r * 0.25, y - r * 0.15);
+
+    // Saturn planetary rings
+    ctx.save();
+    ctx.translate(x, y + r * 0.05);
+    ctx.rotate(0.35);
+    ctx.strokeStyle = 'rgba(216, 180, 254, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.35, r * 0.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3 Orbiting mini planets
+    const p1 = t * 2.2;
+    const p1x = Math.cos(p1) * r * 1.35;
+    const p1y = Math.sin(p1) * r * 0.4;
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(p1x, p1y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    const p2 = t * 2.2 + 2.1;
+    const p2x = Math.cos(p2) * r * 1.35;
+    const p2y = Math.sin(p2) * r * 0.4;
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.arc(p2x, p2y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    const p3 = t * 2.2 + 4.2;
+    const p3x = Math.cos(p3) * r * 1.35;
+    const p3y = Math.sin(p3) * r * 0.4;
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(p3x, p3y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Floating celestial wand / lightning rune
+    ctx.fillStyle = '#a855f7';
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.85, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef08a';
+    ctx.font = `bold ${Math.round(r * 0.3)}px sans-serif`;
+    ctx.fillText('⚡', x, y - r * 0.75);
+    ctx.restore();
+  }
+
+  static _drawCoachStrikerFigure(ctx, x, y, r, t) {
+    ctx.save();
+    // Athletic jade aura
+    const grad = ctx.createRadialGradient(x, y, 5, x, y, r * 1.4);
+    grad.addColorStop(0, '#34d399');
+    grad.addColorStop(0.7, '#059669');
+    grad.addColorStop(1, 'rgba(5, 150, 105, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Athletic muscular broad ghost body
+    ctx.fillStyle = '#065f46';
+    ctx.shadowColor = '#34d399';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.2, r * 0.8, Math.PI, 0, false);
+    ctx.quadraticCurveTo(x + r * 0.85, y + r * 0.7, x + r * 0.4, y + r * 0.7 + Math.sin(t * 4) * 3);
+    ctx.quadraticCurveTo(x, y + r * 0.95, x - r * 0.4, y + r * 0.7 + Math.cos(t * 4) * 3);
+    ctx.quadraticCurveTo(x - r * 0.85, y + r * 0.7, x - r * 0.8, y - r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sport headband with lightning
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x - r * 0.7, y - r * 0.65, r * 1.4, r * 0.24);
+    ctx.fillStyle = '#10b981';
+    ctx.font = `bold ${Math.round(r * 0.26)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡', x, y - r * 0.46);
+
+    // Glowing focused eyes
+    ctx.fillStyle = '#6ee7b7';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.28, y - r * 0.2, r * 0.1, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.28, y - r * 0.2, r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Referee striped collar / jersey
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x - r * 0.35, y + r * 0.1, r * 0.14, r * 0.4);
+    ctx.fillRect(x - r * 0.07, y + r * 0.1, r * 0.14, r * 0.4);
+    ctx.fillRect(x + r * 0.21, y + r * 0.1, r * 0.14, r * 0.4);
+
+    // Silver whistle on red neck lanyard
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.2, y + r * 0.1);
+    ctx.quadraticCurveTo(x, y + r * 0.4, x + r * 0.2, y + r * 0.1);
+    ctx.stroke();
+    // Whistle body
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.arc(x, y + r * 0.42, r * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(x - r * 0.05, y + r * 0.36, r * 0.24, r * 0.1);
+    ctx.restore();
+  }
+
+  static _drawLordUmbraFigure(ctx, x, y, r, t) {
+    ctx.save();
+    // Colossal Void & Crimson Aura
+    const grad = ctx.createRadialGradient(x, y, 10, x, y, r * 1.6);
+    grad.addColorStop(0, '#f43f5e');
+    grad.addColorStop(0.5, '#881337');
+    grad.addColorStop(0.85, '#0f051d');
+    grad.addColorStop(1, 'rgba(15, 5, 29, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Heavy Corrupted Ancient Knight Cat Body
+    ctx.fillStyle = '#1c0717';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 22;
+    ctx.beginPath();
+    ctx.arc(x, y - r * 0.2, r * 0.85, Math.PI, 0, false);
+    ctx.quadraticCurveTo(x + r * 0.95, y + r * 0.85, x + r * 0.45, y + r * 0.8 + Math.sin(t * 2.5) * 4);
+    ctx.quadraticCurveTo(x, y + r * 1.05, x - r * 0.45, y + r * 0.8 + Math.cos(t * 2.5) * 4);
+    ctx.quadraticCurveTo(x - r * 0.95, y + r * 0.85, x - r * 0.85, y - r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Feline Knight Pauldrons
+    ctx.fillStyle = '#31102b';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.75, y + r * 0.05, r * 0.28, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.75, y + r * 0.05, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // ANCIENT KNIGHT CAT EARS (Replacing demon horns with feline armor ears)
+    // Left feline ear
+    ctx.fillStyle = '#0f051d';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.65, y - r * 0.45);
+    ctx.lineTo(x - r * 0.45, y - r * 1.15);
+    ctx.lineTo(x - r * 0.15, y - r * 0.65);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Left ear ruby inner core
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.58, y - r * 0.55);
+    ctx.lineTo(x - r * 0.45, y - r * 1.02);
+    ctx.lineTo(x - r * 0.25, y - r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right feline ear
+    ctx.fillStyle = '#0f051d';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.65, y - r * 0.45);
+    ctx.lineTo(x + r * 0.45, y - r * 1.15);
+    ctx.lineTo(x + r * 0.15, y - r * 0.65);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Right ear ruby inner core
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.58, y - r * 0.55);
+    ctx.lineTo(x + r * 0.45, y - r * 1.02);
+    ctx.lineTo(x + r * 0.25, y - r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+
+    // ANCIENT GUARDIAN CAT CREST ON CHEST (Emblem of the 300-year-old guardian)
+    const crestY = y + r * 0.32;
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = 10;
+    // Shield badge
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.28, crestY - r * 0.18);
+    ctx.lineTo(x + r * 0.28, crestY - r * 0.18);
+    ctx.lineTo(x + r * 0.2, crestY + r * 0.2);
+    ctx.lineTo(x, crestY + r * 0.32);
+    ctx.lineTo(x - r * 0.2, crestY + r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    // Cat silhouette on crest
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(x, crestY + r * 0.05, r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.08, crestY - r * 0.02);
+    ctx.lineTo(x - r * 0.08, crestY - r * 0.12);
+    ctx.lineTo(x - r * 0.01, crestY - r * 0.05);
+    ctx.lineTo(x + r * 0.01, crestY - r * 0.05);
+    ctx.lineTo(x + r * 0.08, crestY - r * 0.12);
+    ctx.lineTo(x + r * 0.08, crestY - r * 0.02);
+    ctx.closePath();
+    ctx.fill();
+
+    // Piercing Crimson Eyes with Smoke Tendrils
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.32, y - r * 0.2, r * 0.13, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.32, y - r * 0.2, r * 0.13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.32, y - r * 0.2, r * 0.04, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.32, y - r * 0.2, r * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye smoke tendrils
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.32, y - r * 0.2);
+    ctx.quadraticCurveTo(x - r * 0.6, y - r * 0.45, x - r * 0.85, y - r * 0.3 + Math.sin(t * 5) * 4);
+    ctx.moveTo(x + r * 0.32, y - r * 0.2);
+    ctx.quadraticCurveTo(x + r * 0.6, y - r * 0.45, x + r * 0.85, y - r * 0.3 + Math.cos(t * 5) * 4);
+    ctx.stroke();
     ctx.restore();
   }
 }
+
