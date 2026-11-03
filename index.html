@@ -30,10 +30,17 @@
     <div id="tutorial-overlay" class="tutorial-overlay">
       <div class="glass-card tutorial-card">
         <div class="tutorial-header">
-          <span class="tutorial-badge">✨ HƯỚNG DẪN CÁCH CHƠI ✨</span>
+          <span class="tutorial-badge">✨ HƯỚNG DẪN & CẨM NANG PHÉP THUẬT ✨</span>
           <button class="btn-text-skip" id="btn-skip-tutorial">ĐÃ HIỂU ✕</button>
         </div>
-        <div class="tutorial-content">
+
+        <!-- Tutorial Mode Switcher Tabs -->
+        <div class="tutorial-tabs-row" id="tutorial-tabs">
+          <button class="tutorial-tab-btn active" id="tab-btn-tut-step">Tập Vẽ Cơ Bản</button>
+          <button class="tutorial-tab-btn" id="tab-btn-tut-spells">✨ Bí Kíp Toàn Bộ Ấn Ký (8 Phép)</button>
+        </div>
+
+        <div class="tutorial-content" id="tutorial-step-view">
           <div class="tutorial-step" id="tutorial-step-1">
             <h3 class="tutorial-title">VẼ NÉT ĐỂ TIÊU DIỆT U LINH</h3>
             <p class="tutorial-desc">Mỗi u linh mang một ký hiệu trên đầu. Hãy dùng chuột hoặc vuốt ngón tay vẽ đúng ký hiệu đó trong không khí để phóng phép!</p>
@@ -59,8 +66,77 @@
             </div>
           </div>
         </div>
+
+        <!-- Comprehensive Spellbook Rune Cheatsheet View -->
+        <div class="tutorial-spells-guide hidden" id="tutorial-spells-view">
+          <!-- ⚡ Lightning -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #34d399; text-shadow: 0 0 10px #34d399;">⚡</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #34d399;">Tia Sét (Overload Chain)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ chữ <strong>Z</strong> đơn giản! Nhận diện cực nhạy cả Z xuôi, Z ngược hay ziczac dọc.</span>
+            </div>
+          </div>
+          <!-- ❄️ Circle -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #38bdf8; text-shadow: 0 0 10px #38bdf8;">❄️</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #38bdf8;">Băng Giá (Frost Nova)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ một <strong>vòng tròn O</strong> (khép 80% là nhận). Chiều kim đồng hồ hay ngược lại đều được! Đóng băng 4.5s.</span>
+            </div>
+          </div>
+          <!-- 🌀 Spiral -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #34d399; text-shadow: 0 0 10px #34d399;">🌀</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #34d399;">Cuồng Phong (Gale Shockwave)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ nét <strong>xoắn ốc 🌀</strong> (từ tâm xoắn ra ngoài HOẶC từ ngoài cuộn vào tâm đều được)! Đẩy lùi toàn bộ quái vật.</span>
+            </div>
+          </div>
+          <!-- ❤️ Heart -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #f43f5e; text-shadow: 0 0 10px #f43f5e;">❤️</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #f43f5e;">Sinh Mệnh (Purifying Heart)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ hình <strong>trái tim ❤️</strong> (hoặc chữ V uốn cong) để hồi phục ngay 1 máu cho Momo!</span>
+            </div>
+          </div>
+          <!-- ∧ Caret -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #f97316; text-shadow: 0 0 10px #f97316;">∧</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #f97316;">Đỉnh Núi (Apex Inversion)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ hình <strong>chữ V ngược</strong> (đi lên rồi đi xuống nhọn đỉnh).</span>
+            </div>
+          </div>
+          <!-- ∨ V-shape -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #c084fc; text-shadow: 0 0 10px #c084fc;">∨</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #c084fc;">Vực Sâu (Abyss Inversion)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vẽ hình <strong>chữ V</strong> (đi xuống đáy rồi đi lên).</span>
+            </div>
+          </div>
+          <!-- — Horizontal -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #fbbf24; text-shadow: 0 0 10px #fbbf24;">—</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #fbbf24;">Chém Ngang (Arcane Slash)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vuốt một đường ngang dứt khoát (trái sang phải hoặc phải sang trái).</span>
+            </div>
+          </div>
+          <!-- | Vertical -->
+          <div class="spell-guide-card">
+            <span class="spell-guide-rune" style="color: #38bdf8; text-shadow: 0 0 10px #38bdf8;">|</span>
+            <div class="spell-guide-meta">
+              <span class="spell-guide-name" style="color: #38bdf8;">Tia Đạn (Piercing Bolt)</span>
+              <span class="spell-guide-tip"><strong>Mẹo vẽ:</strong> Vuốt một đường dọc dứt khoát (trên xuống hoặc dưới lên).</span>
+            </div>
+          </div>
+        </div>
+
         <div class="tutorial-footer">
-          <span class="tutorial-hint">💡 Mèo Momo đứng ở giữa màn hình — u linh có thể xuất hiện từ bất kỳ hướng nào!</span>
+          <span class="tutorial-hint">💡 Mẹo: Hệ thống nhận diện nét vẽ cực nhạy — chỉ cần vẽ tự nhiên với kích thước vừa phải!</span>
         </div>
       </div>
     </div>

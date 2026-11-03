@@ -12,7 +12,9 @@ import {
   getCharacterPortraitSvg,
   getCompanionForLevel
 } from './src/ui/CharacterPortraits.js';
-import { ACADEMY_CHARACTERS } from './src/core/Constants.js';
+import { ACADEMY_CHARACTERS, ENEMY_TYPES } from './src/core/Constants.js';
+import { Enemy } from './src/entities/Enemy.js';
+import { StoryCanvasRenderer } from './src/ui/StoryCanvasRenderer.js';
 
 let passed = 0;
 let failed = 0;
@@ -118,6 +120,79 @@ expectedCharIds.forEach(id => {
   assert(lore.chapterIndex >= 1 && lore.chapterIndex <= 5, `'${id}' has valid chapter jump index (${lore.chapterIndex})`);
 });
 
+console.log('\n--- 5. Testing In-Game Canvas Entities (Enemy) & Story Figures ---');
+
+// Test Enemy Boss configurations
+const bossConfigs = [
+  { typeKey: 'BOSS_LIBRARIAN', levelIndex: 1, levelId: 'library', name: 'Madame Libraria' },
+  { typeKey: 'BOSS_CHEF', levelIndex: 2, levelId: 'cafeteria', name: 'Chef Bouillon' },
+  { typeKey: 'BOSS_PLANETARIUM', levelIndex: 3, levelId: 'classroom', name: 'Professor Stella' },
+  { typeKey: 'BOSS_COACH', levelIndex: 4, levelId: 'gymnasium', name: 'Coach Striker' },
+  { typeKey: 'BOSS_MASTER', levelIndex: 5, levelId: 'rooftop', name: 'Lord Umbra' }
+];
+
+bossConfigs.forEach(b => {
+  const enemy = new Enemy();
+  enemy.init({
+    type: b.typeKey,
+    levelIndex: b.levelIndex,
+    levelId: b.levelId
+  });
+  assert(enemy.type === b.typeKey, `Enemy successfully initialized as ${b.name}`);
+  assert(enemy.isBoss === true, `${b.name} is identified as boss entity`);
+  assert(enemy.levelIndex === b.levelIndex, `${b.name} has levelIndex ${b.levelIndex}`);
+  assert(enemy.levelId === b.levelId, `${b.name} has levelId ${b.levelId}`);
+});
+
+// Test StoryCanvasRenderer procedural figure functions exist
+assert(typeof StoryCanvasRenderer._drawMadameLibrariaFigure === 'function', 'StoryCanvasRenderer has _drawMadameLibrariaFigure');
+assert(typeof StoryCanvasRenderer._drawChefBouillonFigure === 'function', 'StoryCanvasRenderer has _drawChefBouillonFigure');
+assert(typeof StoryCanvasRenderer._drawProfessorStellaFigure === 'function', 'StoryCanvasRenderer has _drawProfessorStellaFigure');
+assert(typeof StoryCanvasRenderer._drawCoachStrikerFigure === 'function', 'StoryCanvasRenderer has _drawCoachStrikerFigure');
+assert(typeof StoryCanvasRenderer._drawLordUmbraFigure === 'function', 'StoryCanvasRenderer has _drawLordUmbraFigure');
+
+// Test running them with mock CanvasRenderingContext2D
+const createMockCtx = () => ({
+  save: () => {},
+  restore: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  arc: () => {},
+  ellipse: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillRect: () => {},
+  fillText: () => {},
+  translate: () => {},
+  rotate: () => {},
+  createRadialGradient: () => ({ addColorStop: () => {} }),
+  createLinearGradient: () => ({ addColorStop: () => {} }),
+  shadowBlur: 0,
+  shadowColor: '',
+  fillStyle: '',
+  strokeStyle: '',
+  lineWidth: 1,
+  font: '',
+  textAlign: ''
+});
+
+const mockCtx = createMockCtx();
+let renderedClean = true;
+try {
+  StoryCanvasRenderer._drawMadameLibrariaFigure(mockCtx, 100, 100, 32, 0);
+  StoryCanvasRenderer._drawChefBouillonFigure(mockCtx, 100, 100, 32, 0);
+  StoryCanvasRenderer._drawProfessorStellaFigure(mockCtx, 100, 100, 32, 0);
+  StoryCanvasRenderer._drawCoachStrikerFigure(mockCtx, 100, 100, 32, 0);
+  StoryCanvasRenderer._drawLordUmbraFigure(mockCtx, 100, 100, 44, 0);
+} catch (e) {
+  renderedClean = false;
+  console.error(e);
+}
+assert(renderedClean, 'All 5 procedural Spirit Boss figures render without error');
+
 console.log('\n========================================');
 console.log(`Total Character Visual Verification: ${passed} Passed, ${failed} Failed`);
 console.log('========================================\n');
@@ -125,3 +200,5 @@ console.log('========================================\n');
 if (failed > 0) {
   process.exit(1);
 }
+
+

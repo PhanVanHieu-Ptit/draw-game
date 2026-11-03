@@ -31,6 +31,7 @@ export class Enemy extends Entity {
     this.expressionTimer = 0;
     this.shiverTimer = 0;
     this.isHeartGhost = false;
+    this.heartLifetime = 14.0;
     this.isFreezeGhost = false;
     this.isBlastGhost = false;
     this.isFrozen = false;
@@ -39,6 +40,12 @@ export class Enemy extends Entity {
     this.knockbackVx = 0;
     this.knockbackVy = 0;
     this.knockbackTimer = 0;
+    this.isMinionRetreating = false;
+    this.minionRetreatTimer = 0;
+    this.minionRetreatVx = 0;
+    this.minionRetreatVy = 0;
+    this.levelIndex = 1;
+    this.levelId = 'library';
 
     if (config.type || config.isHeartGhost || config.isFreezeGhost || config.isBlastGhost || config.symbolQueue) {
       this.init(config);
@@ -54,6 +61,8 @@ export class Enemy extends Entity {
     this.y = config.y || 0;
     this.vx = 0;
     this.vy = 0;
+    this.levelIndex = config.levelIndex || 1;
+    this.levelId = config.levelId || 'library';
 
     const archetype = ENEMY_TYPES[config.type] || ENEMY_TYPES.REGULAR;
     this.type = archetype.type;
@@ -109,10 +118,15 @@ export class Enemy extends Entity {
     this.knockbackVx = 0;
     this.knockbackVy = 0;
     this.knockbackTimer = 0;
+    this.isMinionRetreating = false;
+    this.minionRetreatTimer = 0;
+    this.minionRetreatVx = 0;
+    this.minionRetreatVy = 0;
 
     if (this.isHeartGhost) {
       this.speed = 0;
       this.baseSpeed = 0;
+      this.heartLifetime = 14.0;
       this.baseColor = '#fbcfe8';
       this.glowColor = '#f43f5e';
     } else if (this.isFreezeGhost) {
@@ -216,6 +230,7 @@ export class Enemy extends Entity {
     this.currentPhaseIndex = 0;
     this.phaseClearedOnRetreat = false;
     this.isHeartGhost = false;
+    this.heartLifetime = 14.0;
     this.isFreezeGhost = false;
     this.isBlastGhost = false;
     this.isFrozen = false;
@@ -224,6 +239,12 @@ export class Enemy extends Entity {
     this.knockbackVx = 0;
     this.knockbackVy = 0;
     this.knockbackTimer = 0;
+    this.isMinionRetreating = false;
+    this.minionRetreatTimer = 0;
+    this.minionRetreatVx = 0;
+    this.minionRetreatVy = 0;
+    this.levelIndex = 1;
+    this.levelId = 'library';
   }
 
   /**
@@ -256,11 +277,43 @@ export class Enemy extends Entity {
   }
 
   /**
+   * Push/retreat minion backwards away from Momo when the Boss loses 1 life
+   * @param {{x: number, y: number}} [playerPos] Player position
+   * @param {number} [duration=1.35] Duration of retreat in seconds
+   * @param {number} [speed=260] Initial retreat velocity in pixels/second
+   */
+  retreatWithBoss(playerPos, duration = 1.35, speed = 260) {
+    if (this.isDead || this.isHeartGhost) return;
+
+    const pPos = playerPos || this.targetPlayerPos;
+    const dx = this.x - pPos.x;
+    const dy = this.y - pPos.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    let dirX = dx / dist;
+    let dirY = dy / dist;
+
+    // For Level 5 / Boss Master, Momo is stationed on the left, so minions recoil towards the right
+    if (this.levelIndex === 5 && dirX < 0.25) {
+      dirX = 0.85;
+      dirY = dirY * 0.5;
+    }
+
+    this.isMinionRetreating = true;
+    this.minionRetreatTimer = duration;
+    this.minionRetreatVx = dirX * speed;
+    this.minionRetreatVy = dirY * speed;
+    this.shiverTimer = Math.max(this.shiverTimer, duration);
+    this.expressionTimer = Math.max(this.expressionTimer, duration + 0.3);
+    this.hitTimer = 0.35;
+  }
+
+  /**
    * Check collision with player or other entities
    * @param {Entity} other 
    * @returns {boolean}
    */
   collidesWith(other) {
+    if (this.isRetreating || this.isMinionRetreating) return false;
     if (this.isFinalBoss) {
       // The colossal Boss occupies ~46% screen width with huge shadow wings
       // Its front left wing/body strikes Momo when within effective attack range
@@ -587,6 +640,27 @@ export class Enemy extends Entity {
       }
     }
 
+    // Minion retreat recoil when Boss loses 1 life
+    if (this.isMinionRetreating) {
+      this.minionRetreatTimer -= dt;
+      this.x += this.minionRetreatVx * dt;
+      this.y += this.minionRetreatVy * dt;
+      this.minionRetreatVx *= Math.pow(0.55, dt);
+      this.minionRetreatVy *= Math.pow(0.55, dt);
+
+      if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+        this.x = Math.max(-120, Math.min(this.canvasWidth + 120, this.x));
+        this.y = Math.max(-120, Math.min(this.canvasHeight + 120, this.y));
+      }
+
+      if (this.minionRetreatTimer <= 0) {
+        this.isMinionRetreating = false;
+        this.minionRetreatVx = 0;
+        this.minionRetreatVy = 0;
+      }
+      return;
+    }
+
     // Eye blinking timer state machine
     this.blinkTimer -= dt;
     if (this.blinkTimer <= 0) {
@@ -621,8 +695,14 @@ export class Enemy extends Entity {
       this.thawTimer -= dt;
     }
 
-    // Heart ghost stays stationary in one place!
+    // Heart ghost stays stationary in one place with a 14s lifetime before expiring
     if (this.isHeartGhost || this.symbolQueue.includes('heart')) {
+      if (this.heartLifetime > 0) {
+        this.heartLifetime -= dt;
+        if (this.heartLifetime <= 0) {
+          this.isDead = true;
+        }
+      }
       return;
     }
 
@@ -688,6 +768,13 @@ export class Enemy extends Entity {
     const isHit = this.hitTimer > 0;
     const isScared = isHit || this.expressionTimer > 0;
     const isHeart = this.isHeartGhost || this.symbolQueue.includes('heart');
+
+    // Heart ghost blinking fade when expiring
+    if (isHeart && this.heartLifetime < 3.5) {
+      const blink = Math.sin(this.time * 12) * 0.35 + 0.65;
+      ctx.globalAlpha = Math.max(0.2, Math.min(1.0, blink * (this.heartLifetime / 3.5)));
+    }
+
     const animTime = this.time * 1000;
 
     // 1. Procedural sine-wave floating dynamics with hit shudder
@@ -700,6 +787,22 @@ export class Enemy extends Entity {
     const shiverY = this.shiverTimer > 0 ? (Math.random() - 0.5) * 3 : 0;
 
     ctx.translate(this.x + shiverX, this.y + bob + shiverY);
+
+    // Minion recoil wind streaks when pushed back with Boss
+    if (this.isMinionRetreating) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      const sDirX = this.minionRetreatVx ? -Math.sign(this.minionRetreatVx) : 1;
+      ctx.moveTo(0, -this.radius * 0.35);
+      ctx.lineTo(sDirX * 24, -this.radius * 0.35);
+      ctx.moveTo(0, this.radius * 0.35);
+      ctx.lineTo(sDirX * 30, this.radius * 0.35);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 2. Ghost Body
     ctx.save();
@@ -719,6 +822,38 @@ export class Enemy extends Entity {
         ctx.fillStyle = '#fce7f3';
         ctx.shadowColor = '#f43f5e';
         ctx.shadowBlur = 20;
+      } else if (this.type === 'BOSS_LIBRARIAN') {
+        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
+        bgGrad.addColorStop(0, '#7dd3fc');
+        bgGrad.addColorStop(0.5, '#38bdf8');
+        bgGrad.addColorStop(1, '#0284c7');
+        ctx.fillStyle = bgGrad;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 22;
+      } else if (this.type === 'BOSS_CHEF') {
+        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
+        bgGrad.addColorStop(0, '#fed7aa');
+        bgGrad.addColorStop(0.45, '#fb923c');
+        bgGrad.addColorStop(1, '#ea580c');
+        ctx.fillStyle = bgGrad;
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 22;
+      } else if (this.type === 'BOSS_PLANETARIUM') {
+        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
+        bgGrad.addColorStop(0, '#e9d5ff');
+        bgGrad.addColorStop(0.5, '#c084fc');
+        bgGrad.addColorStop(1, '#7e22ce');
+        ctx.fillStyle = bgGrad;
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 24;
+      } else if (this.type === 'BOSS_COACH') {
+        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
+        bgGrad.addColorStop(0, '#a7f3d0');
+        bgGrad.addColorStop(0.45, '#34d399');
+        bgGrad.addColorStop(1, '#059669');
+        ctx.fillStyle = bgGrad;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 22;
       } else {
         ctx.fillStyle = this.baseColor;
         ctx.shadowColor = this.glowColor;
@@ -837,8 +972,11 @@ export class Enemy extends Entity {
         ctx.restore();
       }
 
-      // 3. Armored details if Armored archetype
+      // 3. Archetype & Story Boss Accessories
+      const isAnyBoss = Boolean(this.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
+
       if (this.type === 'ARMORED') {
+        // Hắc Giáp Tướng Quân: Heavy horned dark knight helm & spiked shoulder guards
         ctx.strokeStyle = '#4c1d95';
         ctx.lineWidth = 3.5;
         ctx.beginPath();
@@ -847,131 +985,538 @@ export class Enemy extends Entity {
 
         ctx.fillStyle = '#6d28d9';
         ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
 
+        // Left Spiked Pauldron
         ctx.beginPath();
         ctx.moveTo(-r * 0.8, -r * 0.4);
-        ctx.lineTo(-r * 1.35, -r * 1.15);
+        ctx.lineTo(-r * 1.40, -r * 1.15);
         ctx.lineTo(-r * 0.35, -r * 0.7);
         ctx.closePath();
         ctx.fill();
 
+        // Right Spiked Pauldron
         ctx.beginPath();
         ctx.moveTo(r * 0.8, -r * 0.4);
-        ctx.lineTo(r * 1.35, -r * 1.15);
+        ctx.lineTo(r * 1.40, -r * 1.15);
         ctx.lineTo(r * 0.35, -r * 0.7);
         ctx.closePath();
         ctx.fill();
-      } else if (this.type === 'BOSS_LIBRARIAN') {
-        // 1. Librarian Ghost: Golden spectacles & Mortarboard scholar cap
-        ctx.fillStyle = '#1e3a8a';
+
+        // Knight Helm Visor Plate
+        ctx.fillStyle = '#2e1065';
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(-r * 0.9, -r * 0.85);
-        ctx.lineTo(r * 0.9, -r * 0.85);
-        ctx.lineTo(0, -r * 1.4);
-        ctx.closePath();
+        ctx.roundRect(-r * 0.70, -r * 0.55, r * 1.4, 12, 3);
         ctx.fill();
-        // Cap tassel
+        ctx.stroke();
+
+        // Visor glowing eye slit
+        ctx.fillStyle = '#a855f7';
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(-r * 0.55, -r * 0.50, r * 1.1, 3);
+        ctx.shadowBlur = 0;
+      } else if (this.type === 'BOSS_LIBRARIAN') {
+        // =========================================================================
+        // 1. MADAME LIBRARIA: BÓNG MA THỦ THƯ (THE KEEPER OF LOST PAGES)
+        // Lore: 200yo spectral librarian, ethereal cyan ghost, scholar bun with golden
+        // hairpin, reading spectacles with delicate chain, floating open ancient Grimoire
+        // with glowing runes [—] and [|], and fluttering ancient book pages.
+        // =========================================================================
+
+        // Elegant Spectral Hair Bun with Golden Hairpin
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#bae6fd';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(0, -r * 1.12, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Golden hairpin with amber tip
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(0, -r * 1.4);
-        ctx.lineTo(r * 0.85, -r * 1.05);
-        ctx.lineTo(r * 0.85, -r * 0.75);
+        ctx.moveTo(-16, -r * 1.12);
+        ctx.lineTo(16, -r * 1.12);
+        ctx.stroke();
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(16, -r * 1.12, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mortarboard Scholar Cap with golden tassel
+        ctx.fillStyle = '#1e3a8a';
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.90, -r * 0.85);
+        ctx.lineTo(r * 0.90, -r * 0.85);
+        ctx.lineTo(0, -r * 1.35);
+        ctx.closePath();
+        ctx.fill();
         ctx.stroke();
 
-        // Golden reading spectacles
+        // Cap Gold Tassel
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.35);
+        ctx.lineTo(r * 0.85, -r * 1.05);
+        ctx.lineTo(r * 0.85, -r * 0.70);
+        ctx.stroke();
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(r * 0.85, -r * 0.68, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Golden Reading Spectacles & Chain
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 2.5;
         ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(-r * 0.35, -r * 0.2, r * 0.24, 0, Math.PI * 2);
-        ctx.arc(r * 0.35, -r * 0.2, r * 0.24, 0, Math.PI * 2);
-        ctx.moveTo(-r * 0.12, -r * 0.2);
-        ctx.lineTo(r * 0.12, -r * 0.2);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      } else if (this.type === 'BOSS_CHEF') {
-        // 2. Chef Ghost: Big puffy white toque hat & giant spoon
-        ctx.fillStyle = '#f8fafc';
-        ctx.shadowColor = '#fdba74';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.ellipse(0, -r * 1.15, r * 0.65, r * 0.45, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillRect(-r * 0.45, -r * 0.95, r * 0.9, r * 0.35);
-        // Hat band
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(-r * 0.45, -r * 0.72, r * 0.9, 5);
-
-        // Wooden cooking ladle held on side
-        ctx.strokeStyle = '#9a3412';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(r * 0.85, -r * 0.2);
-        ctx.lineTo(r * 1.25, r * 0.6);
-        ctx.stroke();
-        ctx.fillStyle = '#c2410c';
-        ctx.beginPath();
-        ctx.ellipse(r * 0.82, -r * 0.25, 7, 10, -0.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      } else if (this.type === 'BOSS_PLANETARIUM') {
-        // 3. Planetarium Ghost: Orbiting celestial rings and third-eye star
-        ctx.strokeStyle = 'rgba(216, 180, 254, 0.7)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.45, r * 0.5, 0.25, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Mini planets on orbit
-        const pAngle = this.time * 2.5;
-        const px = Math.cos(pAngle) * (r * 1.45);
-        const py = Math.sin(pAngle) * (r * 0.5);
-        ctx.fillStyle = '#38bdf8';
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Third-eye star on forehead
-        ctx.fillStyle = '#facc15';
-        ctx.shadowColor = '#eab308';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.arc(0, -r * 0.6, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      } else if (this.type === 'BOSS_COACH') {
-        // 4. Coach Ghost: Sports whistle & emerald sweatband
-        // Sweatband
-        ctx.fillStyle = '#10b981';
-        ctx.fillRect(-r * 0.75, -r * 0.62, r * 1.5, 9);
-        // Lightning bolt on headband
-        ctx.fillStyle = '#fef08a';
-        ctx.font = 'bold 8px sans-serif';
-        ctx.fillText('⚡', -3, -r * 0.62 + 7);
-
-        // Whistle hanging on red lanyard
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.2, r * 0.1);
-        ctx.lineTo(0, r * 0.45);
-        ctx.lineTo(r * 0.2, r * 0.1);
-        ctx.stroke();
-
-        // Whistle body
-        ctx.fillStyle = '#e2e8f0';
-        ctx.shadowColor = '#38bdf8';
         ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(0, r * 0.52, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillRect(0, r * 0.48, 8, 4);
+        ctx.arc(-r * 0.35, -r * 0.20, r * 0.22, 0, Math.PI * 2);
+        ctx.arc(r * 0.35, -r * 0.20, r * 0.22, 0, Math.PI * 2);
+        ctx.moveTo(-r * 0.13, -r * 0.20);
+        ctx.lineTo(r * 0.13, -r * 0.20);
+        ctx.stroke();
+
+        // Delicate silver spectacle chain looping to left shoulder
+        ctx.strokeStyle = '#e0f2fe';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.57, -r * 0.20);
+        ctx.bezierCurveTo(-r * 0.85, 0, -r * 0.75, r * 0.40, -r * 0.45, r * 0.55);
+        ctx.stroke();
+        ctx.setLineDash([]);
         ctx.shadowBlur = 0;
+
+        // Floating Antique Open Grimoire (Cổ Thư Khổng Lồ)
+        const bookW = r * 1.25;
+        const bookH = r * 0.52;
+        const bookY = r * 0.42 + Math.sin(animTime * 0.005) * 4;
+
+        ctx.save();
+        ctx.translate(0, bookY);
+        // Outer dark blue leather cover
+        ctx.fillStyle = '#1e3a8a';
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#3b82f6';
+        ctx.shadowBlur = 12;
+
+        ctx.beginPath();
+        // Left page cover
+        ctx.moveTo(-bookW * 0.52, -bookH * 0.45);
+        ctx.quadraticCurveTo(-bookW * 0.25, -bookH * 0.55, 0, -bookH * 0.40);
+        ctx.lineTo(0, bookH * 0.48);
+        ctx.quadraticCurveTo(-bookW * 0.25, bookH * 0.38, -bookW * 0.52, bookH * 0.48);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Right page cover
+        ctx.beginPath();
+        ctx.moveTo(0, -bookH * 0.40);
+        ctx.quadraticCurveTo(bookW * 0.25, -bookH * 0.55, bookW * 0.52, -bookH * 0.45);
+        ctx.lineTo(bookW * 0.52, bookH * 0.48);
+        ctx.quadraticCurveTo(bookW * 0.25, bookH * 0.38, 0, bookH * 0.48);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Parchment Pages inside
+        ctx.fillStyle = '#e0f2fe';
+        ctx.beginPath();
+        ctx.moveTo(-bookW * 0.48, -bookH * 0.40);
+        ctx.quadraticCurveTo(-bookW * 0.25, -bookH * 0.48, -2, -bookH * 0.36);
+        ctx.lineTo(-2, bookH * 0.42);
+        ctx.quadraticCurveTo(-bookW * 0.25, bookH * 0.32, -bookW * 0.48, bookH * 0.42);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(2, -bookH * 0.36);
+        ctx.quadraticCurveTo(bookW * 0.25, -bookH * 0.48, bookW * 0.48, -bookH * 0.40);
+        ctx.lineTo(bookW * 0.48, bookH * 0.42);
+        ctx.quadraticCurveTo(bookW * 0.25, bookH * 0.32, 2, bookH * 0.42);
+        ctx.closePath();
+        ctx.fill();
+
+        // Glowing Ancient Runes: [—] on left page and [|] on right page
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#60a5fa';
+        ctx.shadowBlur = 6;
+        // Left rune: Horizontal —
+        ctx.beginPath();
+        ctx.moveTo(-bookW * 0.34, 0);
+        ctx.lineTo(-bookW * 0.14, 0);
+        ctx.stroke();
+        // Right rune: Vertical |
+        ctx.beginPath();
+        ctx.moveTo(bookW * 0.24, -bookH * 0.22);
+        ctx.lineTo(bookW * 0.24, bookH * 0.22);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // 3 Fluttering Ancient Pages orbiting around Madame Libraria
+        for (let p = 0; p < 3; p++) {
+          const pageAngle = animTime * 0.003 + (p * Math.PI * 2) / 3;
+          const px = Math.cos(pageAngle) * (r * 1.35);
+          const py = Math.sin(pageAngle) * (r * 0.70);
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(pageAngle + 0.4);
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#93c5fd';
+          ctx.lineWidth = 1.2;
+          ctx.shadowColor = '#60a5fa';
+          ctx.shadowBlur = 8;
+          ctx.fillRect(-7, -10, 14, 20);
+          ctx.strokeRect(-7, -10, 14, 20);
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (p % 2 === 0) {
+            ctx.moveTo(-4, 0); ctx.lineTo(4, 0);
+          } else {
+            ctx.moveTo(0, -5); ctx.lineTo(0, 5);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else if (this.type === 'BOSS_CHEF') {
+        // =========================================================================
+        // 2. CHEF BOUILLON: BÓNG MA ĐẦU BẾP (THE PHANTOM GOURMAND)
+        // Lore: Ghost chef of gigantic spectral kitchen, fiery flame ghost, tall pleated
+        // chef toque with orange band, signature curling mustache, giant iron ladle
+        // dripping orange broth, and steaming soup bubbles.
+        // =========================================================================
+
+        // Tall Pleated Chef Toque (Hat)
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#fdba74';
+        ctx.shadowBlur = 12;
+
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.48, -r * 0.85);
+        ctx.bezierCurveTo(-r * 0.75, -r * 1.25, -r * 0.55, -r * 1.65, -r * 0.18, -r * 1.60);
+        ctx.bezierCurveTo(0, -r * 1.75, r * 0.20, -r * 1.70, r * 0.35, -r * 1.55);
+        ctx.bezierCurveTo(r * 0.75, -r * 1.45, r * 0.70, -r * 1.05, r * 0.48, -r * 0.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Hat Pleat Lines
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.18, -r * 1.55); ctx.lineTo(-r * 0.20, -r * 0.90);
+        ctx.moveTo(0, -r * 1.65); ctx.lineTo(0, -r * 0.90);
+        ctx.moveTo(r * 0.18, -r * 1.55); ctx.lineTo(r * 0.20, -r * 0.90);
+        ctx.stroke();
+
+        // Hat Band with gold button
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(-r * 0.46, -r * 0.88, r * 0.92, 9);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.88 + 4.5, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Giant Iron Cauldron Ladle with Dripping Broth
+        ctx.save();
+        ctx.translate(r * 0.85, r * 0.10);
+        ctx.rotate(0.35 + Math.sin(animTime * 0.005) * 0.08);
+
+        // Ladle handle
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 4.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.75);
+        ctx.lineTo(0, r * 0.50);
+        ctx.stroke();
+
+        // Hook at top of handle
+        ctx.beginPath();
+        ctx.arc(-5, -r * 0.75, 5, 0, Math.PI);
+        ctx.stroke();
+
+        // Ladle bowl holding glowing broth
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.50, 16, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing orange soup broth inside
+        ctx.fillStyle = '#ea580c';
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.50, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Golden herb / magic speckles in soup
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(-4, r * 0.48, 1.8, 0, Math.PI * 2);
+        ctx.arc(3, r * 0.52, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dripping soup droplets falling from ladle
+        const dripY = r * 0.50 + 10 + (animTime * 0.04 % 24);
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(0, dripY, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Steaming soup bubbles floating around Chef Bouillon
+        for (let b = 0; b < 4; b++) {
+          const bAngle = animTime * 0.004 + b * 1.6;
+          const bx = Math.sin(bAngle) * (r * 0.95);
+          const by = -r * 0.3 - ((animTime * 0.02 + b * 18) % (r * 1.2));
+          ctx.fillStyle = 'rgba(249, 115, 22, 0.45)';
+          ctx.shadowColor = '#fdba74';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(bx, by, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (this.type === 'BOSS_PLANETARIUM') {
+        // =========================================================================
+        // 3. PROFESSOR STELLA: BÓNG MA THIÊN VĂN (THE ORBIT MASTER)
+        // Lore: Astrology professor trapped in ancient celestial armillary spheres,
+        // cosmic starry nebula body, tilted Saturn-like planetary orbit rings,
+        // multiple orbiting planets (cyan, ruby, gold), star-shaped eyes,
+        // and floating amethyst celestial orb with lightning rune ⚡.
+        // =========================================================================
+
+        // Tilted Saturn-like Planetary Orbit Rings (Behind & across body)
+        ctx.save();
+        ctx.rotate(-0.30); // ~ -17 degrees tilt
+
+        // Outer starlight orbit ring
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+        ctx.lineWidth = 3.0;
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.55, r * 0.52, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner cosmic dust ring with dash gaps
+        ctx.strokeStyle = 'rgba(244, 114, 182, 0.65)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.38, r * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Orbiting Planet 1: Starlight Cyan Planet with white atmosphere
+        const a1 = animTime * 0.0022;
+        const p1x = Math.cos(a1) * (r * 1.55);
+        const p1y = Math.sin(a1) * (r * 0.52);
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(p1x, p1y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Orbiting Planet 2: Ruby Nebula Moon
+        const a2 = a1 + (Math.PI * 2 / 3);
+        const p2x = Math.cos(a2) * (r * 1.55);
+        const p2y = Math.sin(a2) * (r * 0.52);
+        ctx.fillStyle = '#f43f5e';
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(p2x, p2y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Orbiting Planet 3: Golden Sun-Sphere
+        const a3 = a1 + (Math.PI * 4 / 3);
+        const p3x = Math.cos(a3) * (r * 1.38);
+        const p3y = Math.sin(a3) * (r * 0.42);
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(p3x, p3y, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Third-Eye Star on forehead
+        ctx.save();
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = '#eab308';
+        ctx.shadowBlur = 14;
+        const starY = -r * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(0, starY - 7);
+        ctx.lineTo(2, starY - 2);
+        ctx.lineTo(7, starY);
+        ctx.lineTo(2, starY + 2);
+        ctx.lineTo(0, starY + 7);
+        ctx.lineTo(-2, starY + 2);
+        ctx.lineTo(-7, starY);
+        ctx.lineTo(-2, starY - 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Floating Celestial Orb with Lightning Rune ⚡ (below body)
+        const orbY = r * 0.68 + Math.sin(animTime * 0.005) * 4;
+        ctx.save();
+        ctx.fillStyle = '#7e22ce';
+        ctx.strokeStyle = '#e9d5ff';
+        ctx.lineWidth = 2.0;
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(0, orbY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing Lightning Rune inside orb
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', 0, orbY + 1);
+        ctx.restore();
+      } else if (this.type === 'BOSS_COACH') {
+        // =========================================================================
+        // 4. COACH STRIKER: BÓNG MA HUẤN LUYỆN VIÊN (THE SPECTRAL WHISTLE-MASTER)
+        // Lore: Strictest gym coach, broad-shouldered athletic emerald specter,
+        // white athletic sweatband with emerald lightning logo, black & white referee
+        // striped collar, silver referee whistle on red lanyard with pulsing soundwaves.
+        // =========================================================================
+
+        // Broad Athletic Shoulders & Muscular Silhouette Wings
+        ctx.save();
+        ctx.fillStyle = '#059669';
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 10;
+        // Left Athletic Shoulder
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.95, -r * 0.15, r * 0.40, r * 0.28, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Right Athletic Shoulder
+        ctx.beginPath();
+        ctx.ellipse(r * 0.95, -r * 0.15, r * 0.40, r * 0.28, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // White Wrist Sweatbands
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-r * 1.20, -r * 0.10, 8, 14);
+        ctx.fillRect(r * 1.12, -r * 0.10, 8, 14);
+        ctx.restore();
+
+        // White Athletic Headband across forehead
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect(-r * 0.78, -r * 0.65, r * 1.56, 12, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Emerald Lightning Emblem on Headband
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', 0, -r * 0.65 + 6);
+
+        // Referee Jersey Striped Collar on Chest
+        const refY = r * 0.15;
+        const refW = r * 0.85;
+        const refH = r * 0.35;
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-refW / 2, refY, refW, refH);
+        ctx.fillStyle = '#0f172a';
+        // 3 Black vertical stripes
+        const stripeW = refW / 6;
+        ctx.fillRect(-refW / 2 + stripeW, refY, stripeW, refH);
+        ctx.fillRect(-refW / 2 + stripeW * 3, refY, stripeW, refH);
+        ctx.fillRect(-refW / 2 + stripeW * 5, refY, stripeW, refH);
+        ctx.strokeStyle = '#047857';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-refW / 2, refY, refW, refH);
+        ctx.restore();
+
+        // Silver Referee Whistle on Red Lanyard
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.22, -r * 0.05);
+        ctx.quadraticCurveTo(0, r * 0.38, 0, r * 0.48);
+        ctx.quadraticCurveTo(0, r * 0.38, r * 0.22, -r * 0.05);
+        ctx.stroke();
+
+        // Polished silver whistle body
+        const whistleY = r * 0.52;
+        ctx.save();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+
+        // Whistle nozzle
+        ctx.fillRect(0, whistleY - 4, 12, 8);
+        ctx.strokeRect(0, whistleY - 4, 12, 8);
+        // Whistle sound chamber cylinder
+        ctx.beginPath();
+        ctx.arc(0, whistleY, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Whistle hole
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(0, whistleY, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pulsing Whistle Soundwaves
+        const wavePulse = (animTime * 0.03) % 18;
+        ctx.strokeStyle = 'rgba(52, 211, 153, ' + Math.max(0, 1 - wavePulse / 18) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(12, whistleY, 4 + wavePulse, -0.6, 0.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(12, whistleY, 9 + wavePulse, -0.6, 0.6);
+        ctx.stroke();
+
+        ctx.restore();
       } else if (this.type === 'BOSS') {
         // Generic fallback boss
         ctx.strokeStyle = '#f43f5e';
@@ -979,6 +1524,78 @@ export class Enemy extends Entity {
         ctx.beginPath();
         ctx.arc(0, -r * 0.2, r + 6, Math.PI * 0.85, Math.PI * 0.15, true);
         ctx.stroke();
+      }
+
+      // 4. Thematic Minion details matching the 5 Stages
+      if (!isAnyBoss && !isHeart && !this.isFreezeGhost && !this.isBlastGhost) {
+        if (this.type === 'SPEEDSTER') {
+          // Speedster phantom dart: aerodynamic wind stream lines
+          ctx.strokeStyle = '#f472b6';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.7, r * 0.5); ctx.lineTo(-r * 1.35, r * 0.85 + Math.sin(animTime * 0.01) * 4);
+          ctx.moveTo(r * 0.7, r * 0.5); ctx.lineTo(r * 1.35, r * 0.85 + Math.cos(animTime * 0.01) * 4);
+          ctx.stroke();
+        }
+
+        if (this.levelIndex === 1 || this.levelId === 'library') {
+          // Level 1: Ancient Library Wisps - floating miniature parchment scroll / book page
+          const pAngle = animTime * 0.003 + this.phase;
+          const px = Math.cos(pAngle) * (r * 1.15);
+          const py = Math.sin(pAngle) * (r * 0.55);
+          ctx.fillStyle = '#fef08a';
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1;
+          ctx.shadowColor = '#60a5fa';
+          ctx.shadowBlur = 4;
+          ctx.fillRect(px - 4, py - 6, 8, 12);
+          ctx.strokeRect(px - 4, py - 6, 8, 12);
+          ctx.shadowBlur = 0;
+        } else if (this.levelIndex === 2 || this.levelId === 'cafeteria') {
+          // Level 2: Cafeteria & Kitchen Wisps - tiny apprentice toque or simmering soup ember
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#fdba74';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(0, -r * 0.95, 6, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // Warm soup spark
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(r * 0.5, r * 0.2 + Math.sin(animTime * 0.008) * 3, 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (this.levelIndex === 3 || this.levelId === 'classroom') {
+          // Level 3: Astronomical Wisps - miniature celestial starlight orbit
+          ctx.strokeStyle = 'rgba(192, 132, 252, 0.65)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * 1.25, r * 0.35, 0.2, 0, Math.PI * 2);
+          ctx.stroke();
+          // Mini star spark on orbit
+          const stAngle = animTime * 0.004 + this.phase;
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(Math.cos(stAngle) * (r * 1.25), Math.sin(stAngle) * (r * 0.35), 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (this.levelIndex === 4 || this.levelId === 'gymnasium') {
+          // Level 4: Gymnasium Wisps - tiny athlete sweatband & agility wind trails
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-r * 0.55, -r * 0.55, r * 1.1, 4);
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-r * 1.1, 0); ctx.lineTo(-r * 0.6, -2);
+          ctx.moveTo(-r * 1.2, r * 0.2); ctx.lineTo(-r * 0.7, r * 0.2);
+          ctx.stroke();
+        } else if (this.levelIndex === 5 || this.levelId === 'rooftop') {
+          // Level 5: Corrupted Rooftop Wisps - dark crimson void aura edge
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.55)';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(0, -r * 0.2, r + 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
     }
 
@@ -1065,9 +1682,39 @@ export class Enemy extends Entity {
     let browColor = '#0f172a';
     let glowBlur = 8;
 
-    if (isAnyBoss) {
+    if (this.type === 'BOSS_MASTER') {
+      scleraColor = '#ef4444';
+      glowColor = '#f43f5e';
+      pupilColor = '#18040b';
+      browColor = '#4c0519';
+      glowBlur = 18;
+    } else if (this.type === 'BOSS_PLANETARIUM') {
+      scleraColor = '#fdf4ff';
+      glowColor = '#c084fc';
+      pupilColor = '#581c87';
+      browColor = '#3b0764';
+      glowBlur = 14;
+    } else if (this.type === 'BOSS_CHEF') {
+      scleraColor = '#fff7ed';
+      glowColor = '#f97316';
+      pupilColor = '#431407';
+      browColor = '#7c2d12';
+      glowBlur = 12;
+    } else if (this.type === 'BOSS_LIBRARIAN') {
+      scleraColor = '#f0f9ff';
+      glowColor = '#38bdf8';
+      pupilColor = '#0c4a6e';
+      browColor = '#1e3a8a';
+      glowBlur = 12;
+    } else if (this.type === 'BOSS_COACH') {
+      scleraColor = '#ecfdf5';
+      glowColor = '#10b981';
+      pupilColor = '#064e3b';
+      browColor = '#064e3b';
+      glowBlur = 12;
+    } else if (isAnyBoss) {
       scleraColor = '#fef08a';
-      glowColor = (this.type === 'BOSS_MASTER' || this.type === 'BOSS') ? '#f43f5e' : '#f59e0b';
+      glowColor = '#f43f5e';
       pupilColor = '#450a0a';
       browColor = '#450a0a';
       glowBlur = 14;
@@ -1113,6 +1760,23 @@ export class Enemy extends Entity {
       ctx.beginPath();
       ctx.arc(tremX, tremY, Math.max(1.5, r * 0.07), 0, Math.PI * 2);
       ctx.fill();
+    } else if (this.type === 'BOSS_PLANETARIUM') {
+      // Professor Stella: Twinkling 4-pointed Star Pupil
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(0, -eyeRadiusY * 0.7);
+      ctx.lineTo(eyeRadiusX * 0.25, -eyeRadiusY * 0.25);
+      ctx.lineTo(eyeRadiusX * 0.7, 0);
+      ctx.lineTo(eyeRadiusX * 0.25, eyeRadiusY * 0.25);
+      ctx.lineTo(0, eyeRadiusY * 0.7);
+      ctx.lineTo(-eyeRadiusX * 0.25, eyeRadiusY * 0.25);
+      ctx.lineTo(-eyeRadiusX * 0.7, 0);
+      ctx.lineTo(-eyeRadiusX * 0.25, -eyeRadiusY * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
     } else {
       const pShiftX = Math.cos(angleToPlayer) * (eyeRadiusX * 0.32);
       const pShiftY = Math.sin(angleToPlayer) * (eyeRadiusY * 0.28);
@@ -1126,6 +1790,17 @@ export class Enemy extends Entity {
       ctx.beginPath();
       ctx.arc(pShiftX - 1, pShiftY - 1.5, 1.2, 0, Math.PI * 2);
       ctx.fill();
+
+      // Lord Umbra: Crimson Eye Smoke Tendril (streaming backwards)
+      if (this.type === 'BOSS_MASTER') {
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.75)';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pShiftX - 2, pShiftY);
+        ctx.bezierCurveTo(-eyeRadiusX * 1.5, -4, -eyeRadiusX * 2.2, -10 + Math.sin(this.time * 8) * 4, -eyeRadiusX * 3.2, -14);
+        ctx.stroke();
+      }
     }
     ctx.restore();
 
@@ -1157,6 +1832,23 @@ export class Enemy extends Entity {
       ctx.beginPath();
       ctx.arc(tremX, tremY, Math.max(1.5, r * 0.07), 0, Math.PI * 2);
       ctx.fill();
+    } else if (this.type === 'BOSS_PLANETARIUM') {
+      // Professor Stella: Twinkling 4-pointed Star Pupil
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(0, -eyeRadiusY * 0.7);
+      ctx.lineTo(eyeRadiusX * 0.25, -eyeRadiusY * 0.25);
+      ctx.lineTo(eyeRadiusX * 0.7, 0);
+      ctx.lineTo(eyeRadiusX * 0.25, eyeRadiusY * 0.25);
+      ctx.lineTo(0, eyeRadiusY * 0.7);
+      ctx.lineTo(-eyeRadiusX * 0.25, eyeRadiusY * 0.25);
+      ctx.lineTo(-eyeRadiusX * 0.7, 0);
+      ctx.lineTo(-eyeRadiusX * 0.25, -eyeRadiusY * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
     } else {
       const pShiftX = Math.cos(angleToPlayer) * (eyeRadiusX * 0.32);
       const pShiftY = Math.sin(angleToPlayer) * (eyeRadiusY * 0.28);
@@ -1170,6 +1862,17 @@ export class Enemy extends Entity {
       ctx.beginPath();
       ctx.arc(pShiftX - 1, pShiftY - 1.5, 1.2, 0, Math.PI * 2);
       ctx.fill();
+
+      // Lord Umbra: Crimson Eye Smoke Tendril (streaming backwards)
+      if (this.type === 'BOSS_MASTER') {
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.75)';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pShiftX + 2, pShiftY);
+        ctx.bezierCurveTo(eyeRadiusX * 1.5, -4, eyeRadiusX * 2.2, -10 + Math.cos(this.time * 8) * 4, eyeRadiusX * 3.2, -14);
+        ctx.stroke();
+      }
     }
     ctx.restore();
 
@@ -1258,6 +1961,31 @@ export class Enemy extends Entity {
         ctx.closePath();
       }
       ctx.fill();
+
+      // Chef Bouillon Signature Curling Mustache
+      if (this.type === 'BOSS_CHEF') {
+        ctx.save();
+        ctx.fillStyle = '#7c2d12';
+        ctx.strokeStyle = '#431407';
+        ctx.lineWidth = 1.6;
+        ctx.shadowColor = '#431407';
+        ctx.shadowBlur = 4;
+        const mustY = my - mh * 0.22;
+        ctx.beginPath();
+        ctx.moveTo(0, mustY - 2);
+        // Left wing swooping up into curled spiral tip
+        ctx.bezierCurveTo(-mw * 0.40, mustY - 10, -mw * 0.85, mustY - 6, -mw * 1.08, mustY + 3);
+        ctx.bezierCurveTo(-mw * 0.95, mustY + 9, -mw * 0.70, mustY + 4, -mw * 0.45, mustY + 2);
+        ctx.quadraticCurveTo(-mw * 0.18, mustY + 3, 0, mustY + 1);
+        // Right wing swooping up into curled spiral tip
+        ctx.quadraticCurveTo(mw * 0.18, mustY + 3, mw * 0.45, mustY + 2);
+        ctx.bezierCurveTo(mw * 0.70, mustY + 4, mw * 0.95, mustY + 9, mw * 1.08, mustY + 3);
+        ctx.bezierCurveTo(mw * 0.85, mustY - 6, mw * 0.40, mustY - 10, 0, mustY - 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
     } else {
       // Horrified screaming gaping mouth cavity
       const screamWobble = Math.sin(this.time * 20) * 1.5;
@@ -1441,55 +2169,100 @@ export class Enemy extends Entity {
     ctx.stroke();
     ctx.restore();
 
-    // 4. Grand Sweeping Gothic Demon Horns & Spired Dark Crown
+    // 4. Ancient Knight Cat Ears, Feline Pauldrons, Spired Crystal Crown & Golden Guardian Crest
     ctx.save();
-    ctx.fillStyle = isHit ? '#ffffff' : '#be123c';
-    ctx.strokeStyle = isHit ? '#ffffff' : '#f43f5e';
-    ctx.lineWidth = 4;
-    ctx.shadowColor = '#f43f5e';
+
+    // 4a. Ancient Knight Cat Ears (Đôi Tai Mèo Hiệp Sĩ Cổ Bọc Giáp)
+    ctx.fillStyle = isHit ? '#ffffff' : '#09090b';
+    ctx.strokeStyle = isHit ? '#ffffff' : '#7c3aed';
+    ctx.lineWidth = 3.5;
+    ctx.shadowColor = '#9333ea';
     ctx.shadowBlur = 18;
 
-    // Crown arch over forehead
+    // Left Armored Knight Cat Ear
     ctx.beginPath();
-    ctx.arc(0, -r * 0.2, r + 6, Math.PI * 0.85, Math.PI * 0.15, true);
-    ctx.stroke();
-
-    // Left Demon Horn: Sweeping grand curves outward and upward
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.75, -r * 0.35);
-    ctx.quadraticCurveTo(-r * 1.55, -r * 0.95, -r * 1.5, -r * 1.65);
-    ctx.quadraticCurveTo(-r * 1.0, -r * 1.25, -r * 0.35, -r * 0.85);
+    ctx.moveTo(-r * 0.65, -r * 0.35);
+    ctx.lineTo(-r * 1.08, -r * 1.55);
+    ctx.lineTo(-r * 0.22, -r * 0.80);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Right Demon Horn
+    // Right Armored Knight Cat Ear
     ctx.beginPath();
-    ctx.moveTo(r * 0.75, -r * 0.35);
-    ctx.quadraticCurveTo(r * 1.55, -r * 0.95, r * 1.5, -r * 1.65);
-    ctx.quadraticCurveTo(r * 1.0, -r * 1.25, r * 0.35, -r * 0.85);
+    ctx.moveTo(r * 0.65, -r * 0.35);
+    ctx.lineTo(r * 1.08, -r * 1.55);
+    ctx.lineTo(r * 0.22, -r * 0.80);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // 3 Spired Dark Gothic Crown
+    // Inner Cat Ear Ruby Armor Plates
+    ctx.fillStyle = isHit ? '#fda4af' : '#4c0519';
+    ctx.strokeStyle = isHit ? '#ffffff' : '#be123c';
+    ctx.lineWidth = 1.8;
+    // Inner left ear plate
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.60, -r * 0.42);
+    ctx.lineTo(-r * 0.96, -r * 1.40);
+    ctx.lineTo(-r * 0.28, -r * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Inner right ear plate
+    ctx.beginPath();
+    ctx.moveTo(r * 0.60, -r * 0.42);
+    ctx.lineTo(r * 0.96, -r * 1.40);
+    ctx.lineTo(r * 0.28, -r * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4b. Feline Knight Pauldrons (Giáp Vai Hiệp Sĩ Mèo)
+    ctx.fillStyle = isHit ? '#ffffff' : '#2e1065';
+    ctx.strokeStyle = isHit ? '#ffffff' : '#f43f5e';
+    ctx.lineWidth = 2.5;
+    // Left Pauldron
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.90, -r * 0.05);
+    ctx.quadraticCurveTo(-r * 1.45, -r * 0.15, -r * 1.55, r * 0.35);
+    ctx.lineTo(-r * 1.05, r * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Right Pauldron
+    ctx.beginPath();
+    ctx.moveTo(r * 0.90, -r * 0.05);
+    ctx.quadraticCurveTo(r * 1.45, -r * 0.15, r * 1.55, r * 0.35);
+    ctx.lineTo(r * 1.05, r * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4c. 3-Spired Dark Violet Crystal Crown
+    ctx.fillStyle = isHit ? '#ffffff' : '#9333ea';
+    ctx.strokeStyle = isHit ? '#ffffff' : '#c084fc';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#c084fc';
+    ctx.shadowBlur = 14;
+
     ctx.beginPath();
     // Left Spire
-    ctx.moveTo(-r * 0.45, -r * 0.85);
-    ctx.lineTo(-r * 0.32, -r * 1.4);
-    ctx.lineTo(-r * 0.18, -r * 0.95);
-    // Center Spire (Tallest with Blood Gem)
-    ctx.lineTo(0, -r * 1.65);
+    ctx.moveTo(-r * 0.38, -r * 0.85);
+    ctx.lineTo(-r * 0.26, -r * 1.35);
+    ctx.lineTo(-r * 0.14, -r * 0.92);
+    // Center Spire (Tallest Crystal with Blood Ruby)
+    ctx.lineTo(0, -r * 1.62);
     // Right Spire
-    ctx.lineTo(r * 0.18, -r * 0.95);
-    ctx.lineTo(r * 0.32, -r * 1.4);
-    ctx.lineTo(r * 0.45, -r * 0.85);
+    ctx.lineTo(r * 0.14, -r * 0.92);
+    ctx.lineTo(r * 0.26, -r * 1.35);
+    ctx.lineTo(r * 0.38, -r * 0.85);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
     // Glowing Blood Ruby Gem on center crown spire
-    const gemY = -r * 1.35;
+    const gemY = -r * 1.32;
     ctx.fillStyle = '#fde047';
     ctx.shadowColor = '#f59e0b';
     ctx.shadowBlur = 14;
@@ -1499,6 +2272,33 @@ export class Enemy extends Entity {
     ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.ellipse(0, gemY, 5, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 4d. Ancient Golden Guardian Cat Crest (Ấn Ký Hộ Vệ Hoàng Kim 300 Năm)
+    // Placed proudly on chest above spellbook, symbolizing the forgotten guardian cat knight!
+    const crestY = r * 0.16;
+    ctx.save();
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.moveTo(0, crestY - 14);
+    ctx.lineTo(14, crestY);
+    ctx.lineTo(0, crestY + 16);
+    ctx.lineTo(-14, crestY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner Ruby Jewel
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(0, crestY, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
