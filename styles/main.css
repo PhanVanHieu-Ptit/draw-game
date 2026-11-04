@@ -3,8 +3,6 @@
    Modern Glassmorphism & Neon Arcade Aesthetics
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap');
-
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -41,6 +39,11 @@
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html, body {
@@ -2877,3 +2880,361 @@ html, body {
   }
 }
 
+
+/* ==========================================================================
+   MOBILE & PERFORMANCE PASS
+   (kept last on purpose: these rules refine the responsive blocks above)
+   ========================================================================== */
+
+/* Wrapper for the two primary play buttons (transparent on desktop) */
+.menu-primary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-text-skip {
+  white-space: nowrap;
+}
+
+/* The tutorial tabs toggle a `hidden` class on these two views, but no rule ever hid them:
+   both were always visible at once. Matters most on phones, where it made the card very tall. */
+.tutorial-content.hidden,
+.tutorial-spells-guide.hidden {
+  display: none;
+}
+
+/* A speech toast would sit half-behind the open tutorial card and bleed through it */
+.tutorial-overlay.show ~ #hud-playing .dialogue-toast {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
+
+/* --- Touch devices & small screens ----------------------------------------
+   backdrop-filter re-blurs everything behind the element on EVERY frame while the
+   canvas underneath animates at 60 FPS. That is one of the most expensive things a
+   phone GPU can be asked to do, so on touch devices the panels use a more opaque
+   solid background instead. */
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+  .hud-hearts-panel,
+  .icon-btn,
+  .gesture-pill,
+  .modal-overlay,
+  .level-transition-banner,
+  .dialogue-toast,
+  .hud-companion-badge,
+  .codex-char-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .modal-overlay {
+    background: rgba(8, 6, 20, 0.86);
+  }
+
+  /* Overlays that sit on top of another DOM screen must not let it ghost through */
+  #codex-screen,
+  #wizard-card-modal {
+    background: rgba(8, 6, 20, 0.99);
+  }
+
+  .codex-char-card {
+    background: rgba(22, 16, 44, 0.92);
+  }
+
+  .tutorial-card {
+    background: rgb(15, 12, 34);
+    /* The overlay starts below the HUD row; without a cap the card ran off the bottom of short screens */
+    max-height: calc(100dvh - 76px - var(--sat) - var(--sab));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .level-transition-banner {
+    background: rgba(12, 9, 28, 0.94);
+  }
+
+  /* box-shadow animation repaints every frame; the pill still reads fine without it */
+  .hud-diff-pill.diff-inferno {
+    animation: none;
+  }
+
+  /* Combo meter must not reserve horizontal space in the HUD row (it is invisible most of the time
+     and was squeezing the score counter down to a few pixels). It floats under the control buttons. */
+  .hud-right-panel {
+    position: relative;
+  }
+
+  .hud-right-panel .combo-container {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .hud-diff-pill {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* The old 130px cap clipped the level badge + difficulty pill on both sides in landscape */
+  .hud-center-panel {
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow: visible;
+  }
+
+  .wave-badge-row {
+    max-width: 100%;
+  }
+
+  /* Menu: grids must be allowed to shrink below their content's min width */
+  .stage-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .stage-btn {
+    min-width: 0;
+  }
+
+  .stage-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+    line-height: 1.15;
+    font-size: 0.62rem;
+  }
+
+  .difficulty-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .diff-btn {
+    min-width: 0;
+    flex-direction: column;
+    text-align: center;
+    gap: 2px;
+    padding: 6px 4px;
+  }
+
+  .diff-meta {
+    align-items: center;
+  }
+
+  .rune-guide-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .guide-item {
+    padding: 5px 2px;
+    min-width: 0;
+  }
+
+  .guide-name {
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+}
+
+/* --- Portrait phones: two-row HUD ------------------------------------------
+   Row 1: hearts + control buttons. Row 2: score / level, centred. */
+@media (max-width: 600px) and (orientation: portrait) {
+  .hud-top-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "hearts . controls"
+      "center center center";
+    row-gap: 4px;
+    align-items: center;
+  }
+
+  .hud-hearts-panel {
+    grid-area: hearts;
+  }
+
+  .hud-right-panel {
+    grid-area: controls;
+    justify-self: end;
+  }
+
+  .hud-center-panel {
+    grid-area: center;
+    justify-self: center;
+    max-width: calc(100% - 150px);
+    overflow: visible;
+  }
+
+  .wave-badge-row {
+    max-width: 100%;
+    gap: 5px;
+  }
+
+  .wave-badge {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .hud-diff-pill {
+    font-size: 0.55rem;
+    padding: 2px 7px;
+  }
+
+  .tutorial-spells-guide {
+    max-height: min(54dvh, 440px);
+  }
+
+  /* Sits below the score row instead of on top of the hearts */
+  .hud-companion-badge {
+    top: calc(var(--sat) + 108px);
+  }
+
+  .menu-card > .menu-action-buttons {
+    margin-top: 4px;
+  }
+
+  /* Keep the play buttons reachable without scrolling the long menu card */
+  .menu-primary-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 10px 0 8px;
+    margin-bottom: 2px;
+    background: linear-gradient(to top, var(--panel-bg) 82%, rgba(14, 10, 26, 0));
+  }
+}
+
+/* --- Landscape phones -------------------------------------------------------
+   Menu becomes two columns so the whole thing fits in ~360px of height. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .menu-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 18px;
+    align-items: start;
+    align-content: start;
+    justify-items: stretch;
+    max-width: min(880px, 100%);
+    width: 96%;
+  }
+
+  .menu-card > .game-title,
+  .menu-card > .game-subtitle,
+  .menu-card > .high-score-tag {
+    grid-column: 1 / -1;
+  }
+
+  /* Explicit rows so the right column lines up with the left instead of auto-flowing below it */
+  .menu-card > .stage-selector-container {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .menu-card > .difficulty-selector-container {
+    grid-column: 1;
+    grid-row: 4 / span 2;
+  }
+
+  .menu-card > .rune-guide-grid {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .menu-card > .menu-primary-actions {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  .menu-card > .menu-action-buttons {
+    grid-column: 2;
+    grid-row: 5;
+  }
+
+  .menu-card > .high-score-tag {
+    grid-row: 6;
+  }
+
+  .menu-card .menu-primary-actions {
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .menu-card .menu-primary-actions .btn-primary,
+  .menu-card .menu-primary-actions .btn-secondary {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    min-height: 40px;
+    padding: 8px 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .menu-card .menu-primary-actions .btn-primary span:last-child,
+  .menu-card .menu-primary-actions .btn-secondary span:last-child {
+    display: none;
+  }
+
+  .menu-card .btn-subtle {
+    width: 100%;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+  }
+
+  /* Overrides the older single-column landscape rule that laid these out as a row */
+  .menu-card .menu-action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .menu-card .stage-name {
+    font-size: 0.56rem;
+  }
+
+  .menu-card .menu-primary-actions {
+    width: 100%;
+  }
+
+  .menu-card .rune-guide-grid {
+    margin-bottom: 8px;
+  }
+
+  /* The card itself scrolls here; a second scroll area inside it would be a trap on touch screens */
+  .tutorial-spells-guide {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* 32px buttons look right in a cramped HUD but are too small for a thumb:
+     extend the hit area to 44px without changing how they look. */
+  .icon-btn {
+    position: relative;
+  }
+
+  .icon-btn::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+}
+
+/* --- Respect the OS "reduce motion" setting -------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

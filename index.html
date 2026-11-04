@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="color-scheme" content="dark">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#07050d">
   <title>Magic Cat Academy: Arcane Paws | Gesture Defense</title>
@@ -308,7 +310,8 @@
           </div>
         </div>
 
-        <div class="menu-action-buttons">
+        <!-- Primary play buttons: direct child of the card so they can stay pinned (position: sticky) on small phones -->
+        <div class="menu-primary-actions">
           <button class="btn-primary" id="btn-start-story">
             <span>CHƠI CỐT TRUYỆN</span>
             <span>📖</span>
@@ -317,6 +320,9 @@
             <span>CHẾ ĐỘ VÔ TẬN</span>
             <span>⚡</span>
           </button>
+        </div>
+
+        <div class="menu-action-buttons">
           <button class="btn-subtle" id="btn-view-story">
             <span>🎬 Xem Hoạt Cảnh Cốt Truyện</span>
           </button>

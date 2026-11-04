@@ -28,18 +28,36 @@ export class InputHandler {
     this.lastPoint = null;
     this.isDrawing = false;
     this.isEnabled = false;
+    this._mapping = null; // cached client->logical mapping, valid for the duration of one stroke
 
     // Fading effect for completed strokes
     this.fadingStrokes = [];
 
+    // Evaluated once: this used to be recomputed on every stroke draw (every frame, per stroke).
+    this.strokeScale = (typeof window !== 'undefined' && (
+      window.innerWidth <= 768 || ('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+    )) ? 1.25 : 1.0;
+
+    // When false the neon trail is drawn with stacked translucent strokes instead of shadowBlur
+    this.glow = true;
+
     this._bindEvents();
     this._preventMobileGestures();
+  }
+
+  /**
+   * Toggle shadow-based neon glow on the drawing trail (driven by QualityManager)
+   * @param {boolean} enabled
+   */
+  setGlow(enabled) {
+    this.glow = !!enabled;
   }
 
   setEnabled(enabled) {
     this.isEnabled = enabled;
     if (!enabled) {
       this.isDrawing = false;
+      this._mapping = null;
       this.currentPoints = [];
       this.lastPoint = null;
       if (this.soundSystem && typeof this.soundSystem.stopDraw === 'function') {
@@ -55,6 +73,21 @@ export class InputHandler {
    * @returns {{x: number, y: number, timestamp: number}}
    */
   _getCanvasPoint(e) {
+    // During a stroke the mapping is cached (set on pointerdown): the canvas is fixed full-screen, and
+    // calling getBoundingClientRect() on every pointermove (60-120 Hz on phones) forces a layout read each time.
+    const m = this._mapping || this._computeMapping();
+    return {
+      x: (e.clientX - m.left) * m.scaleX,
+      y: (e.clientY - m.top) * m.scaleY,
+      timestamp: performance.now()
+    };
+  }
+
+  /**
+   * Client-space -> logical-space mapping for the canvas (see _getCanvasPoint)
+   * @returns {{left: number, top: number, scaleX: number, scaleY: number}}
+   */
+  _computeMapping() {
     const rect = this.canvas.getBoundingClientRect();
     let logicalW = rect.width || window.innerWidth;
     let logicalH = rect.height || window.innerHeight;
@@ -67,13 +100,11 @@ export class InputHandler {
       }
     }
 
-    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
-    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
-
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-      timestamp: performance.now()
+      left: rect.left,
+      top: rect.top,
+      scaleX: rect.width > 0 ? logicalW / rect.width : 1,
+      scaleY: rect.height > 0 ? logicalH / rect.height : 1
     };
   }
 
@@ -113,6 +144,7 @@ export class InputHandler {
         // Fallback for browsers without pointer capture
       }
       this.isDrawing = true;
+      this._mapping = this._computeMapping();
       const pt = this._getCanvasPoint(e);
       this.currentPoints = [pt];
       this.lastPoint = pt;
@@ -164,6 +196,7 @@ export class InputHandler {
     const handlePointerUp = (e) => {
       if (!this.isEnabled || !this.isDrawing) return;
       this.isDrawing = false;
+      this._mapping = null;
 
       try {
         if (e.pointerId !== undefined && this.canvas.hasPointerCapture && this.canvas.hasPointerCapture(e.pointerId)) {
@@ -263,48 +296,77 @@ export class InputHandler {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const isMobile = typeof window !== 'undefined' && (
-      window.innerWidth <= 768 || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0)
-    );
-    const strokeScale = isMobile ? 1.25 : 1.0;
+    const strokeScale = this.strokeScale;
+
+    // Long strokes can hold hundreds of raw pointer samples. The curve is traced up to 3 times per
+    // frame, so draw a strided subset (always keeping the first and last point) once it gets long.
+    const n = points.length;
+    const stride = n > 60 ? Math.ceil(n / 60) : 1;
+    const lastIdx = n - 1;
 
     // Helper to trace smoothed path with quadratic mid-points
     const traceSmoothPath = () => {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
-      if (points.length === 2) {
+      if (n === 2) {
         ctx.lineTo(points[1].x, points[1].y);
-      } else {
-        for (let i = 1; i < points.length - 1; i++) {
-          const xc = (points[i].x + points[i + 1].x) / 2;
-          const yc = (points[i].y + points[i + 1].y) / 2;
-          ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-        }
-        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+        return;
       }
+      for (let i = stride; i < lastIdx; i += stride) {
+        const cur = points[i];
+        const next = points[Math.min(i + stride, lastIdx)];
+        const xc = (cur.x + next.x) / 2;
+        const yc = (cur.y + next.y) / 2;
+        ctx.quadraticCurveTo(cur.x, cur.y, xc, yc);
+      }
+      ctx.lineTo(points[lastIdx].x, points[lastIdx].y);
     };
 
-    // Layer 1: Wide Ambient Glow
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 22 * strokeScale;
-    ctx.lineWidth = 8.5 * strokeScale;
-    ctx.strokeStyle = glowColor;
-    traceSmoothPath();
-    ctx.stroke();
+    if (this.glow) {
+      // Layer 1: Wide Ambient Glow
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 22 * strokeScale;
+      ctx.lineWidth = 8.5 * strokeScale;
+      ctx.strokeStyle = glowColor;
+      traceSmoothPath();
+      ctx.stroke();
 
-    // Layer 2: Medium Radiant Glow
-    ctx.shadowBlur = 10 * strokeScale;
-    ctx.lineWidth = 4.8 * strokeScale;
-    ctx.strokeStyle = '#f472b6';
-    traceSmoothPath();
-    ctx.stroke();
+      // Layer 2: Medium Radiant Glow
+      ctx.shadowBlur = 10 * strokeScale;
+      ctx.lineWidth = 4.8 * strokeScale;
+      ctx.strokeStyle = '#f472b6';
+      traceSmoothPath();
+      ctx.stroke();
 
-    // Layer 3: Inner bright white hot core
-    ctx.shadowBlur = 0;
-    ctx.lineWidth = 2.4 * strokeScale;
-    ctx.strokeStyle = '#ffffff';
-    traceSmoothPath();
-    ctx.stroke();
+      // Layer 3: Inner bright white hot core
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 2.4 * strokeScale;
+      ctx.strokeStyle = '#ffffff';
+      traceSmoothPath();
+      ctx.stroke();
+    } else {
+      // Shadow-free neon: stacked translucent strokes fake the glow at a fraction of the cost.
+      // The path is traced once and stroked repeatedly.
+      traceSmoothPath();
+
+      ctx.globalAlpha = alpha * 0.22;
+      ctx.lineWidth = 17 * strokeScale;
+      ctx.strokeStyle = glowColor;
+      ctx.stroke();
+
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.lineWidth = 9 * strokeScale;
+      ctx.stroke();
+
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 4.8 * strokeScale;
+      ctx.strokeStyle = '#f472b6';
+      ctx.stroke();
+
+      ctx.lineWidth = 2.4 * strokeScale;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+    }
 
     ctx.restore();
   }
@@ -314,5 +376,6 @@ export class InputHandler {
     this.lastPoint = null;
     this.fadingStrokes = [];
     this.isDrawing = false;
+    this._mapping = null;
   }
 }
