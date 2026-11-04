@@ -14,6 +14,8 @@
  * 6. Automatic AudioContext resume on first user interaction.
  */
 
+import { REAL_CAT_MEOW_BASE64 } from './catMeowAudioData.js';
+
 /**
  * Authentic Google Doodle Halloween 2016 (Magic Cat Academy) Audio Sprite Map.
  * Extracted directly from official Google Doodle audio sheets (main.mp3, victory.mp3, initial.mp3, end.mp3).
@@ -61,11 +63,11 @@ export const AUDIO_SPRITES = {
 export class SoundSystem {
   /**
    * @param {Object} [options={}]
-   * @param {number} [options.masterVolume=0.8] Master volume (0.0 to 1.0)
+   * @param {number} [options.masterVolume=0.4] Master volume (0.0 to 1.0)
    * @param {boolean} [options.autoUnlock=true] Whether to listen for window user gestures to resume AudioContext
    */
   constructor(options = {}) {
-    this.volume = options.masterVolume !== undefined ? Math.max(0, Math.min(1, options.masterVolume)) : 0.8;
+    this.volume = options.masterVolume !== undefined ? Math.max(0, Math.min(1, options.masterVolume)) : 0.4;
     this.isMuted = false;
 
     /** @type {AudioContext|null} */
@@ -96,6 +98,10 @@ export class SoundSystem {
     this._currentBGMSource = null;
     this._loadingTracks = {};
     this._currentOneShots = [];
+
+    // Real domestic cat recording buffer
+    this._realCatBuffer = null;
+    this._loadingRealCat = false;
 
     // Browser policy unlock state
     this._unlocked = false;
@@ -1049,7 +1055,25 @@ export class SoundSystem {
       return;
     }
 
-    // Default 'cheerful' / 'nyan' ("M-E-O-W")
+    // Authentic real cat meowing recording for 'cheerful'
+    if (variant === 'cheerful') {
+      if (this._realCatBuffer && this.ctx && !this.isMuted) {
+        try {
+          const src = this.ctx.createBufferSource();
+          src.buffer = this._realCatBuffer;
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(this.isMuted ? 0.0001 : 0.48, now);
+          src.connect(gain);
+          gain.connect(this.masterGain);
+          src.start(now);
+          return;
+        } catch (err) {}
+      } else {
+        this._preloadRealCatAudio();
+      }
+    }
+
+    // Procedural fallback for 'cheerful' / 'nyan' ("M-E-O-W")
     const duration = 0.44;
     const osc = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
@@ -1574,10 +1598,45 @@ export class SoundSystem {
    * Preload audio tracks for authentic Google Doodle Halloween 2016 audio
    */
   preloadAudio() {
+    this._preloadRealCatAudio();
     if (typeof window === 'undefined') return;
     ['main', 'initial', 'victory', 'end'].forEach(name => {
       this._loadAudioTrack(name).catch(() => {});
     });
+  }
+
+  /**
+   * Decode embedded authentic real cat meow audio from base64
+   * @private
+   */
+  _preloadRealCatAudio() {
+    if (!this.ctx || this._realCatBuffer || this._loadingRealCat) return;
+    this._loadingRealCat = true;
+
+    try {
+      if (typeof atob === 'function' && typeof Uint8Array !== 'undefined') {
+        const binaryStr = atob(REAL_CAT_MEOW_BASE64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        if (typeof this.ctx.decodeAudioData === 'function') {
+          this.ctx.decodeAudioData(bytes.buffer.slice(0), (buf) => {
+            this._realCatBuffer = buf;
+            this._loadingRealCat = false;
+          }, () => {
+            this._loadingRealCat = false;
+          });
+        } else {
+          this._loadingRealCat = false;
+        }
+      } else {
+        this._loadingRealCat = false;
+      }
+    } catch (e) {
+      this._loadingRealCat = false;
+    }
   }
 
   /**

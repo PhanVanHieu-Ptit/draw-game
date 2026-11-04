@@ -521,35 +521,48 @@ export function renderWizardCard(canvas, data = {}) {
 
   // Rank Badge (Crest)
   const rankBoxY = portraitY + portraitRadius + 52;
-  const rankBoxW = 200;
+  const rankBoxW = 216;
   const rankBoxH = 58;
+  const rankBoxX = col1X - rankBoxW / 2;
 
   ctx.fillStyle = rank.badgeBg;
   ctx.strokeStyle = rank.badgeBorder;
   ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.roundRect(col1X - rankBoxW / 2, rankBoxY, rankBoxW, rankBoxH, 12);
+  ctx.roundRect(rankBoxX, rankBoxY, rankBoxW, rankBoxH, 12);
   ctx.fill();
   ctx.stroke();
 
   // Grade Letter (SSS, SS, S, etc.)
-  ctx.font = '900 32px Outfit, sans-serif';
+  ctx.font = '900 30px Outfit, sans-serif';
   ctx.fillStyle = rank.color;
   ctx.shadowColor = rank.glow;
   ctx.shadowBlur = 12;
   ctx.textAlign = 'left';
-  ctx.fillText(rank.grade, col1X - rankBoxW / 2 + 16, rankBoxY + 38);
+  ctx.fillText(rank.grade, rankBoxX + 14, rankBoxY + 39);
   ctx.shadowBlur = 0;
 
-  // Grade Title Text
+  // Grade Title Text with dynamic font auto-fit so it never overflows badge
+  const textStartX = rankBoxX + (rank.grade.length >= 3 ? 74 : 64);
+  const maxTitleW = rankBoxW - (textStartX - rankBoxX) - 8;
   ctx.textAlign = 'left';
-  ctx.font = '800 13px Outfit, sans-serif';
+  let titleFontSize = 12;
+  ctx.font = `800 ${titleFontSize}px Outfit, sans-serif`;
+  if (typeof ctx.measureText === 'function') {
+    while (ctx.measureText(rank.title).width > maxTitleW && titleFontSize > 8.5) {
+      titleFontSize -= 0.5;
+      ctx.font = `800 ${titleFontSize}px Outfit, sans-serif`;
+    }
+  } else if (rank.title.length > 14) {
+    titleFontSize = 10.5;
+    ctx.font = `800 ${titleFontSize}px Outfit, sans-serif`;
+  }
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(rank.title, col1X - rankBoxW / 2 + 76, rankBoxY + 26);
+  ctx.fillText(rank.title, textStartX, rankBoxY + 25);
 
-  ctx.font = '600 10.5px Outfit, sans-serif';
+  ctx.font = '600 10px Outfit, sans-serif';
   ctx.fillStyle = rank.color;
-  ctx.fillText(rank.enTitle.toUpperCase(), col1X - rankBoxW / 2 + 76, rankBoxY + 44);
+  ctx.fillText(rank.enTitle.toUpperCase(), textStartX, rankBoxY + 43);
 
   // Difficulty & Stage Badge Pills under portrait
   const pillY = rankBoxY + rankBoxH + 14;

@@ -27,7 +27,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
-    this.bossSpawnGraceTimer = 2.5; // Grace window before Boss forcefully emerges
+    this.bossSpawnGraceTimer = 45.0; // Emergency failsafe window (only if a minion is somehow lost for 45s)
 
     // Event hooks
     this.onWaveStart = null;
@@ -70,7 +70,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
-    this.bossSpawnGraceTimer = 2.5;
+    this.bossSpawnGraceTimer = 45.0;
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
@@ -90,7 +90,7 @@ export class WaveSystem {
       this.speedMultiplier = Math.min(2.2, (1.1 + 0.08 * (levelNum - 1)) * diffConfig.speedMult);
     }
 
-    this.spawnTimer = 1.0; // brief breathing time before first ghost
+    this.spawnTimer = 1.6; // Gentle breathing time before first ghost
 
     if (this.onLevelStart && this.levelData) {
       this.onLevelStart(this.currentLevelIndex, this.levelData);
@@ -171,7 +171,9 @@ export class WaveSystem {
         } else if (hostileEnemiesCount === 0) {
           shouldSpawnBoss = true;
         } else {
-          // Lingering hostile minions: count down grace timer to ensure boss always arrives without dead halts
+          // As long as hostile minions linger, the player is actively fighting them.
+          // The boss must NOT cut in early while there are still small ghosts to defeat!
+          // Emergency failsafe only triggers if a stray minion somehow gets lost for >45s.
           this.bossSpawnGraceTimer -= dt;
           if (this.bossSpawnGraceTimer <= 0) {
             shouldSpawnBoss = true;
@@ -181,7 +183,7 @@ export class WaveSystem {
         if (!this.isBossSpawned && shouldSpawnBoss) {
           this.isBossSpawned = true;
           this.isBossDefeated = false;
-          this.bossMinionSpawnTimer = 1.4; // Breathing window before first boss minion appears
+          this.bossMinionSpawnTimer = 2.4; // Breathing window before first boss minion appears
           if (this.onBossSpawn) {
             this.onBossSpawn(this.levelData.bossType, this.levelData.bossName);
           }

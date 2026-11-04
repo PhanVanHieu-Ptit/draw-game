@@ -107,6 +107,10 @@ export class Game {
     this.lightningFlashTimer = 0;
     this.freezeOverlayTimer = 0;
 
+    // Boss entrance dramatic warning & gradual transition
+    this.bossEntranceWarningActive = false;
+    this.bossEntranceWarningTimer = 0;
+
     // Level 1 Tutorial interactive tracking
     this.isTutorialActive = false;
     this.tutorialStep = 0;
@@ -141,6 +145,8 @@ export class Game {
 
     // Hook Wave & Level System events with Screen Shake & Visual Announcements
     this.waveSystem.onLevelStart = (lvlNum, lvlData) => {
+      this.bossEntranceWarningActive = false;
+      this.bossEntranceWarningTimer = 0;
       this.uiManager.updateLevel(lvlNum, lvlData);
       this.triggerShake(8, 0.45);
       this.uiManager.showLevelTransition(lvlNum, lvlData);
@@ -468,6 +474,8 @@ export class Game {
     };
     this.freezeOverlayTimer = 0;
     this.lightningFlashTimer = 0;
+    this.bossEntranceWarningActive = false;
+    this.bossEntranceWarningTimer = 0;
 
     this.player.resize(this.width, this.height);
     this.player.reset();
@@ -579,7 +587,56 @@ export class Game {
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
     const livingEnemiesCount = this.enemies.filter(e => !e.isDead).length;
     const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost).length;
-    const spawnResult = this.waveSystem.update(dt, this.player.hp, livingEnemiesCount, hostileEnemiesCount);
+
+    // Boss Entrance Build-up Delay: when all wave minions have been cleared in Story Mode,
+    // pause briefly ("từ từ", ~2.2s) with warning banner and ominous ambience before Boss appears
+    const isPreBossClear = Boolean(this.waveSystem
+      && this.waveSystem.gameMode === 'STORY'
+      && this.waveSystem.levelData
+      && this.waveSystem.currentLevelIndex !== 5
+      && !this.waveSystem.isBossSpawned
+      && this.waveSystem.enemiesSpawnedInWave >= this.waveSystem.totalEnemiesInWave
+      && hostileEnemiesCount === 0);
+
+    let spawnResult = null;
+    if (isPreBossClear) {
+      if (!this.bossEntranceWarningActive) {
+        this.bossEntranceWarningActive = true;
+        this.bossEntranceWarningTimer = 2.2;
+
+        // Visual & audio feedback: All minions defeated!
+        if (this.particleSystem) {
+          this.particleSystem.emitFloatingText('✨ ĐÃ QUÉT SẠCH QUÂN ĐOÀN U LINH! ✨', this.width / 2, this.height * 0.35, '#38bdf8', 26);
+        }
+        if (this.audioSystem && typeof this.audioSystem.playCatPurr === 'function') {
+          this.audioSystem.playCatPurr();
+        }
+
+        // After 450ms, trigger Boss Warning Banner
+        setTimeout(() => {
+          if (this.stateMachine && this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
+            const bossName = this.waveSystem.levelData ? this.waveSystem.levelData.bossName : 'TRÙM ĐANG ĐẾN';
+            const enName = this.waveSystem.levelData ? this.waveSystem.levelData.enName : 'BOSS APPROACHING';
+            if (this.uiManager && typeof this.uiManager.showBossWarning === 'function') {
+              this.uiManager.showBossWarning(bossName, enName);
+            }
+            this.triggerShake(12, 1.2);
+            if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
+              this.audioSystem.soundBossCast();
+            }
+          }
+        }, 450);
+      }
+
+      this.bossEntranceWarningTimer -= dt;
+      if (this.bossEntranceWarningTimer <= 0) {
+        spawnResult = this.waveSystem.update(dt, this.player.hp, livingEnemiesCount, hostileEnemiesCount);
+      } else {
+        spawnResult = null;
+      }
+    } else {
+      spawnResult = this.waveSystem.update(dt, this.player.hp, livingEnemiesCount, hostileEnemiesCount);
+    }
     if (spawnResult) {
       const configs = Array.isArray(spawnResult) ? spawnResult : [spawnResult];
       const isSquad = configs.length > 1;
@@ -589,9 +646,9 @@ export class Game {
       let livingFreezeCount = this.enemies.filter(e => e.isFreezeGhost && !e.isDead).length;
       let livingBlastCount = this.enemies.filter(e => e.isBlastGhost && !e.isDead).length;
 
-      // Coordinated edge positions for simultaneous squad members
+      // Coordinated edge positions for simultaneous squad members (all 4 borders across all levels, including Level 5)
       let squadPositions = [];
-      if (isSquad && this.waveSystem.currentLevelIndex !== 5) {
+      if (isSquad) {
         squadPositions = Enemy.getSquadEdgePositions(configs.length, this.width, this.height);
       }
 
@@ -652,33 +709,26 @@ export class Game {
             };
           }
         } else {
-          // Minions in Level 5 (The Rooftop) spawn from the right border and upper sky towards Momo on the left
-          if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
-            if (isSquad) {
-              const yRatio = (k + 0.5) / configs.length;
-              spawnPos = {
-                x: this.width + 50 + k * 30,
-                y: Math.max(60, Math.min(this.height - 80, this.height * 0.15 + yRatio * (this.height * 0.68) + (Math.random() - 0.5) * 30))
-              };
-            } else {
-              const spawnSide = Math.random();
-              if (spawnSide < 0.65) {
-                spawnPos = {
-                  x: this.width + 40,
-                  y: Math.random() * (this.height * 0.65) + 40
-                };
-              } else {
-                spawnPos = {
-                  x: this.width * 0.45 + Math.random() * (this.width * 0.55),
-                  y: -40
-                };
-              }
-            }
+          // Minions across all levels (including Level 5 final round) spawn from all four borders (Top, Bottom, Left, Right)
+          if (isSquad && squadPositions[k]) {
+            spawnPos = squadPositions[k];
           } else {
-            if (isSquad && squadPositions[k]) {
-              spawnPos = squadPositions[k];
-            } else {
-              spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+            spawnPos = Enemy.getRandomEdgePosition(this.width, this.height);
+          }
+
+          // Safety buffer: If player is near an edge (e.g. Momo on the left in Level 5),
+          // ensure spawn position keeps a safe distance so the player has reaction time to draw
+          if (this.player) {
+            const distToPlayer = Math.hypot(spawnPos.x - this.player.x, spawnPos.y - this.player.y);
+            const minSafeDist = Math.min(this.width, this.height) * 0.32;
+            if (distToPlayer < minSafeDist) {
+              const dx = spawnPos.x - this.player.x;
+              const dy = spawnPos.y - this.player.y;
+              const norm = Math.hypot(dx, dy) || 1;
+              spawnPos = {
+                x: this.player.x + (dx / norm) * minSafeDist,
+                y: this.player.y + (dy / norm) * minSafeDist
+              };
             }
           }
         }
@@ -1496,11 +1546,13 @@ export class Game {
           this.audioSystem.playSpell(gesture);
         }
       } else if (gesture === 'circle') {
-        this.triggerFreezeAll(4.5);
-        this.audioSystem.playSpell('circle');
+        this.audioSystem.playSpell(gesture);
+        setTimeout(() => this.audioSystem.playFizzle(), 140);
+        this.particleSystem.emitFloatingText('Chưa có U Linh Băng Giá! ❄️', this.player.x, this.player.y - 60, '#38bdf8', 20);
       } else if (gesture === 'spiral') {
-        this.triggerPushbackAll(320);
-        this.audioSystem.playSpell('spiral');
+        this.audioSystem.playSpell(gesture);
+        setTimeout(() => this.audioSystem.playFizzle(), 140);
+        this.particleSystem.emitFloatingText('Chưa có U Linh Cuồng Phong! 🌀', this.player.x, this.player.y - 60, '#34d399', 20);
       } else if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
         this.lightningFlashTimer = 0.16;

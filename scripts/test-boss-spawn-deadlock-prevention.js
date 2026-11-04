@@ -37,7 +37,7 @@ assert(bossResultImmediate !== null, 'Boss spawned immediately when hostile enem
 assert(bossResultImmediate.isBoss === true, 'Spawned entity is Boss');
 assert(waveSys.isBossSpawned === true, 'isBossSpawned is now true');
 
-// Test 1B: If hostile minions linger, bossSpawnGraceTimer forces Boss spawn after 2.5s
+// Test 1B: If hostile minions linger, boss does NOT spawn prematurely; player can defeat all small ghosts first!
 const waveSys2 = new WaveSystem();
 waveSys2.initLevel(1);
 let spawned2 = 0;
@@ -47,16 +47,30 @@ while (spawned2 < waveSys2.totalEnemiesInWave) {
 }
 assert(waveSys2.isBossSpawned === false, 'Boss not spawned yet');
 
-// Simulate 2.0s passing with 2 hostile minions still lingering
-let midwayResult = waveSys2.update(2.0, 5, 2, 2);
-assert(midwayResult === null, 'Boss does not spawn during the first 2.0s grace period');
-assert(waveSys2.bossSpawnGraceTimer <= 0.6, 'Grace timer counted down');
+// Simulate 5.0s passing with 2 hostile minions still lingering -> Boss must NOT spawn prematurely!
+let midwayResult = waveSys2.update(5.0, 5, 2, 2);
+assert(midwayResult === null, 'Boss does not spawn while hostile minions are actively being fought');
+assert(waveSys2.isBossSpawned === false, 'Boss remains unspawned so player can defeat small ghosts');
+assert(waveSys2.bossSpawnGraceTimer <= 41.0, 'Emergency grace timer counted down');
 
-// Advance past 2.5s (another 0.6s)
-let forcedBossResult = waveSys2.update(0.6, 5, 2, 2);
-assert(forcedBossResult !== null, 'Boss forcefully spawned after grace timeout');
-assert(forcedBossResult.isBoss === true, 'Forced spawn entity is Boss');
-assert(waveSys2.isBossSpawned === true, 'isBossSpawned is true after timeout');
+// Defeat all hostile minions -> Boss now spawns!
+let clearedBossResult = waveSys2.update(0.01, 5, 0, 0);
+assert(clearedBossResult !== null, 'Boss spawns when all hostile minions are eliminated');
+assert(clearedBossResult.isBoss === true, 'Spawned entity is Boss');
+assert(waveSys2.isBossSpawned === true, 'isBossSpawned is now true');
+
+// Test 1C: Emergency failsafe timeout (45s) in case a minion got lost in space
+const waveSys3 = new WaveSystem();
+waveSys3.initLevel(1);
+let spawned3 = 0;
+while (spawned3 < waveSys3.totalEnemiesInWave) {
+  const cfg = waveSys3.update(0.01, 5, 1, 1);
+  if (cfg) spawned3++;
+}
+let forcedBossResult = waveSys3.update(46.0, 5, 1, 1);
+assert(forcedBossResult !== null, 'Emergency failsafe spawns Boss after 45s');
+assert(forcedBossResult.isBoss === true, 'Emergency spawn entity is Boss');
+assert(waveSys3.isBossSpawned === true, 'isBossSpawned is true after emergency timeout');
 
 // -------------------------------------------------------------------------
 // 2. HEART GHOST LIFETIME & DRIFT

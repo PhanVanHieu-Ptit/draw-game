@@ -82,7 +82,7 @@ export const RUNES = {
     glow: '#0284c7',
     lightColor: '#e0f2fe',
     baseScore: 250,
-    description: 'Đóng băng ngưng đọng tất cả u linh'
+    description: 'Đóng băng ngưng đọng tất cả u linh (khi có U Linh Băng Giá)'
   },
   spiral: {
     id: 'spiral',
@@ -92,7 +92,7 @@ export const RUNES = {
     glow: '#059669',
     lightColor: '#d1fae5',
     baseScore: 250,
-    description: 'Đẩy lùi tất cả u linh ra xa'
+    description: 'Đẩy lùi u linh ra xa (khi có U Linh Cuồng Phong)'
   }
 };
 
@@ -284,7 +284,7 @@ export const LEVEL_CONFIGS = [
     themeColor: '#3b82f6',
     ambientColor: '#1e1b4b',
     totalMinions: 12,
-    baseSpawnInterval: 1.35,
+    baseSpawnInterval: 1.75,
     speedMultiplier: 0.85,
     allowedRunes: ['horizontal', 'vertical'],
     hasSpeedster: false,
@@ -317,8 +317,8 @@ export const LEVEL_CONFIGS = [
     description: 'Mùi hương phép thuật quái đản bốc lên từ các nồi súp ma ám.',
     themeColor: '#f97316',
     ambientColor: '#271206',
-    totalMinions: 22,
-    baseSpawnInterval: 1.10,
+    totalMinions: 20,
+    baseSpawnInterval: 1.40,
     speedMultiplier: 0.95,
     allowedRunes: ['horizontal', 'vertical', 'caret', 'v_shape'],
     hasSpeedster: true,
@@ -351,8 +351,8 @@ export const LEVEL_CONFIGS = [
     description: 'Các mô hình hành tinh xoay vần và ống nghiệm phát sáng huyền bí.',
     themeColor: '#c084fc',
     ambientColor: '#1d0b36',
-    totalMinions: 30,
-    baseSpawnInterval: 0.90,
+    totalMinions: 26,
+    baseSpawnInterval: 1.15,
     speedMultiplier: 1.05,
     allowedRunes: ['horizontal', 'vertical', 'caret', 'v_shape', 'lightning'],
     hasSpeedster: true,
@@ -386,8 +386,8 @@ export const LEVEL_CONFIGS = [
     description: 'Sàn gỗ rực lửa và những dụng cụ thể thao ma ám bay lượn.',
     themeColor: '#34d399',
     ambientColor: '#06281c',
-    totalMinions: 38,
-    baseSpawnInterval: 0.75,
+    totalMinions: 34,
+    baseSpawnInterval: 0.90,
     speedMultiplier: 1.15,
     allowedRunes: ['horizontal', 'vertical', 'caret', 'v_shape', 'lightning'],
     hasSpeedster: true,

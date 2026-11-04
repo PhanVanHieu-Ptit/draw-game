@@ -943,6 +943,25 @@ export class UIManager {
     }, 2400);
   }
 
+  showBossWarning(bossName, enName = 'BOSS APPROACHING') {
+    if (!this.levelTransitionBanner) return;
+
+    clearTimeout(this._ltbTimeout);
+    clearTimeout(this._ltbDrawTimeout);
+
+    this.levelTransitionBanner.className = 'level-transition-banner show phase-boss-warning';
+    if (this.ltbNumber) this.ltbNumber.textContent = '⚠️ CẢNH BÁO NGUY HIỂM ⚠️';
+    if (this.ltbTitle) this.ltbTitle.textContent = bossName ? bossName.toUpperCase() : 'TRÙM ĐANG ĐẾN';
+    if (this.ltbEn) this.ltbEn.textContent = enName ? enName.toUpperCase() : 'BOSS APPROACHING';
+    if (this.ltbPrompt) this.ltbPrompt.textContent = '💀 TÀ KHÍ DÂNG TRÀO... HÃY CHUẨN BỊ! 💀';
+
+    this._ltbTimeout = setTimeout(() => {
+      if (this.levelTransitionBanner) {
+        this.levelTransitionBanner.className = 'level-transition-banner';
+      }
+    }, 2200);
+  }
+
   // =========================================================================
   // LEVEL 1 TUTORIAL GUIDE MANAGEMENT
   // =========================================================================
