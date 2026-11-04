@@ -76,6 +76,9 @@ class MockCanvasContext {
   strokeRect(x, y, w, h) { this.calls.push({ method: 'strokeRect', x, y, w, h }); }
   fillText(text, x, y) { this.calls.push({ method: 'fillText', text, x, y }); }
   clip() { this.calls.push({ method: 'clip' }); }
+  measureText(text) {
+    return { width: (text || '').length * 8 };
+  }
   quadraticCurveTo(cpx, cpy, x, y) { this.calls.push({ method: 'quadraticCurveTo', cpx, cpy, x, y }); }
   createLinearGradient() {
     return { addColorStop: () => {} };

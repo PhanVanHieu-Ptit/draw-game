@@ -200,6 +200,34 @@ assert(initialSpawn.bossPhases.length === 5, 'Spawned Boss has 5 phases');
 assert(level5WaveSys.isBossSpawned === true, 'isBossSpawned is immediately true');
 assert(level5WaveSys.isBossDefeated === false, 'isBossDefeated is false');
 
+// =========================================================================
+// 7. Level 5 Minions Spawn From All 4 Borders (Top, Bottom, Left, Right)
+// =========================================================================
+console.log('\n--- 7. Testing Level 5 Minions Spawn From All 4 Borders ---');
+const squadPositions = Enemy.getSquadEdgePositions(4, screenW, screenH);
+assert(squadPositions.length === 4, 'Generated squad of 4 edge positions for Level 5');
+
+let hasTop = false;
+let hasBottom = false;
+let hasLeft = false;
+let hasRight = false;
+
+// Check over multiple squad generations to verify all 4 borders (Top, Bottom, Left, Right) are used
+for (let attempt = 0; attempt < 20; attempt++) {
+  const positions = Enemy.getSquadEdgePositions(4, screenW, screenH);
+  for (const pos of positions) {
+    if (pos.y < 0) hasTop = true;
+    if (pos.y > screenH) hasBottom = true;
+    if (pos.x < 0) hasLeft = true;
+    if (pos.x > screenW) hasRight = true;
+  }
+}
+
+assert(hasTop === true, 'Level 5 minions spawn from Top border');
+assert(hasBottom === true, 'Level 5 minions spawn from Bottom border');
+assert(hasLeft === true, 'Level 5 minions spawn from Left border');
+assert(hasRight === true, 'Level 5 minions spawn from Right border');
+
 console.log(`\n========================================`);
 console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
 console.log(`========================================\n`);

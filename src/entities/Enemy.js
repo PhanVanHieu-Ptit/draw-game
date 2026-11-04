@@ -292,8 +292,8 @@ export class Enemy extends Entity {
     let dirX = dx / dist;
     let dirY = dy / dist;
 
-    // For Level 5 / Boss Master, Momo is stationed on the left, so minions recoil towards the right
-    if (this.levelIndex === 5 && dirX < 0.25) {
+    // For Level 5 / Boss Master minions located in front of Momo (to the right), recoil towards the right
+    if (this.levelIndex === 5 && dx >= 0 && dirX < 0.25) {
       dirX = 0.85;
       dirY = dirY * 0.5;
     }
