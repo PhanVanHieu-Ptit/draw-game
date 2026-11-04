@@ -2626,3 +2626,161 @@ html, body {
     min-height: 38px;
   }
 }
+
+/* ==========================================================================
+   WIZARD CAT LICENSE / SHARE CARD STYLES & GOLD BUTTONS
+   ========================================================================== */
+.btn-gold {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #b45309 100%);
+  color: #1a0b02;
+  font-family: var(--font-antique);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 12px 28px;
+  border-radius: 9999px;
+  border: 1px solid rgba(254, 240, 138, 0.75);
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 32px rgba(251, 191, 36, 0.65);
+  filter: brightness(1.1);
+}
+
+.btn-gold:active {
+  transform: scale(0.96);
+  filter: brightness(0.95);
+}
+
+.wizard-card-popup {
+  max-width: 860px;
+  width: 95vw;
+  max-height: 94vh;
+  max-height: 94dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 24px;
+  overflow-y: auto;
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 32px rgba(245, 158, 11, 0.25);
+}
+
+.wizard-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.wizard-card-title-wrap {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.wizard-card-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fbbf24;
+  text-transform: uppercase;
+}
+
+.wizard-card-heading {
+  font-size: 1.6rem;
+  margin: 2px 0 0 0;
+  text-align: left;
+}
+
+.wizard-card-canvas-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(7, 5, 13, 0.75);
+  border-radius: 14px;
+  padding: 8px;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+  margin-bottom: 14px;
+}
+
+#wizardCardCanvas {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 840 / 520;
+  border-radius: 8px;
+  display: block;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
+}
+
+.wizard-card-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  padding: 10px 24px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.wizard-card-toast.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(16px);
+  pointer-events: none;
+}
+
+.wizard-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.wizard-card-footer-tip {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .wizard-card-popup {
+    padding: 12px 14px;
+  }
+  .wizard-card-heading {
+    font-size: 1.25rem;
+  }
+  .wizard-card-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .wizard-card-actions button {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 10px 16px;
+  }
+}
+

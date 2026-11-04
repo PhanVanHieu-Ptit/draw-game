@@ -162,12 +162,27 @@ export class GameOverState extends State {
     const finalScore = this.game.score;
     const isNewHighScore = this.game.saveHighScore(finalScore);
 
+    // Haptic feedback for game over
+    if (this.game.hapticSystem) {
+      this.game.hapticSystem.gameover();
+    }
+
+    const elapsed = this.game.metrics.startTime
+      ? Math.round((Date.now() - this.game.metrics.startTime) / 1000)
+      : 60;
+
     this.game.uiManager.showScreen(GAME_STATES.GAMEOVER, {
       score: finalScore,
       highScore: this.game.highScore,
       isNewHighScore,
       wave: this.game.waveSystem.currentWave,
       spellsCast: this.game.metrics.spellsCast,
+      spellsHit: this.game.metrics.spellsHit,
+      damageTaken: this.game.metrics.damageTaken,
+      enemiesDefeated: this.game.metrics.enemiesDefeated,
+      maxCombo: this.game.metrics.maxCombo || this.game.comboCount || 1,
+      elapsedSeconds: elapsed,
+      difficulty: this.game.difficulty || 'NORMAL',
       accuracy: this.game.metrics.spellsCast > 0
         ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
         : 100
@@ -207,14 +222,34 @@ export class VictoryState extends State {
       this.game.audioSystem.playStart();
     }
 
+    // Triumphant cat vocalization & celebratory haptic
+    if (this.game.audioSystem && typeof this.game.audioSystem.playCatMeow === 'function') {
+      setTimeout(() => {
+        this.game.audioSystem.playCatMeow('triumphant');
+      }, 700);
+    }
+    if (this.game.hapticSystem) {
+      this.game.hapticSystem.victory();
+    }
+
     const finalScore = this.game.score;
     const isNewHighScore = this.game.saveHighScore(finalScore);
+
+    const elapsed = this.game.metrics.startTime
+      ? Math.round((Date.now() - this.game.metrics.startTime) / 1000)
+      : 180;
 
     this.game.uiManager.showScreen(GAME_STATES.VICTORY, {
       score: finalScore,
       highScore: this.game.highScore,
       isNewHighScore,
       spellsCast: this.game.metrics.spellsCast,
+      spellsHit: this.game.metrics.spellsHit,
+      damageTaken: this.game.metrics.damageTaken,
+      enemiesDefeated: this.game.metrics.enemiesDefeated,
+      maxCombo: this.game.metrics.maxCombo || this.game.comboCount || 1,
+      elapsedSeconds: elapsed,
+      difficulty: this.game.difficulty || 'NORMAL',
       accuracy: this.game.metrics.spellsCast > 0
         ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
         : 100
