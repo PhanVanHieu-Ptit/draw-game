@@ -192,7 +192,8 @@ export class SoundSystem {
       this.ctx.resume().then(() => {
         this._unlocked = true;
       }).catch(() => {});
-      return false; // Still suspended until user gesture event loop settles
+      // In Web Audio API, nodes scheduled on a suspended context are buffered
+      // and begin playing automatically as soon as the context transitions to 'running'.
     }
 
     return true;
@@ -840,8 +841,6 @@ export class SoundSystem {
   soundDamage() {
     if (!this._ensureReady()) return;
 
-    this.playAudioSprite('cat_hurt', 1.0);
-
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const duration = 0.42;
@@ -903,6 +902,295 @@ export class SoundSystem {
 
     slapOsc.start(now);
     slapOsc.stop(now + 0.035);
+
+    // Complement impact punch with Momo's startled hurt cry
+    if (!this.playAudioSprite('cat_hurt', 1.0)) {
+      this.soundCatMeow('hurt');
+    }
+  }
+
+  /* -------------------------------------------------------------------------
+   * Feline SFX: Âm thanh tiếng mèo Momo (Meow, Purr, Hiss)
+   * ------------------------------------------------------------------------- */
+
+  /**
+   * Authentic procedural cat meow synthesizer for Momo.
+   * Emulates feline vocal cord harmonics and formant mouth vowel sweeps ('M-E-O-W').
+   * @param {'cheerful'|'cute'|'triumphant'|'hurt'} [variant='cheerful']
+   */
+  soundCatMeow(variant = 'cheerful') {
+    if (!this._ensureReady()) return;
+
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    if (variant === 'hurt') {
+      // Startled hurt cat cry ("Yowww!")
+      const duration = 0.38;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(940, now);
+      osc.frequency.exponentialRampToValueAtTime(360, now + duration);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(470, now);
+      osc2.frequency.exponentialRampToValueAtTime(180, now + duration);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(3200, now);
+      filter.frequency.exponentialRampToValueAtTime(1200, now + duration);
+      filter.Q.setValueAtTime(2.5, now);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.55, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + duration);
+      osc2.stop(now + duration);
+      return;
+    }
+
+    if (variant === 'cute') {
+      // Short playful kitten chirp ("Mew! / Nya!")
+      const duration = 0.26;
+      const osc = ctx.createOscillator();
+      const subOsc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      // Pitch sweep: 620Hz -> 940Hz -> 760Hz
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(940, now + 0.09);
+      osc.frequency.exponentialRampToValueAtTime(760, now + duration);
+
+      subOsc.type = 'triangle';
+      subOsc.frequency.setValueAtTime(620, now);
+      subOsc.frequency.exponentialRampToValueAtTime(940, now + 0.09);
+      subOsc.frequency.exponentialRampToValueAtTime(760, now + duration);
+
+      // Resonant lowpass to shape feline nasal formant without cutting fundamental
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2400, now);
+      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.1);
+      filter.frequency.linearRampToValueAtTime(1800, now + duration);
+      filter.Q.setValueAtTime(2.8, now);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.55, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(filter);
+      subOsc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      subOsc.start(now);
+      osc.stop(now + duration);
+      subOsc.stop(now + duration);
+      return;
+    }
+
+    if (variant === 'triumphant') {
+      // Joyous melodic double-meow ("Mew-meoww!") for Victory/Wave clear
+      const duration = 0.52;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      // Two-phase pitch envelope
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.linearRampToValueAtTime(780, now + 0.12);
+      osc.frequency.linearRampToValueAtTime(620, now + 0.22);
+      osc.frequency.linearRampToValueAtTime(920, now + 0.35);
+      osc.frequency.exponentialRampToValueAtTime(640, now + duration);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(260, now);
+      osc2.frequency.linearRampToValueAtTime(390, now + 0.12);
+      osc2.frequency.linearRampToValueAtTime(310, now + 0.22);
+      osc2.frequency.linearRampToValueAtTime(460, now + 0.35);
+      osc2.frequency.exponentialRampToValueAtTime(320, now + duration);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2200, now);
+      filter.frequency.linearRampToValueAtTime(3000, now + 0.3);
+      filter.frequency.linearRampToValueAtTime(1600, now + duration);
+      filter.Q.setValueAtTime(2.6, now);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.54, now + 0.05);
+      gain.gain.setValueAtTime(0.54, now + 0.32);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + duration);
+      osc2.stop(now + duration);
+      return;
+    }
+
+    // Default 'cheerful' / 'nyan' ("M-E-O-W")
+    const duration = 0.44;
+    const osc = ctx.createOscillator();
+    const oscSub = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    // 5.2Hz subtle feline vocal vibrato
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(5.2, now);
+    lfoGain.gain.setValueAtTime(16, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfoGain.connect(oscSub.frequency);
+
+    // Rich glottal sound: Sawtooth (harmonics) + Triangle (round fundamental)
+    osc.type = 'sawtooth';
+    oscSub.type = 'triangle';
+
+    // Vocal contour: 460Hz (m-) -> 820Hz (-e-o-) -> 540Hz (-w)
+    osc.frequency.setValueAtTime(460, now);
+    osc.frequency.exponentialRampToValueAtTime(820, now + 0.15);
+    osc.frequency.setValueAtTime(800, now + 0.22);
+    osc.frequency.exponentialRampToValueAtTime(540, now + duration);
+
+    oscSub.frequency.setValueAtTime(460, now);
+    oscSub.frequency.exponentialRampToValueAtTime(820, now + 0.15);
+    oscSub.frequency.setValueAtTime(800, now + 0.22);
+    oscSub.frequency.exponentialRampToValueAtTime(540, now + duration);
+
+    // Lowpass filter sweeping from 1600Hz to 3200Hz then down to 1400Hz (vowel formant mouth opening/closing)
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1600, now);
+    filter.frequency.linearRampToValueAtTime(3200, now + 0.16);
+    filter.frequency.linearRampToValueAtTime(1400, now + duration);
+    filter.Q.setValueAtTime(2.6, now);
+
+    // Ample gain so it sounds loud, distinct, and charming
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.58, now + 0.05);
+    gain.gain.setValueAtTime(0.55, now + 0.22);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(filter);
+    oscSub.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    lfo.start(now);
+    osc.start(now);
+    oscSub.start(now);
+    lfo.stop(now + duration);
+    osc.stop(now + duration);
+    oscSub.stop(now + duration);
+  }
+
+  /**
+   * Soothing procedural cat purr synthesizer for Heart ❤️ heal recovery.
+   * Emulates low 25Hz amplitude-modulated purring vibration.
+   * @param {number} [duration=0.9]
+   */
+  soundCatPurr(duration = 0.9) {
+    if (!this._ensureReady()) return;
+
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const baseOsc = ctx.createOscillator();
+    const purrLfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const masterPurrGain = ctx.createGain();
+
+    // 25Hz purr rhythmic rumble
+    purrLfo.type = 'sine';
+    purrLfo.frequency.setValueAtTime(25, now);
+
+    baseOsc.type = 'sawtooth';
+    baseOsc.frequency.setValueAtTime(110, now);
+    baseOsc.frequency.linearRampToValueAtTime(95, now + duration);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(450, now);
+    filter.Q.setValueAtTime(2.0, now);
+
+    lfoGain.gain.setValueAtTime(0.65, now);
+    purrLfo.connect(lfoGain.gain);
+
+    baseOsc.connect(filter);
+    filter.connect(lfoGain);
+
+    masterPurrGain.gain.setValueAtTime(0.01, now);
+    masterPurrGain.gain.linearRampToValueAtTime(0.48, now + 0.12);
+    masterPurrGain.gain.linearRampToValueAtTime(0.45, now + duration * 0.7);
+    masterPurrGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    lfoGain.connect(masterPurrGain);
+    masterPurrGain.connect(this.masterGain);
+
+    purrLfo.start(now);
+    baseOsc.start(now);
+    purrLfo.stop(now + duration);
+    baseOsc.stop(now + duration);
+  }
+
+  /**
+   * Sharp, defensive cat hiss for taking damage ("Khèèè!")
+   */
+  soundCatHiss() {
+    if (!this._ensureReady()) return;
+
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const duration = 0.32;
+
+    const noiseOsc = ctx.createOscillator();
+    const noiseFilter = ctx.createBiquadFilter();
+    const hissGain = ctx.createGain();
+
+    // Resonant sweep creating breathy hiss
+    noiseOsc.type = 'sawtooth';
+    noiseOsc.frequency.setValueAtTime(820, now);
+    noiseOsc.frequency.linearRampToValueAtTime(450, now + duration);
+
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(3400, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(5600, now + 0.08);
+    noiseFilter.frequency.linearRampToValueAtTime(2800, now + duration);
+    noiseFilter.Q.setValueAtTime(3.8, now);
+
+    hissGain.gain.setValueAtTime(0.01, now);
+    hissGain.gain.linearRampToValueAtTime(0.22, now + 0.03);
+    hissGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    noiseOsc.connect(noiseFilter);
+    noiseFilter.connect(hissGain);
+    hissGain.connect(this.masterGain);
+
+    noiseOsc.start(now);
+    noiseOsc.stop(now + duration);
   }
 
   /* -------------------------------------------------------------------------

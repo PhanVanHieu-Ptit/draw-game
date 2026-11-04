@@ -16,6 +16,7 @@ import { Projectile } from '../entities/Projectile.js';
 import { WaveSystem } from '../systems/WaveSystem.js';
 import { ParticleSystem } from '../systems/ParticleSystem.js';
 import { AudioSystem } from '../systems/AudioSystem.js';
+import { HapticSystem } from '../systems/HapticSystem.js';
 import { InputHandler } from '../systems/InputHandler.js';
 import { BackgroundRenderer } from '../systems/BackgroundRenderer.js';
 import { UIManager } from '../ui/UIManager.js';
@@ -54,6 +55,7 @@ export class Game {
       boxSize: 100
     });
     this.audioSystem = new AudioSystem();
+    this.hapticSystem = new HapticSystem();
     const particleBudget = isMobile ? 380 : 800;
     this.particleSystem = new ParticleSystem(particleBudget, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
@@ -96,7 +98,9 @@ export class Game {
       spellsCast: 0,
       spellsHit: 0,
       damageTaken: 0,
-      enemiesDefeated: 0
+      enemiesDefeated: 0,
+      maxCombo: 0,
+      startTime: Date.now()
     };
 
     // Screen visual flash & freeze overlay timers
@@ -107,14 +111,15 @@ export class Game {
     this.isTutorialActive = false;
     this.tutorialStep = 0;
 
-    // Input Handler with exact logical dimension callback
+    // Input Handler with exact logical dimension callback & interactive tap support
     this.inputHandler = new InputHandler(
       this.canvas,
       this.gestureEngine,
       this.particleSystem,
       (result, stroke) => this.onGestureRecognized(result, stroke),
       this.audioSystem,
-      () => ({ width: this.width, height: this.height })
+      () => ({ width: this.width, height: this.height }),
+      (tapPoint) => this.onCanvasTap(tapPoint)
     );
 
     // UI Manager
@@ -159,6 +164,11 @@ export class Game {
         '#c084fc',
         30
       );
+
+      // Momo meows enthusiastically at the start of every level
+      if (this.audioSystem && typeof this.audioSystem.playCatMeow === 'function') {
+        setTimeout(() => this.audioSystem.playCatMeow('cheerful'), 350);
+      }
 
       // Trigger companion story intro dialogue after transition
       if (lvlData && lvlData.companion && lvlData.storyIntroQuote) {
@@ -222,6 +232,11 @@ export class Game {
         '#34d399',
         30
       );
+
+      // Momo cries in triumph upon clearing the stage
+      if (this.audioSystem && typeof this.audioSystem.playCatMeow === 'function') {
+        setTimeout(() => this.audioSystem.playCatMeow('triumphant'), 400);
+      }
 
       // Trigger boss purification dialogue
       if (lvlData && lvlData.bossDefeatQuote) {
@@ -447,7 +462,9 @@ export class Game {
       spellsCast: 0,
       spellsHit: 0,
       damageTaken: 0,
-      enemiesDefeated: 0
+      enemiesDefeated: 0,
+      maxCombo: 0,
+      startTime: Date.now()
     };
     this.freezeOverlayTimer = 0;
     this.lightningFlashTimer = 0;
@@ -793,9 +810,12 @@ export class Game {
           this.particleSystem.emitMonsterDeathExplosion(enemy.x, enemy.y, enemy.type, 26);
           this.particleSystem.emitFloatingText('-1 HP', this.player.x, this.player.y - 40, '#ef4444', 24);
 
-          // Mobile haptic pulse for damage taken
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            try { navigator.vibrate([28, 35, 28]); } catch (e) {}
+          // Mobile haptic pulse for damage taken & Cat Hiss SFX
+          if (typeof this.audioSystem.playCatHiss === 'function') {
+            this.audioSystem.playCatHiss();
+          }
+          if (this.hapticSystem) {
+            this.hapticSystem.damage();
           }
 
           // Break combo
@@ -853,6 +873,9 @@ export class Game {
               // Multi-phase Boss lost 1 life and is retreating!
               const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
               if (isTargetBoss) {
+                if (this.hapticSystem) {
+                  this.hapticSystem.bossHit();
+                }
                 if (typeof this.audioSystem.playBossRoar === 'function') {
                   this.audioSystem.playBossRoar();
                 } else if (typeof this.audioSystem.playEnemyAttack === 'function') {
@@ -884,6 +907,12 @@ export class Game {
               this.metrics.enemiesDefeated++;
               const isTargetBoss = proj.targetEnemy.isBoss || proj.targetEnemy.type === 'BOSS' || (typeof proj.targetEnemy.type === 'string' && proj.targetEnemy.type.startsWith('BOSS_'));
               if (isTargetBoss) {
+                if (this.hapticSystem) {
+                  this.hapticSystem.bossDefeat();
+                }
+                if (typeof this.audioSystem.playCatMeow === 'function') {
+                  this.audioSystem.playCatMeow('cheerful');
+                }
                 if (typeof this.audioSystem.playBossDeath === 'function') {
                   this.audioSystem.playBossDeath(this.waveSystem.currentLevelIndex);
                 } else {
@@ -1362,13 +1391,16 @@ export class Game {
 
       this.triggerShake(3.5, 0.15);
 
-      // Subtle mobile haptic feedback on successful spell strike
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(14); } catch (e) {}
+      // Tactile mobile haptic feedback on successful spell strike
+      if (this.hapticSystem) {
+        this.hapticSystem.cast();
       }
 
       if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
+        if (this.hapticSystem) {
+          this.hapticSystem.lightning();
+        }
         this.lightningFlashTimer = 0.22;
         if (this.backgroundRenderer) {
           this.backgroundRenderer.triggerLightning(0.25);
@@ -1379,17 +1411,29 @@ export class Game {
       if (gesture === 'heart') {
         const healed = this.player.heal(1);
         if (healed) {
-          this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
+          this.particleSystem.emitFloatingText('+1 HP ❤️ Purr~', this.player.x, this.player.y - 60, '#f43f5e', 24);
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+          if (typeof this.audioSystem.playCatPurr === 'function') {
+            this.audioSystem.playCatPurr();
+          }
+          if (this.hapticSystem) {
+            this.hapticSystem.heal();
+          }
         }
       }
 
       if (gesture === 'circle') {
         this.triggerFreezeAll(4.5);
+        if (this.hapticSystem) {
+          this.hapticSystem.freeze();
+        }
       }
 
       if (gesture === 'spiral') {
         this.triggerPushbackAll(320);
+        if (this.hapticSystem) {
+          this.hapticSystem.blast();
+        }
       }
 
       // Fire pooled projectile to each matching enemy
@@ -1409,9 +1453,20 @@ export class Game {
 
       // Combo Progression
       this.comboCount++;
+      this.metrics.maxCombo = Math.max(this.metrics.maxCombo || 0, this.comboCount);
       this.comboTimer = COMBO_CONFIG.DECAY_TIME;
       this.comboMultiplier = this._calculateComboMultiplier(this.comboCount);
       this.audioSystem.playCombo(this.comboCount);
+
+      // Play cheerful meow milestone at combo x3, x6, x9, x12...
+      if (this.comboCount >= 3 && this.comboCount % 3 === 0) {
+        if (typeof this.audioSystem.playCatMeow === 'function') {
+          this.audioSystem.playCatMeow('cheerful');
+        }
+        if (this.hapticSystem) {
+          this.hapticSystem.combo(this.comboCount);
+        }
+      }
 
       const runeData = RUNES[gesture];
       const points = (runeData.baseScore || 100) * this.comboMultiplier;
@@ -1432,6 +1487,9 @@ export class Game {
         const healed = this.player.heal(1);
         if (healed) {
           this.audioSystem.playSpell('heart');
+          if (typeof this.audioSystem.playCatPurr === 'function') {
+            this.audioSystem.playCatPurr(0.9);
+          }
           this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
         } else {
@@ -1561,5 +1619,37 @@ export class Game {
       }
     }
     return 1;
+  }
+
+  /**
+   * Handle single tap / click on canvas (interacting with Momo the cat)
+   * @param {{x: number, y: number}} pt
+   * @returns {boolean} True if tap was consumed
+   */
+  onCanvasTap(pt) {
+    if (!this.player) return false;
+
+    // Hit-test against Momo the cat (radius ~85px around player position)
+    const distToMomo = Math.hypot(pt.x - this.player.x, pt.y - this.player.y);
+    if (distToMomo <= 85) {
+      if (this.audioSystem && typeof this.audioSystem.playCatMeow === 'function') {
+        // Alternate between cute chirp ("Mew!") and cheerful meow ("Nyan~")
+        const variant = Math.random() < 0.55 ? 'cute' : 'cheerful';
+        this.audioSystem.playCatMeow(variant);
+      }
+      if (this.hapticSystem) {
+        this.hapticSystem.pulse(18);
+      }
+      if (this.particleSystem) {
+        // Emit cheerful hearts and paw sparkles around Momo
+        this.particleSystem.emitMagicSparks(this.player.x, this.player.y - 25, 8, '#f472b6');
+        this.particleSystem.emitFloatingText('Meow~ 🐾', this.player.x, this.player.y - 65, '#f472b6', 22);
+      }
+      // Playful cat casting / wiggle reaction
+      this.player.castTimer = 0.35;
+      return true;
+    }
+
+    return false;
   }
 }

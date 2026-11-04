@@ -323,6 +323,9 @@
           <button class="btn-subtle" id="btn-open-codex">
             <span>🐾 Hồ Sơ Nhân Vật & U Linh</span>
           </button>
+          <button class="btn-subtle" id="btn-menu-wizard-card">
+            <span>🪪 Thẻ Căn Cước Pháp Sư</span>
+          </button>
         </div>
 
         <div class="high-score-tag">
@@ -429,6 +432,9 @@
             <span>CHƠI LẠI CỐT TRUYỆN</span>
             <span>✨</span>
           </button>
+          <button class="btn-gold" id="btn-vic-wizard-card">
+            <span>🪪 XUẤT THẺ PHÁP SƯ</span>
+          </button>
           <button class="btn-secondary" id="btn-vic-play-endless">
             <span>CHẾ ĐỘ VÔ TẬN ⚡</span>
           </button>
@@ -514,10 +520,52 @@
           </div>
         </div>
 
-        <button class="btn-primary" id="btn-play-again">
-          <span>CHƠI LẠI</span>
-          <span>✨</span>
-        </button>
+        <div class="button-group">
+          <button class="btn-primary" id="btn-play-again">
+            <span>CHƠI LẠI</span>
+            <span>✨</span>
+          </button>
+          <button class="btn-gold" id="btn-go-wizard-card">
+            <span>🪪 XUẤT THẺ PHÁP SƯ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: WIZARD CAT LICENSE / SHARE CARD MODAL -->
+    <div id="wizard-card-modal" class="ui-screen modal-overlay">
+      <div class="glass-card wizard-card-popup">
+        <div class="wizard-card-header">
+          <div class="wizard-card-title-wrap">
+            <span class="wizard-card-badge">✨ CHỨNG NHẬN HỌC VIỆN MA PHÁP ✨</span>
+            <h2 class="game-title wizard-card-heading">THẺ PHÁP SƯ MÈO</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-wizard-card" title="Đóng cửa sổ (ESC)">ĐÓNG ✕</button>
+        </div>
+
+        <!-- Responsive Canvas Wrapper -->
+        <div class="wizard-card-canvas-wrap">
+          <canvas id="wizardCardCanvas" width="840" height="520"></canvas>
+        </div>
+
+        <!-- Toast Notification for Copy -->
+        <div id="wizard-card-toast" class="wizard-card-toast hidden">✅ Đã sao chép ảnh thẻ vào bộ nhớ tạm!</div>
+
+        <!-- Action Buttons Row -->
+        <div class="wizard-card-actions">
+          <button class="btn-primary" id="btn-download-card">
+            <span>📥 TẢI ẢNH VỀ MÁY (PNG)</span>
+          </button>
+          <button class="btn-gold" id="btn-copy-card-img">
+            <span>📋 SAO CHÉP ẢNH</span>
+          </button>
+          <button class="btn-secondary" id="btn-copy-challenge-link">
+            <span>⚔️ SAO CHÉP LINK THÁCH ĐẤU</span>
+          </button>
+        </div>
+        <div class="wizard-card-footer-tip">
+          💡 Mẹo: Tải ảnh hoặc sao chép để khoe thành tích với bạn bè trên Facebook, Zalo, Story, Threads!
+        </div>
       </div>
     </div>
   </div>

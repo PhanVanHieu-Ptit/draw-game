@@ -119,4 +119,28 @@ export class AudioSystem extends SoundSystem {
   playWaveComplete() {
     this.soundWaveComplete();
   }
+
+  /**
+   * Play adorable cat meow vocalization for Momo
+   * @param {'cheerful'|'cute'|'triumphant'} [variant='cheerful']
+   */
+  playCatMeow(variant = 'cheerful') {
+    this.soundCatMeow(variant);
+  }
+
+  /**
+   * Play soothing cat purr on heart heal
+   * @param {number} [duration=0.9]
+   */
+  playCatPurr(duration = 0.9) {
+    this.soundCatPurr(duration);
+  }
+
+  /**
+   * Play sharp cat hiss when damaged
+   */
+  playCatHiss() {
+    this.soundCatHiss();
+  }
 }
+

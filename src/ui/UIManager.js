@@ -7,6 +7,7 @@
 import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS } from '../core/Constants.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
+import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChallengeUrl } from './WizardCardRenderer.js';
 
 export class UIManager {
   constructor(game) {
@@ -130,6 +131,20 @@ export class UIManager {
     this.codexGrid = document.getElementById('codex-grid');
     this.currentCodexFilter = 'all';
 
+    // Wizard Cat License / Share Card Elements
+    this.wizardCardModal = document.getElementById('wizard-card-modal');
+    this.wizardCardCanvas = document.getElementById('wizardCardCanvas');
+    this.wizardCardToast = document.getElementById('wizard-card-toast');
+    this.btnCloseWizardCard = document.getElementById('btn-close-wizard-card');
+    this.btnDownloadCard = document.getElementById('btn-download-card');
+    this.btnCopyCardImg = document.getElementById('btn-copy-card-img');
+    this.btnCopyChallengeLink = document.getElementById('btn-copy-challenge-link');
+    this.btnVicWizardCard = document.getElementById('btn-vic-wizard-card');
+    this.btnGoWizardCard = document.getElementById('btn-go-wizard-card');
+    this.btnMenuWizardCard = document.getElementById('btn-menu-wizard-card');
+    this._lastCardData = null;
+    this._toastTimeout = null;
+
     this._bindButtonEvents();
     this._bindKeyboardEvents();
     this._bindStageSelector();
@@ -142,6 +157,9 @@ export class UIManager {
       btnStartStory.addEventListener('click', () => {
         this.game.audioSystem.init();
         this.game.audioSystem.playStart();
+        if (typeof this.game.audioSystem.playCatMeow === 'function') {
+          setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
+        }
         // Start from Story Cutscene, then into Selected Level
         this.game.stateMachine.changeState(GAME_STATES.STORY, { startLevel: this.selectedStage });
       });
@@ -152,6 +170,9 @@ export class UIManager {
       btnStartEndless.addEventListener('click', () => {
         this.game.audioSystem.init();
         this.game.audioSystem.playStart();
+        if (typeof this.game.audioSystem.playCatMeow === 'function') {
+          setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
+        }
         this.game.waveSystem.setMode('ENDLESS');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
       });
@@ -274,6 +295,9 @@ export class UIManager {
     if (btnVicReplay) {
       btnVicReplay.addEventListener('click', () => {
         this.game.audioSystem.playStart();
+        if (typeof this.game.audioSystem.playCatMeow === 'function') {
+          setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
+        }
         this.game.waveSystem.setMode('STORY');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true, startLevel: 1 });
       });
@@ -283,6 +307,9 @@ export class UIManager {
     if (btnVicEndless) {
       btnVicEndless.addEventListener('click', () => {
         this.game.audioSystem.playStart();
+        if (typeof this.game.audioSystem.playCatMeow === 'function') {
+          setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
+        }
         this.game.waveSystem.setMode('ENDLESS');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
       });
@@ -365,8 +392,69 @@ export class UIManager {
     if (btnPlayAgain) {
       btnPlayAgain.addEventListener('click', () => {
         this.game.audioSystem.playStart();
+        if (typeof this.game.audioSystem.playCatMeow === 'function') {
+          setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
+        }
         this.game.resetGameData();
         this.game.stateMachine.changeState(GAME_STATES.PLAYING);
+      });
+    }
+
+    // Wizard Card Share Buttons & Controls
+    if (this.btnMenuWizardCard) {
+      this.btnMenuWizardCard.addEventListener('click', () => {
+        this.showWizardCard({ isHighScorePreview: true });
+      });
+    }
+
+    if (this.btnVicWizardCard) {
+      this.btnVicWizardCard.addEventListener('click', () => {
+        this.showWizardCard(this._lastCardData || { isVictory: true });
+      });
+    }
+
+    if (this.btnGoWizardCard) {
+      this.btnGoWizardCard.addEventListener('click', () => {
+        this.showWizardCard(this._lastCardData || { isVictory: false });
+      });
+    }
+
+    if (this.btnCloseWizardCard) {
+      this.btnCloseWizardCard.addEventListener('click', () => {
+        this.hideWizardCard();
+      });
+    }
+
+    if (this.btnDownloadCard) {
+      this.btnDownloadCard.addEventListener('click', () => {
+        const score = this.wizardCardCanvas?.__cardScore || this.game.score || 0;
+        downloadCardImage(this.wizardCardCanvas, `the-phap-su-momo-${score}.png`);
+        this.showCardToast('📥 Đang tải ảnh Thẻ Pháp Sư về máy...');
+      });
+    }
+
+    if (this.btnCopyCardImg) {
+      this.btnCopyCardImg.addEventListener('click', async () => {
+        this.showCardToast('⏳ Đang sao chép ảnh thẻ...');
+        const ok = await copyCardImageToClipboard(this.wizardCardCanvas);
+        if (ok) {
+          this.showCardToast('✅ Đã sao chép ảnh thẻ vào bộ nhớ tạm!');
+        } else {
+          this.showCardToast('⚠️ Đã sao chép thông điệp thách đấu!');
+        }
+      });
+    }
+
+    if (this.btnCopyChallengeLink) {
+      this.btnCopyChallengeLink.addEventListener('click', async () => {
+        const score = this.wizardCardCanvas?.__cardScore || this.game.score || 0;
+        const url = getChallengeUrl(score, 'Momo');
+        try {
+          await navigator.clipboard.writeText(url);
+          this.showCardToast('⚔️ Đã sao chép link thách đấu vào bộ nhớ tạm!');
+        } catch (e) {
+          this.showCardToast(`Link: ${url}`);
+        }
       });
     }
 
@@ -484,6 +572,12 @@ export class UIManager {
 
   _bindKeyboardEvents() {
     window.addEventListener('keydown', (e) => {
+      // Close wizard card popup if open
+      if (e.key === 'Escape' && this.wizardCardModal && this.wizardCardModal.classList.contains('active')) {
+        this.hideWizardCard();
+        return;
+      }
+
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.PLAYING) {
@@ -539,6 +633,21 @@ export class UIManager {
       this._stopStoryAnim();
       this._startVictoryAnim();
 
+      this._lastCardData = {
+        score: payload.score || this.game.score || 0,
+        highScore: payload.highScore || this.game.highScore || 0,
+        accuracy: payload.accuracy !== undefined ? payload.accuracy : 100,
+        spellsCast: payload.spellsCast || this.game.metrics.spellsCast,
+        spellsHit: payload.spellsHit || this.game.metrics.spellsHit,
+        damageTaken: payload.damageTaken !== undefined ? payload.damageTaken : this.game.metrics.damageTaken,
+        enemiesDefeated: payload.enemiesDefeated || this.game.metrics.enemiesDefeated,
+        maxCombo: payload.maxCombo || this.game.metrics.maxCombo || this.game.comboCount || 1,
+        elapsedSeconds: payload.elapsedSeconds || 180,
+        levelReached: 5,
+        isVictory: true,
+        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL'
+      };
+
       if (this.vicScore) this.vicScore.textContent = (payload.score || 0).toLocaleString();
       if (this.vicHighScore) this.vicHighScore.textContent = (payload.highScore || 0).toLocaleString();
       if (this.vicStages) this.vicStages.textContent = '5/5 (100%)';
@@ -546,6 +655,22 @@ export class UIManager {
     } else if (stateName === GAME_STATES.GAMEOVER) {
       this._stopStoryAnim();
       this._stopVictoryAnim();
+
+      this._lastCardData = {
+        score: payload.score || this.game.score || 0,
+        highScore: payload.highScore || this.game.highScore || 0,
+        accuracy: payload.accuracy !== undefined ? payload.accuracy : 100,
+        spellsCast: payload.spellsCast || this.game.metrics.spellsCast,
+        spellsHit: payload.spellsHit || this.game.metrics.spellsHit,
+        damageTaken: payload.damageTaken !== undefined ? payload.damageTaken : this.game.metrics.damageTaken,
+        enemiesDefeated: payload.enemiesDefeated || this.game.metrics.enemiesDefeated,
+        maxCombo: payload.maxCombo || this.game.metrics.maxCombo || this.game.comboCount || 1,
+        elapsedSeconds: payload.elapsedSeconds || 60,
+        levelReached: payload.wave || this.game.waveSystem.currentLevel || 1,
+        isVictory: false,
+        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL'
+      };
+
       if (this.goScore) this.goScore.textContent = (payload.score || 0).toLocaleString();
       if (this.goHighScore) this.goHighScore.textContent = (payload.highScore || 0).toLocaleString();
       if (this.goWave) this.goWave.textContent = payload.wave || 1;
@@ -920,6 +1045,9 @@ export class UIManager {
   }
 
   _onCompanionClicked() {
+    if (this.game.audioSystem && typeof this.game.audioSystem.playCatMeow === 'function') {
+      this.game.audioSystem.playCatMeow('cute');
+    }
     const comp = getCompanionForLevel(this.currentLevelNum);
     const quotes = {
       1: 'Momo! Madame Libraria đang bị sương mù u linh làm mờ mắt. Hãy dùng nét vẽ [—] và [|] giải trừ tà khí!',
@@ -1150,5 +1278,88 @@ export class UIManager {
 
       this.codexGrid.appendChild(card);
     });
+  }
+
+  // =========================================================================
+  // WIZARD CAT LICENSE / SHARE CARD METHODS
+  // =========================================================================
+
+  /**
+   * Render and display the shareable Wizard Cat License modal
+   * @param {Object} [customData={}]
+   */
+  showWizardCard(customData = {}) {
+    if (!this.wizardCardModal || !this.wizardCardCanvas) return;
+
+    const game = this.game;
+    const isHighScorePreview = !!customData.isHighScorePreview;
+
+    const baseData = isHighScorePreview ? {
+      score: game.highScore || 0,
+      highScore: game.highScore || 0,
+      accuracy: 100,
+      spellsCast: 40,
+      spellsHit: 40,
+      damageTaken: 0,
+      enemiesDefeated: 32,
+      maxCombo: 8,
+      elapsedSeconds: 90,
+      levelReached: 5,
+      isVictory: true,
+      difficulty: game.difficulty || 'NORMAL'
+    } : (this._lastCardData || {
+      score: game.score || 0,
+      highScore: game.highScore || 0,
+      accuracy: game.metrics.spellsCast > 0 ? Math.round((game.metrics.spellsHit / game.metrics.spellsCast) * 100) : 100,
+      spellsCast: game.metrics.spellsCast,
+      spellsHit: game.metrics.spellsHit,
+      damageTaken: game.metrics.damageTaken,
+      enemiesDefeated: game.metrics.enemiesDefeated,
+      maxCombo: game.metrics.maxCombo || game.comboCount || 1,
+      elapsedSeconds: game.metrics.startTime ? Math.round((Date.now() - game.metrics.startTime) / 1000) : 60,
+      levelReached: game.waveSystem.currentLevel || 1,
+      isVictory: false,
+      difficulty: game.difficulty || 'NORMAL'
+    });
+
+    const fullData = { ...baseData, ...customData };
+    this.wizardCardCanvas.__cardScore = fullData.score;
+
+    renderWizardCard(this.wizardCardCanvas, fullData);
+
+    this.wizardCardModal.classList.add('active');
+
+    if (this.game.hapticSystem) {
+      this.game.hapticSystem.pulse(20);
+    }
+  }
+
+  /**
+   * Hide the shareable Wizard Cat License modal
+   */
+  hideWizardCard() {
+    if (this.wizardCardModal) {
+      this.wizardCardModal.classList.remove('active');
+    }
+  }
+
+  /**
+   * Display toast notification feedback (e.g. copied to clipboard)
+   * @param {string} message 
+   * @param {number} [duration=2800] 
+   */
+  showCardToast(message, duration = 2800) {
+    if (!this.wizardCardToast) return;
+    this.wizardCardToast.textContent = message;
+    this.wizardCardToast.classList.remove('hidden');
+
+    if (this._toastTimeout) {
+      clearTimeout(this._toastTimeout);
+    }
+    this._toastTimeout = setTimeout(() => {
+      if (this.wizardCardToast) {
+        this.wizardCardToast.classList.add('hidden');
+      }
+    }, duration);
   }
 }

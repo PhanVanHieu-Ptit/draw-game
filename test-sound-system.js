@@ -267,6 +267,32 @@ async function runTests() {
   const spawnNodes = soundSys.ctx.createdNodes.slice(preSpawnCount);
   assert(spawnNodes.length >= 2, 'soundGhostSpawn creates ethereal formant');
 
+  // Test 12: Procedural Feline SFX (Cat Meow, Purr, Hiss)
+  const preMeowCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundCatMeow('cheerful');
+  const meowNodes = soundSys.ctx.createdNodes.slice(preMeowCount);
+  assert(meowNodes.length >= 3, `soundCatMeow(cheerful) creates oscillator, LFO, and formant nodes (found ${meowNodes.length})`);
+
+  const preCuteCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundCatMeow('cute');
+  const cuteNodes = soundSys.ctx.createdNodes.slice(preCuteCount);
+  assert(cuteNodes.length >= 2, `soundCatMeow(cute) creates cute chirp nodes (found ${cuteNodes.length})`);
+
+  const preTriCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundCatMeow('triumphant');
+  const triNodes = soundSys.ctx.createdNodes.slice(preTriCount);
+  assert(triNodes.length >= 3, `soundCatMeow(triumphant) creates celebratory chord nodes (found ${triNodes.length})`);
+
+  const prePurrCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundCatPurr(0.5);
+  const purrNodes = soundSys.ctx.createdNodes.slice(prePurrCount);
+  assert(purrNodes.length >= 3, `soundCatPurr creates 26Hz amplitude-modulated purr rumble (found ${purrNodes.length})`);
+
+  const preHissCount = soundSys.ctx.createdNodes.length;
+  soundSys.soundCatHiss();
+  const hissNodes = soundSys.ctx.createdNodes.slice(preHissCount);
+  assert(hissNodes.length >= 2, `soundCatHiss creates sharp defensive cat hiss (found ${hissNodes.length})`);
+
   console.log(`\n========================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);

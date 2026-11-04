@@ -13,14 +13,16 @@ export class InputHandler {
    * @param {Function} onGestureRecognized Callback when gesture is recognized
    * @param {import('./SoundSystem.js').SoundSystem} [soundSystem=null]
    * @param {Function} [getLogicalDimensions=null] Callback returning { width, height }
+   * @param {Function} [onTap=null] Callback when a quick tap / click occurs without dragging
    */
-  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized, soundSystem = null, getLogicalDimensions = null) {
+  constructor(canvas, gestureEngine, particleSystem, onGestureRecognized, soundSystem = null, getLogicalDimensions = null, onTap = null) {
     this.canvas = canvas;
     this.engine = gestureEngine;
     this.particleSystem = particleSystem;
     this.onGestureRecognized = onGestureRecognized;
     this.soundSystem = soundSystem;
     this.getLogicalDimensions = getLogicalDimensions;
+    this.onTap = onTap;
 
     this.currentPoints = [];
     this.lastPoint = null;
@@ -180,6 +182,20 @@ export class InputHandler {
         this.particleSystem.emitMagicSparks(this.lastPoint.x, this.lastPoint.y, 4, '#c084fc');
       }
       this.lastPoint = null;
+
+      // Check for tap / click (short stroke or tiny displacement < 25px)
+      const isTap = rawStroke.length >= 1 && (
+        rawStroke.length <= 4 ||
+        Math.hypot(rawStroke[rawStroke.length - 1].x - rawStroke[0].x, rawStroke[rawStroke.length - 1].y - rawStroke[0].y) < 25
+      );
+
+      if (isTap && typeof this.onTap === 'function') {
+        const handled = this.onTap(rawStroke[0]);
+        if (handled) {
+          this.currentPoints = [];
+          return;
+        }
+      }
 
       // Store in fading strokes for smooth visual exit
       if (rawStroke.length > 1) {
