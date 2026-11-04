@@ -61,6 +61,12 @@ export class ParticleSystem {
     this.maxParticles = maxParticles;
     this.maxTexts = maxTexts;
 
+    // Quality hooks (driven by QualityManager). Soft cap lets weak devices use a smaller
+    // effective pool without reallocating; glow=false replaces per-particle shadowBlur
+    // (very expensive on mobile GPUs) with a cheap translucent halo disc.
+    this.activeLimit = maxParticles;
+    this.glow = true;
+
     // Pre-allocated Particle Pool
     this.particlePool = [];
     for (let i = 0; i < this.maxParticles; i++) {
@@ -98,6 +104,22 @@ export class ParticleSystem {
   }
 
   /**
+   * Cap the number of simultaneously live particles (clamped to the pre-allocated pool).
+   * @param {number} limit
+   */
+  setActiveLimit(limit) {
+    this.activeLimit = Math.max(1, Math.min(this.maxParticles, Math.floor(limit)));
+  }
+
+  /**
+   * Toggle per-particle shadow glow. When off, a cheap halo disc is drawn instead.
+   * @param {boolean} enabled
+   */
+  setGlow(enabled) {
+    this.glow = !!enabled;
+  }
+
+  /**
    * Backward-compatible slice of currently active particles
    * @returns {Array<Particle>}
    */
@@ -119,7 +141,7 @@ export class ParticleSystem {
    * @returns {Particle|null}
    */
   _acquireParticle() {
-    if (this.activeParticleCount < this.maxParticles) {
+    if (this.activeParticleCount < this.activeLimit) {
       const p = this.particlePool[this.activeParticleCount];
       this.activeParticleCount++;
       p.active = true;
@@ -471,6 +493,10 @@ export class ParticleSystem {
 
     ctx.save();
 
+    const glow = this.glow;
+    // Without shadow glow, shadowBlur must stay 0 so the browser skips the blur pass entirely.
+    ctx.shadowBlur = 0;
+
     for (let i = 0; i < this.activeParticleCount; i++) {
       const p = this.particlePool[i];
       const alpha = Math.max(0, Math.min(1, p.life));
@@ -479,20 +505,31 @@ export class ParticleSystem {
       if (p.type === 'ring') {
         ctx.strokeStyle = p.color;
         ctx.lineWidth = Math.max(1, 3.0 * p.life);
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 12;
+        if (glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 12;
+        }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.stroke();
       } else if (p.type === 'magic_spark') {
+        const s = p.size * (0.3 + 0.7 * p.life);
+        ctx.fillStyle = p.color;
+        if (glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 10;
+        } else {
+          // Cheap halo substitute for the glow
+          ctx.globalAlpha = alpha * 0.28;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s * 2.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = alpha;
+        }
+
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation || 0);
-
-        const s = p.size * (0.3 + 0.7 * p.life);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 10;
 
         ctx.beginPath();
         ctx.moveTo(0, -s * 1.8);
@@ -509,11 +546,19 @@ export class ParticleSystem {
 
         ctx.restore();
       } else if (p.type === 'gravity_spark') {
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 9;
-
         const currentSize = Math.max(0.6, p.size * p.life);
+        ctx.fillStyle = p.color;
+        if (glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 9;
+        } else {
+          ctx.globalAlpha = alpha * 0.28;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, currentSize * 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = alpha;
+        }
+
         ctx.beginPath();
         ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
         ctx.fill();
@@ -526,18 +571,29 @@ export class ParticleSystem {
         }
       } else if (p.type === 'smoke') {
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 14;
+        if (glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 14;
+        }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
       } else {
         // Standard sparks
+        const sz = Math.max(0.5, p.size * p.life);
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
+        if (glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.globalAlpha = alpha * 0.28;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, sz * 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = alpha;
+        }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
         ctx.fill();
       }
     }

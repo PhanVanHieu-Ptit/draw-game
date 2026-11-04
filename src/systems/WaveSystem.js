@@ -40,8 +40,13 @@ export class WaveSystem {
     this.initLevel(1);
   }
 
+  /**
+   * Restart progression from level / wave 1 in the CURRENT game mode.
+   * The mode is chosen by setMode(); reset() must not overwrite it, otherwise Endless Mode
+   * silently turns into Story Mode (finite 12-ghost level + boss) every time a run starts
+   * (Game.resetGameData() calls reset()), and no new ghosts spawn once the quota is used up.
+   */
   reset() {
-    this.gameMode = 'STORY';
     this.currentLevelIndex = 1;
     this.currentWave = 1;
     this.initLevel(1);
@@ -54,8 +59,34 @@ export class WaveSystem {
 
   setDifficulty(difficulty = 'NORMAL') {
     this.difficulty = difficulty;
+    // Only re-scale pacing for the current level. Do NOT call initLevel() here: it fires
+    // onLevelStart/onWaveStart (level banner, tutorial popup, shake, meow) and resets level
+    // progress, which must not happen just because the player picked a difficulty.
     if (this.currentLevelIndex) {
-      this.initLevel(this.currentLevelIndex);
+      this._applyLevelScaling(this.currentLevelIndex);
+    }
+  }
+
+  /**
+   * Recompute level data and difficulty-scaled pacing (spawn interval, speed, enemy count)
+   * without touching progress state or firing any level/wave events.
+   * @param {number} levelNum
+   */
+  _applyLevelScaling(levelNum) {
+    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
+
+    if (levelNum <= 5 && this.gameMode === 'STORY') {
+      // 5-Level Story Campaign
+      this.levelData = LEVEL_CONFIGS[levelNum - 1];
+      this.totalEnemiesInWave = this.levelData.totalMinions;
+      this.spawnInterval = this.levelData.baseSpawnInterval * diffConfig.spawnIntervalMult;
+      this.speedMultiplier = this.levelData.speedMultiplier * diffConfig.speedMult;
+    } else {
+      // Endless Mode: GDD Formula Scaling
+      this.levelData = null;
+      this.totalEnemiesInWave = Math.floor((10 + 5 * Math.pow(levelNum, 1.22)) * (this.difficulty === 'HARDCORE' ? 1.25 : 1.0));
+      this.spawnInterval = Math.max(0.45, (2.2 * Math.exp(-0.11 * (levelNum - 1))) * diffConfig.spawnIntervalMult);
+      this.speedMultiplier = Math.min(2.2, (1.1 + 0.08 * (levelNum - 1)) * diffConfig.speedMult);
     }
   }
 
@@ -74,21 +105,7 @@ export class WaveSystem {
     this.isIntermission = false;
     this.intermissionTimer = 0;
 
-    const diffConfig = DIFFICULTY_LEVELS[this.difficulty] || DIFFICULTY_LEVELS.NORMAL;
-
-    if (levelNum <= 5 && this.gameMode === 'STORY') {
-      // 5-Level Story Campaign
-      this.levelData = LEVEL_CONFIGS[levelNum - 1];
-      this.totalEnemiesInWave = this.levelData.totalMinions;
-      this.spawnInterval = this.levelData.baseSpawnInterval * diffConfig.spawnIntervalMult;
-      this.speedMultiplier = this.levelData.speedMultiplier * diffConfig.speedMult;
-    } else {
-      // Endless Mode: GDD Formula Scaling
-      this.levelData = null;
-      this.totalEnemiesInWave = Math.floor((10 + 5 * Math.pow(levelNum, 1.22)) * (this.difficulty === 'HARDCORE' ? 1.25 : 1.0));
-      this.spawnInterval = Math.max(0.45, (2.2 * Math.exp(-0.11 * (levelNum - 1))) * diffConfig.spawnIntervalMult);
-      this.speedMultiplier = Math.min(2.2, (1.1 + 0.08 * (levelNum - 1)) * diffConfig.speedMult);
-    }
+    this._applyLevelScaling(levelNum);
 
     this.spawnTimer = 1.6; // Gentle breathing time before first ghost
 
@@ -247,8 +264,9 @@ export class WaveSystem {
         }
       }
     } else {
-      // Endless mode completion check
-      if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave && livingEnemiesCount === 0) {
+      // Endless mode completion check. Heart ghosts are stationary (speed 0) and only leave when
+      // collected, so they must not hold the wave open or the next wave would never start.
+      if (this.enemiesSpawnedInWave >= this.totalEnemiesInWave && hostileEnemiesCount === 0) {
         this.isIntermission = true;
         this.intermissionTimer = 2.5;
         if (this.onWaveComplete) {

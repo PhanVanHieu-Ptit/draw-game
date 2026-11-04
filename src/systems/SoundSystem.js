@@ -404,6 +404,12 @@ export class SoundSystem {
    */
   feedDrawCoord(x, y) {
     const nowTime = performance.now();
+    // Phones report pointer moves at 60-120 Hz. Each soundDraw() call schedules 8 AudioParam ramps and resets a
+    // timer, while the sound itself glides over 40 ms anyway, so updating at ~40 Hz is audibly identical.
+    // Skipping leaves the previous sample in place so the measured speed still spans the whole interval.
+    if (this._lastDrawTime !== null && this._lastDrawTime !== undefined && nowTime - this._lastDrawTime < 25) {
+      return;
+    }
     if (this._lastDrawX !== null && this._lastDrawY !== null && this._lastDrawTime !== null) {
       const dt = Math.max(0.001, (nowTime - this._lastDrawTime) / 1000);
       const dx = x - this._lastDrawX;

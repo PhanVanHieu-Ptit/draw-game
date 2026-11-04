@@ -592,6 +592,10 @@ export class UIManager {
         if (currentState === GAME_STATES.MENU || currentState === GAME_STATES.GAMEOVER) {
           this.game.audioSystem.init();
           this.game.audioSystem.playStart();
+          // Enter on the main menu starts the primary mode (Story); after a game over it retries the same mode.
+          if (currentState === GAME_STATES.MENU) {
+            this.game.waveSystem.setMode('STORY');
+          }
           this.game.resetGameData();
           this.game.stateMachine.changeState(GAME_STATES.PLAYING);
         } else if (currentState === GAME_STATES.STORY) {
@@ -1110,27 +1114,44 @@ export class UIManager {
   }
 
   updateScore(score) {
-    if (this.scoreVal) {
-      this.scoreVal.textContent = Math.round(score).toLocaleString();
-    }
+    if (!this.scoreVal) return;
+    // Called every frame while the score counter animates: skip the DOM write when the shown number is unchanged
+    const rounded = Math.round(score);
+    if (rounded === this._lastScoreShown) return;
+    this._lastScoreShown = rounded;
+    this.scoreVal.textContent = rounded.toLocaleString();
   }
 
   updateCombo(count, multiplier, decayProgress) {
     if (!this.comboBadge) return;
 
+    // Called every frame: only touch the DOM (and trigger style recalc) when something visible changed.
     if (count > 1) {
-      this.comboBadge.classList.add('active');
-      if (this.comboMult) {
-        this.comboMult.textContent = `x${multiplier} (${count} COMBO)`;
+      if (!this._comboActive) {
+        this.comboBadge.classList.add('active');
+        this._comboActive = true;
+      }
+      const label = `x${multiplier} (${count} COMBO)`;
+      if (this.comboMult && label !== this._comboLabel) {
+        this.comboMult.textContent = label;
+        this._comboLabel = label;
       }
       if (this.comboBar) {
-        this.comboBar.style.width = `${Math.max(0, decayProgress * 100)}%`;
+        // Quantise to whole percent: sub-pixel width changes are invisible but still cost a style recalc
+        const pct = Math.max(0, Math.round(decayProgress * 100));
+        if (pct !== this._comboPct) {
+          this.comboBar.style.width = `${pct}%`;
+          this._comboPct = pct;
+        }
       }
-    } else {
+    } else if (this._comboActive || this._comboPct !== 0) {
       this.comboBadge.classList.remove('active');
+      this._comboActive = false;
+      this._comboLabel = '';
       if (this.comboBar) {
         this.comboBar.style.width = '0%';
       }
+      this._comboPct = 0;
     }
   }
 

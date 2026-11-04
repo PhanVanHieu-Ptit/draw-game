@@ -19,6 +19,7 @@ import { AudioSystem } from '../systems/AudioSystem.js';
 import { HapticSystem } from '../systems/HapticSystem.js';
 import { InputHandler } from '../systems/InputHandler.js';
 import { BackgroundRenderer } from '../systems/BackgroundRenderer.js';
+import { QualityManager, installShadowBlurScaler } from '../systems/QualityManager.js';
 import { UIManager } from '../ui/UIManager.js';
 
 export class Game {
@@ -34,15 +35,22 @@ export class Game {
     );
     this.isMobile = isMobile;
 
-    // Cap DPR at 1.5 on mobile to avoid 3x retina fillrate throttling, 2.0 on desktop
+    // Adaptive quality: picks a starting tier from the device, then steps down if frames run slow.
+    this.quality = new QualityManager({ isMobile });
+    this.quality.onChange(() => this._applyQuality());
+
+    // Cap DPR (tier dependent) to avoid 3x retina fillrate throttling on phones
     const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
-    this.dpr = isMobile ? Math.min(rawDpr, 1.5) : Math.min(rawDpr, 2.0);
+    this.dpr = Math.min(rawDpr, this.quality.getDprCap());
+
+    // Route every ctx.shadowBlur assignment through the quality tier (no-op on mock contexts)
+    installShadowBlurScaler(this.ctx, () => this.quality.glowScale);
 
     this.width = typeof window !== 'undefined' ? window.innerWidth : 1280;
     this.height = typeof window !== 'undefined' ? window.innerHeight : 720;
 
-    // Offscreen Lightmap Canvas for Dynamic Lighting & Vignette Masking (half resolution for 4x fillrate performance)
-    this.lightScale = 0.5;
+    // Offscreen Lightmap Canvas for Dynamic Lighting & Vignette Masking (reduced resolution for fillrate performance)
+    this.lightScale = this.quality.lightScale;
     this.lightCanvas = typeof document !== 'undefined' && document.createElement ? document.createElement('canvas') : null;
     this.lightCtx = this.lightCanvas ? this.lightCanvas.getContext('2d') : null;
     this._initLightSprites();
@@ -57,6 +65,7 @@ export class Game {
     this.audioSystem = new AudioSystem();
     this.hapticSystem = new HapticSystem();
     const particleBudget = isMobile ? 380 : 800;
+    this.particleBudget = particleBudget;
     this.particleSystem = new ParticleSystem(particleBudget, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
     this.backgroundRenderer = new BackgroundRenderer();
@@ -126,15 +135,20 @@ export class Game {
       (tapPoint) => this.onCanvasTap(tapPoint)
     );
 
+    // Push the initial quality tier into the subsystems
+    this._applyQuality();
+
     // UI Manager
     this.uiManager = new UIManager(this);
 
     // Finite State Machine
     this.stateMachine = new StateMachine(this);
 
-    // Loop Timing
+    // Loop Timing (bound once: avoids allocating a new closure every frame)
     this.lastTime = 0;
     this.isRunning = false;
+    this._rafId = 0;
+    this._boundLoop = (ts) => this.loop(ts);
 
     // Background stars / ambient dust
     this.stars = this._createAmbientStars(65);
@@ -339,20 +353,115 @@ export class Game {
     ]);
   }
 
+  /**
+   * Lazily build (and cache) a 130x130 radial bloom sprite for a projectile colour.
+   * @param {string} color CSS hex colour like '#38bdf8'
+   * @returns {HTMLCanvasElement|null}
+   */
+  _getProjectileHalo(color) {
+    if (!this._haloCache) this._haloCache = new Map();
+    let sprite = this._haloCache.get(color);
+    if (sprite !== undefined) return sprite;
+
+    sprite = null;
+    try {
+      if (typeof document !== 'undefined' && document.createElement) {
+        const c = document.createElement('canvas');
+        c.width = 130;
+        c.height = 130;
+        const hctx = c.getContext('2d');
+        if (hctx) {
+          const g = hctx.createRadialGradient(65, 65, 4, 65, 65, 65);
+          g.addColorStop(0, `${color}50`);
+          g.addColorStop(1, 'transparent');
+          hctx.fillStyle = g;
+          hctx.beginPath();
+          hctx.arc(65, 65, 65, 0, Math.PI * 2);
+          hctx.fill();
+          sprite = c;
+        }
+      }
+    } catch (e) {
+      sprite = null;
+    }
+    this._haloCache.set(color, sprite);
+    return sprite;
+  }
+
   _bindResize() {
-    window.addEventListener('resize', () => this.resize());
+    // Resize events fire in bursts (orientation change, visualViewport, URL-bar collapse).
+    // Coalesce them into at most one real resize per animation frame.
+    const schedule = () => {
+      if (this._resizeQueued) return;
+      this._resizeQueued = true;
+      requestAnimationFrame(() => {
+        this._resizeQueued = false;
+        this.resize();
+      });
+    };
+    window.addEventListener('resize', schedule);
     window.addEventListener('orientationchange', () => {
-      setTimeout(() => this.resize(), 100);
-      setTimeout(() => this.resize(), 300);
+      schedule();
+      setTimeout(() => this.resize(), 150);
+      setTimeout(() => this.resize(), 400);
     });
     if (typeof window !== 'undefined' && window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => this.resize());
+      window.visualViewport.addEventListener('resize', schedule);
     }
+
+    // Stop burning battery (and playing audio) while the page is hidden or the app is backgrounded.
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+    }
+    window.addEventListener('pagehide', () => this._pauseIfPlaying());
+  }
+
+  /**
+   * Auto-pause an active run when the tab/app goes to the background, and avoid the huge
+   * delta-time / quality-sampling spike when it comes back.
+   */
+  _onVisibilityChange() {
+    if (typeof document !== 'undefined' && document.hidden) {
+      this._pauseIfPlaying();
+    } else {
+      this.lastTime = performance.now();
+      if (this.quality) this.quality.resetSampling(1500);
+    }
+  }
+
+  _pauseIfPlaying() {
+    if (!this.stateMachine || this.stateMachine.getCurrentStateName() !== GAME_STATES.PLAYING) return;
+    this.stateMachine.changeState(GAME_STATES.PAUSE);
+  }
+
+  /**
+   * Push the current quality tier into every subsystem that has a quality-dependent knob.
+   */
+  _applyQuality() {
+    const q = this.quality;
+    if (!q) return;
+
+    this.lightScale = q.lightScale;
+
+    if (this.particleSystem) {
+      this.particleSystem.setGlow(q.particleGlow);
+      if (this.particleBudget) {
+        this.particleSystem.setActiveLimit(this.particleBudget * q.particleFactor);
+      }
+    }
+    if (this.inputHandler) {
+      this.inputHandler.setGlow(q.glowScale > 0);
+    }
+
+    // DPR / lightmap size changed: re-allocate buffers (no-op until the first resize ran)
+    if (this._sizeKey) this.resize();
   }
 
   /**
    * Responsive canvas resolution scaling calibrated to window.devicePixelRatio
-   * Guarantees crystal-clear Retina graphics while locking logical coordinates
+   * Guarantees crystal-clear Retina graphics while locking logical coordinates.
+   * Re-allocating a canvas buffer is expensive (and clears it), so this bails out
+   * early when neither the logical size, DPR nor lightmap scale changed.
    */
   resize() {
     const isMobile = typeof window !== 'undefined' && (
@@ -363,11 +472,19 @@ export class Game {
     this.isMobile = isMobile;
 
     const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
-    this.dpr = this.isMobile ? Math.min(rawDpr, 1.5) : Math.min(rawDpr, 2.0);
+    const dpr = Math.min(rawDpr, this.quality ? this.quality.getDprCap() : (isMobile ? 1.5 : 2.0));
 
     const parent = this.canvas.parentElement;
-    this.width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
-    this.height = parent && parent.clientHeight > 0 ? parent.clientHeight : window.innerHeight;
+    const width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
+    const height = parent && parent.clientHeight > 0 ? parent.clientHeight : window.innerHeight;
+
+    const sizeKey = `${width}x${height}@${dpr}/${this.lightScale}`;
+    if (sizeKey === this._sizeKey) return;
+    this._sizeKey = sizeKey;
+
+    this.dpr = dpr;
+    this.width = width;
+    this.height = height;
 
     // Internal pixel buffer scaled by DPR
     this.canvas.width = Math.round(this.width * this.dpr);
@@ -377,7 +494,7 @@ export class Game {
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
 
-    // Resize lightmap canvas at half-resolution for 4x GPU fillrate & zero thermal throttling
+    // Resize lightmap canvas at reduced resolution for GPU fillrate & less thermal throttling
     if (this.lightCanvas) {
       this.lightCanvas.width = Math.max(1, Math.round(this.width * this.lightScale));
       this.lightCanvas.height = Math.max(1, Math.round(this.height * this.lightScale));
@@ -504,7 +621,7 @@ export class Game {
     this.stateMachine.changeState(GAME_STATES.MENU);
     this.isRunning = true;
     this.lastTime = performance.now();
-    requestAnimationFrame((ts) => this.loop(ts));
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   /**
@@ -525,10 +642,13 @@ export class Game {
     const dt = Math.min(0.05, Math.max(0.001, rawDt));
     this.lastTime = timestamp;
 
+    // Feed the adaptive quality controller with the real (unclamped) frame time
+    if (this.quality) this.quality.sampleFrame(rawDt * 1000);
+
     this.update(dt);
     this.render();
 
-    requestAnimationFrame((ts) => this.loop(ts));
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   update(dt) {
@@ -547,12 +667,72 @@ export class Game {
 
     // Render animated Level Environment (Google Doodle 2016)
     const curLevel = this.waveSystem.currentLevelIndex || 1;
-    this.backgroundRenderer.render(this.ctx, this.width, this.height, curLevel, this.lastTime / 1000);
+    this._renderLevelBackground(curLevel);
 
     // Render active state
     this.stateMachine.render(this.ctx);
 
     this.ctx.restore();
+  }
+
+  /**
+   * Paint the animated level scene. On weaker tiers the scene is repainted into an offscreen layer at a
+   * reduced rate (30/20 FPS) and simply blitted on the frames in between. The scenery is slow ambient
+   * motion, so this is invisible to the player but removes most of the per-frame gradient/path work.
+   * @param {number} level 1-based level index
+   */
+  _renderLevelBackground(level) {
+    const interval = this.quality ? this.quality.bgIntervalMs : 0;
+    const bg = interval > 0 ? this._ensureBackgroundLayer() : null;
+
+    if (!bg) {
+      this.backgroundRenderer.render(this.ctx, this.width, this.height, level, this.lastTime / 1000);
+      return;
+    }
+
+    const now = this.lastTime;
+    if (level !== this._bgLevel || now - this._bgLastRender >= interval) {
+      const bctx = this._bgCtx;
+      bctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      bctx.clearRect(0, 0, this.width, this.height);
+      this.backgroundRenderer.render(bctx, this.width, this.height, level, now / 1000);
+      this._bgLevel = level;
+      this._bgLastRender = now;
+    }
+    this.ctx.drawImage(bg, 0, 0, this.width, this.height);
+  }
+
+  /**
+   * Create / resize the offscreen background layer to match the main canvas buffer.
+   * @returns {HTMLCanvasElement|null} null when offscreen canvases are unavailable
+   */
+  _ensureBackgroundLayer() {
+    if (typeof document === 'undefined' || !document.createElement) return null;
+    if (this._bgUnsupported) return null;
+
+    const pw = this.canvas.width;
+    const ph = this.canvas.height;
+    if (!this._bgCanvas) {
+      try {
+        this._bgCanvas = document.createElement('canvas');
+        this._bgCtx = this._bgCanvas.getContext('2d');
+      } catch (e) {
+        this._bgCtx = null;
+      }
+      if (!this._bgCtx) {
+        this._bgUnsupported = true;
+        this._bgCanvas = null;
+        return null;
+      }
+      // Same quality-aware shadow handling as the main context
+      installShadowBlurScaler(this._bgCtx, () => this.quality.glowScale);
+    }
+    if (this._bgCanvas.width !== pw || this._bgCanvas.height !== ph) {
+      this._bgCanvas.width = pw;
+      this._bgCanvas.height = ph;
+      this._bgLastRender = -Infinity;
+    }
+    return this._bgCanvas;
   }
 
   _renderBackground(ctx) {
@@ -1341,16 +1521,13 @@ export class Game {
       );
     }
 
-    // Spell projectile color bloom
+    // Spell projectile color bloom (pre-rendered per colour: no gradient allocated per projectile per frame)
     for (let i = 0; i < this.projectiles.length; i++) {
       const proj = this.projectiles[i];
-      const halo = ctx.createRadialGradient(proj.x, proj.y, 4, proj.x, proj.y, 65);
-      halo.addColorStop(0, `${proj.color}50`);
-      halo.addColorStop(1, 'transparent');
-      ctx.fillStyle = halo;
-      ctx.beginPath();
-      ctx.arc(proj.x, proj.y, 65, 0, Math.PI * 2);
-      ctx.fill();
+      const halo = this._getProjectileHalo(proj.color);
+      if (halo) {
+        ctx.drawImage(halo, proj.x - 65, proj.y - 65);
+      }
     }
 
     ctx.restore();

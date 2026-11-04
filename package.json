@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/export-bundle.js",
     "export": "vite build && node scripts/export-bundle.js",
     "preview": "vite preview",
-    "test": "node test-gesture-enhancements.js && node test-performance-system.js && node test-visual-effects.js && node test-sound-system.js && node scripts/test-new-features.js && node test-doodle-levels-story.js && node test-story-character-expansion.js && node test-character-visuals.js && node test-difficulty-scaling.js && node scripts/test-boss-retreat-all-minions.js && node scripts/test-boss-spawn-deadlock-prevention.js && node test-share-card-haptic-catsfx.js && node scripts/test-boss-gradual-arrival.js && node scripts/test-final-boss-half-screen-right.js && node test-tactical-rune-requirement.js"
+    "test": "node test-gesture-enhancements.js && node test-performance-system.js && node test-visual-effects.js && node test-sound-system.js && node scripts/test-new-features.js && node test-doodle-levels-story.js && node test-story-character-expansion.js && node test-character-visuals.js && node test-difficulty-scaling.js && node scripts/test-boss-retreat-all-minions.js && node scripts/test-boss-spawn-deadlock-prevention.js && node test-share-card-haptic-catsfx.js && node scripts/test-boss-gradual-arrival.js && node scripts/test-final-boss-half-screen-right.js && node test-tactical-rune-requirement.js && node test-mobile-optimization.js && node test-endless-mode.js"
   },
   "keywords": [],
   "author": "",
