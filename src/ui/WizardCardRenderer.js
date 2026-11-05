@@ -575,11 +575,13 @@ export function renderWizardCard(canvas, data = {}) {
   ctx.textAlign = 'center';
   ctx.fillText(pillText, col1X, pillY);
 
-  const diffLabel = difficulty === 'INFERNO' ? '⚡ ĐỘ KHÓ: ĐỊA NGỤC' :
+  // A Daily Challenge run says so on the card (the share link then points at that day's challenge)
+  const diffLabel = data.dailyKey ? `📅 THỬ THÁCH NGÀY ${data.dailyKey}` :
+                    difficulty === 'INFERNO' ? '⚡ ĐỘ KHÓ: ĐỊA NGỤC' :
                     difficulty === 'HARDCORE' ? '💀 ĐỘ KHÓ: ÁC MỘNG' :
                     '🔥 ĐỘ KHÓ: TIÊU CHUẨN';
   ctx.font = '600 10.5px Outfit, sans-serif';
-  ctx.fillStyle = '#94a3b8';
+  ctx.fillStyle = data.dailyKey ? '#fbbf24' : '#94a3b8';
   ctx.fillText(diffLabel, col1X, pillY + 16);
 
   // =========================================================================

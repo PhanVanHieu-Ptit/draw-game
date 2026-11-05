@@ -10,7 +10,8 @@ export const GAME_STATES = {
   PLAYING: 'PLAYING',
   PAUSE: 'PAUSE',
   GAMEOVER: 'GAMEOVER',
-  VICTORY: 'VICTORY'
+  VICTORY: 'VICTORY',
+  PRACTICE: 'PRACTICE'
 };
 
 export const RUNES = {
@@ -777,6 +778,9 @@ export const STORAGE_KEYS = {
   HIGH_SCORE: 'arcane_paws_high_score_v1',
   UNLOCKED_LEVEL: 'arcane_paws_unlocked_level_v1',
   TUTORIAL_COMPLETED: 'arcane_paws_tutorial_completed_v1',
-  DIFFICULTY: 'arcane_paws_difficulty_v1'
+  DIFFICULTY: 'arcane_paws_difficulty_v1',
+  SETTINGS: 'arcane_paws_settings_v1',
+  PROGRESS: 'arcane_paws_progress_v1',
+  ENDLESS_SAVE: 'arcane_paws_endless_save_v1'
 };
 

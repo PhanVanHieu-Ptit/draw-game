@@ -5,6 +5,19 @@
  * Built for rock-solid cross-platform mobile/touch support with Retina DPR precision and default gesture blocking.
  */
 
+import { getGuideStroke } from '../GestureEngine.js';
+
+const GUIDE_LIFE = 1.7; // seconds the "correct shape" overlay stays on screen after a missed stroke
+
+/** Total travelled length of a polyline */
+function strokeLength(points) {
+  let len = 0;
+  for (let i = 1; i < points.length; i++) {
+    len += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  }
+  return len;
+}
+
 export class InputHandler {
   /**
    * @param {HTMLCanvasElement} canvas 
@@ -40,6 +53,12 @@ export class InputHandler {
 
     // When false the neon trail is drawn with stacked translucent strokes instead of shadowBlur
     this.glow = true;
+
+    // Optional hook so the settings screen can switch the touch buzz on pen-down off
+    this.canVibrate = () => true;
+
+    // "Correct shape" overlay shown after a missed stroke: { points, color, age, life }
+    this.guide = null;
 
     this._bindEvents();
     this._preventMobileGestures();
@@ -159,7 +178,7 @@ export class InputHandler {
       }
 
       // Subtle mobile touch haptic on wand ignition
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate && this.canVibrate()) {
         try { navigator.vibrate(6); } catch (err) {}
       }
     });
@@ -216,10 +235,11 @@ export class InputHandler {
       }
       this.lastPoint = null;
 
-      // Check for tap / click (short stroke or tiny displacement < 25px)
+      // Check for tap / click: a stroke that barely travelled. Judged by the distance actually drawn,
+      // NOT by how far the end is from the start: a closed shape (heart, circle) ends where it began,
+      // and used to be swallowed as a "tap on Momo" whenever it was drawn around the cat.
       const isTap = rawStroke.length >= 1 && (
-        rawStroke.length <= 4 ||
-        Math.hypot(rawStroke[rawStroke.length - 1].x - rawStroke[0].x, rawStroke[rawStroke.length - 1].y - rawStroke[0].y) < 25
+        rawStroke.length <= 4 || strokeLength(rawStroke) < 25
       );
 
       if (isTap && typeof this.onTap === 'function') {
@@ -266,6 +286,114 @@ export class InputHandler {
         this.fadingStrokes.splice(i, 1);
       }
     }
+
+    if (this.guide) {
+      this.guide.age += dt;
+      if (this.guide.age >= this.guide.life) this.guide = null;
+    }
+  }
+
+  /**
+   * Show the shape the player was (probably) aiming for, dashed and fading, sized and centred on the
+   * stroke they just drew, with a dot that travels along it to show the drawing direction.
+   * @param {string} gesture Rune/gesture id (see getGuideStroke)
+   * @param {string} color CSS colour for the overlay
+   * @param {Array<{x: number, y: number}>} stroke The stroke that missed
+   */
+  showGuide(gesture, color, stroke) {
+    const template = getGuideStroke(gesture);
+    if (template.length < 2 || !stroke || stroke.length < 2) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < stroke.length; i++) {
+      const p = stroke[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    const dims = this.getLogicalDimensions ? this.getLogicalDimensions() : null;
+    const screenW = dims && dims.width ? dims.width : 800;
+    const screenH = dims && dims.height ? dims.height : 600;
+
+    const size = Math.max(130, Math.min(260, Math.max(maxX - minX, maxY - minY), Math.min(screenW, screenH) * 0.6));
+    const half = size / 2;
+    const cx = Math.max(half + 10, Math.min(screenW - half - 10, (minX + maxX) / 2));
+    const cy = Math.max(half + 10, Math.min(screenH - half - 10, (minY + maxY) / 2));
+
+    this.guide = {
+      points: template.map(p => ({ x: cx + ((p.x - 50) / 100) * size, y: cy + ((p.y - 50) / 100) * size })),
+      color: color || '#fbbf24',
+      age: 0,
+      life: GUIDE_LIFE
+    };
+  }
+
+  /** Remove any visible guide overlay (e.g. when the state changes) */
+  clearGuide() {
+    this.guide = null;
+  }
+
+  /** Point at fraction t (0..1) of the polyline's total length */
+  _pointAlong(points, t) {
+    const total = strokeLength(points);
+    if (total === 0) return points[0];
+    let target = t * total;
+    for (let i = 1; i < points.length; i++) {
+      const seg = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+      if (target <= seg && seg > 0) {
+        const k = target / seg;
+        return {
+          x: points[i - 1].x + (points[i].x - points[i - 1].x) * k,
+          y: points[i - 1].y + (points[i].y - points[i - 1].y) * k
+        };
+      }
+      target -= seg;
+    }
+    return points[points.length - 1];
+  }
+
+  _drawGuide(ctx) {
+    const g = this.guide;
+    if (!g) return;
+
+    // Quick fade-in, hold, then fade-out over the last 40% of its life
+    const t = g.age / g.life;
+    const alpha = Math.min(1, t * 8) * (t > 0.6 ? Math.max(0, (1 - t) / 0.4) : 1);
+    if (alpha <= 0) return;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.strokeStyle = g.color;
+    ctx.lineWidth = 3.5 * this.strokeScale;
+    if (typeof ctx.setLineDash === 'function') ctx.setLineDash([10, 9]);
+
+    ctx.beginPath();
+    ctx.moveTo(g.points[0].x, g.points[0].y);
+    for (let i = 1; i < g.points.length; i++) {
+      ctx.lineTo(g.points[i].x, g.points[i].y);
+    }
+    ctx.stroke();
+    if (typeof ctx.setLineDash === 'function') ctx.setLineDash([]);
+
+    // Start marker
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = g.color;
+    ctx.beginPath();
+    ctx.arc(g.points[0].x, g.points[0].y, 6 * this.strokeScale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Travelling dot: shows the direction to draw
+    const dot = this._pointAlong(g.points, (g.age * 0.9) % 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(dot.x, dot.y, 5 * this.strokeScale, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   /**
@@ -273,6 +401,9 @@ export class InputHandler {
    * @param {CanvasRenderingContext2D} ctx 
    */
   render(ctx) {
+    // 0. "Correct shape" overlay after a miss
+    this._drawGuide(ctx);
+
     // 1. Render fading strokes
     for (let i = 0; i < this.fadingStrokes.length; i++) {
       const stroke = this.fadingStrokes[i];
@@ -375,6 +506,7 @@ export class InputHandler {
     this.currentPoints = [];
     this.lastPoint = null;
     this.fadingStrokes = [];
+    this.guide = null;
     this.isDrawing = false;
     this._mapping = null;
   }

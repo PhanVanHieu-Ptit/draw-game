@@ -78,6 +78,9 @@ export class QualityManager {
     this.settings = QUALITY_TIERS[this.tier];
     this.listeners = [];
 
+    // When the player picks a fixed graphics tier, the adaptive step-down must leave it alone
+    this.locked = false;
+
     this._frameCount = 0;
     this._accumMs = 0;
     this._warmupLeft = WARMUP_MS;
@@ -119,6 +122,22 @@ export class QualityManager {
     return true;
   }
 
+  /**
+   * Player preference: 'auto' (adapt to the device, the default) or a fixed tier name.
+   * A fixed tier is applied immediately and is never lowered automatically.
+   * @param {'auto'|'high'|'medium'|'low'} pref
+   */
+  setPreference(pref) {
+    if (pref === 'auto') {
+      this.locked = false;
+      this.resetSampling(1500);
+      return;
+    }
+    if (!QUALITY_TIERS[pref]) return;
+    this.locked = true;
+    this.setTier(pref);
+  }
+
   /** Drop one tier. Returns false if already at the lowest. */
   stepDown() {
     const idx = ORDER.indexOf(this.tier);
@@ -131,6 +150,7 @@ export class QualityManager {
    * Large gaps (tab was hidden, state change) are ignored so they cannot trigger a downgrade.
    */
   sampleFrame(frameMs) {
+    if (this.locked) return;
     if (!(frameMs > 0) || frameMs > 250) return;
 
     if (this._warmupLeft > 0) {

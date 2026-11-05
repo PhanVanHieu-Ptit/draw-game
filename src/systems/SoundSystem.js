@@ -68,12 +68,28 @@ export class SoundSystem {
    */
   constructor(options = {}) {
     this.volume = options.masterVolume !== undefined ? Math.max(0, Math.min(1, options.masterVolume)) : 0.4;
+    this.sfxVolume = options.sfxVolume !== undefined ? Math.max(0, Math.min(1, options.sfxVolume)) : 1;
+    this.catVolume = options.catVolume !== undefined ? Math.max(0, Math.min(1, options.catVolume)) : 1;
     this.isMuted = false;
 
     /** @type {AudioContext|null} */
     this.ctx = null;
-    /** @type {GainNode|null} */
+    /**
+     * Sound-effects bus. Every SFX voice connects here, so its gain is the SFX volume.
+     * @type {GainNode|null}
+     */
     this.masterGain = null;
+    /**
+     * Final output stage (master volume + mute) shared by the SFX bus and the music bus.
+     * @type {GainNode|null}
+     */
+    this.outputGain = null;
+    /**
+     * Momo's voice (meow / purr / hiss / hurt cry). Has its own volume and feeds the output stage directly,
+     * so it is independent of both the SFX volume and the music volume.
+     * @type {GainNode|null}
+     */
+    this.catGain = null;
     /** @type {DynamicsCompressorNode|null} */
     this.compressor = null;
 
@@ -96,6 +112,8 @@ export class SoundSystem {
     // Authentic Google Doodle Halloween 2016 Audio Tracks (Buffer & Source tracking)
     this._audioBuffers = {};
     this._currentBGMSource = null;
+    /** Playback speed of the music (1 = normal). Raised while the player is on their last heart. */
+    this._bgmRate = 1;
     this._loadingTracks = {};
     this._currentOneShots = [];
 
@@ -145,18 +163,28 @@ export class SoundSystem {
       this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
       this.compressor.release.setValueAtTime(0.12, this.ctx.currentTime);
 
-      // Master Gain Node
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.volume, this.ctx.currentTime);
+      // Output stage: master volume + mute for everything the player hears
+      this.outputGain = this.ctx.createGain();
+      this.outputGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.volume, this.ctx.currentTime);
 
-      // Connect: Master Gain -> Compressor -> Destination
-      this.masterGain.connect(this.compressor);
+      // SFX bus: all sound effects connect to masterGain, so its gain is the SFX volume
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(this.sfxVolume, this.ctx.currentTime);
+
+      // Cat voice bus: its own volume, straight into the output stage
+      this.catGain = this.ctx.createGain();
+      this.catGain.gain.setValueAtTime(this.catVolume, this.ctx.currentTime);
+      this.catGain.connect(this.outputGain);
+
+      // Connect: SFX bus -> Output -> Compressor -> Destination
+      this.masterGain.connect(this.outputGain);
+      this.outputGain.connect(this.compressor);
       this.compressor.connect(this.ctx.destination);
 
-      // BGM Gain Node connected to masterGain
+      // BGM Gain Node connected to the output stage (so master volume applies, SFX volume does not)
       this.bgmGain = this.ctx.createGain();
       this.bgmGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.bgmVolume, this.ctx.currentTime);
-      this.bgmGain.connect(this.masterGain);
+      this.bgmGain.connect(this.outputGain);
 
       // Preload audio immediately without waiting for user gesture
       this.preloadAudio();
@@ -262,13 +290,40 @@ export class SoundSystem {
    */
   setVolume(val) {
     this.volume = Math.max(0, Math.min(1, val));
-    if (this.masterGain && this.ctx) {
+    const out = this.outputGain || this.masterGain;
+    if (out && this.ctx) {
       const now = this.ctx.currentTime;
-      this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.linearRampToValueAtTime(
+      out.gain.cancelScheduledValues(now);
+      out.gain.linearRampToValueAtTime(
         this.isMuted ? 0.0001 : this.volume,
         now + 0.05
       );
+    }
+  }
+
+  /**
+   * Set sound-effects volume (0.0 to 1.0), independent of the music volume
+   * @param {number} val
+   */
+  setSfxVolume(val) {
+    this.sfxVolume = Math.max(0, Math.min(1, val));
+    if (this.outputGain && this.masterGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.linearRampToValueAtTime(this.sfxVolume, now + 0.05);
+    }
+  }
+
+  /**
+   * Set the volume of Momo's voice (0.0 to 1.0), independent of SFX and music
+   * @param {number} val
+   */
+  setCatVolume(val) {
+    this.catVolume = Math.max(0, Math.min(1, val));
+    if (this.catGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.catGain.gain.cancelScheduledValues(now);
+      this.catGain.gain.linearRampToValueAtTime(this.catVolume, now + 0.05);
     }
   }
 
@@ -287,10 +342,11 @@ export class SoundSystem {
    */
   setMute(muted) {
     this.isMuted = !!muted;
-    if (this.masterGain && this.ctx) {
+    const out = this.outputGain || this.masterGain;
+    if (out && this.ctx) {
       const now = this.ctx.currentTime;
-      this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.linearRampToValueAtTime(
+      out.gain.cancelScheduledValues(now);
+      out.gain.linearRampToValueAtTime(
         this.isMuted ? 0.0001 : this.volume,
         now + 0.05
       );
@@ -916,7 +972,7 @@ export class SoundSystem {
     slapOsc.stop(now + 0.035);
 
     // Complement impact punch with Momo's startled hurt cry
-    if (!this.playAudioSprite('cat_hurt', 1.0)) {
+    if (!this.playAudioSprite('cat_hurt', 1.0, this.catGain)) {
       this.soundCatMeow('hurt');
     }
   }
@@ -964,7 +1020,7 @@ export class SoundSystem {
       osc.connect(filter);
       osc2.connect(filter);
       filter.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.catGain || this.masterGain);
 
       osc.start(now);
       osc2.start(now);
@@ -1006,7 +1062,7 @@ export class SoundSystem {
       osc.connect(filter);
       subOsc.connect(filter);
       filter.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.catGain || this.masterGain);
 
       osc.start(now);
       subOsc.start(now);
@@ -1052,7 +1108,7 @@ export class SoundSystem {
       osc.connect(filter);
       osc2.connect(filter);
       filter.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.catGain || this.masterGain);
 
       osc.start(now);
       osc2.start(now);
@@ -1070,7 +1126,7 @@ export class SoundSystem {
           const gain = this.ctx.createGain();
           gain.gain.setValueAtTime(this.isMuted ? 0.0001 : 0.48, now);
           src.connect(gain);
-          gain.connect(this.masterGain);
+          gain.connect(this.catGain || this.masterGain);
           src.start(now);
           return;
         } catch (err) {}
@@ -1127,7 +1183,7 @@ export class SoundSystem {
     osc.connect(filter);
     oscSub.connect(filter);
     filter.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.catGain || this.masterGain);
 
     lfo.start(now);
     osc.start(now);
@@ -1178,7 +1234,7 @@ export class SoundSystem {
     masterPurrGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     lfoGain.connect(masterPurrGain);
-    masterPurrGain.connect(this.masterGain);
+    masterPurrGain.connect(this.catGain || this.masterGain);
 
     purrLfo.start(now);
     baseOsc.start(now);
@@ -1217,7 +1273,7 @@ export class SoundSystem {
 
     noiseOsc.connect(noiseFilter);
     noiseFilter.connect(hissGain);
-    hissGain.connect(this.masterGain);
+    hissGain.connect(this.catGain || this.masterGain);
 
     noiseOsc.start(now);
     noiseOsc.stop(now + duration);
@@ -1226,6 +1282,35 @@ export class SoundSystem {
   /* -------------------------------------------------------------------------
    * 5. soundBossCast(): Âm báo động cảnh báo đòn đánh diện rộng của Boss
    * ------------------------------------------------------------------------- */
+
+  /**
+   * Soft "lub-dub" heartbeat, played on a loop while Momo has one heart left.
+   * @param {number} [intensity=1] 0..1 loudness
+   */
+  soundHeartbeat(intensity = 1) {
+    if (!this._ensureReady()) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const level = 0.5 * Math.max(0.2, Math.min(1, intensity));
+
+    const thump = (time, freq, vol, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.55, time + dur);
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.linearRampToValueAtTime(vol, time + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(time);
+      osc.stop(time + dur + 0.02);
+    };
+
+    thump(now, 74, level, 0.16);          // "lub"
+    thump(now + 0.2, 62, level * 0.75, 0.2); // "dub"
+  }
 
   /**
    * Plays an urgent, ominous klaxon alarm warning of an incoming Boss Area-of-Effect (AoE) attack.
@@ -1707,7 +1792,7 @@ export class SoundSystem {
    * @param {number} [customVolume=1.0] Relative volume scale
    * @returns {boolean} True if played via authentic buffer sprite
    */
-  playAudioSprite(spriteName, customVolume = 1.0) {
+  playAudioSprite(spriteName, customVolume = 1.0, bus = null) {
     if (!this._ensureReady()) return false;
     const sprite = AUDIO_SPRITES[spriteName];
     if (!sprite || !this.ctx || this.isMuted) return false;
@@ -1726,7 +1811,7 @@ export class SoundSystem {
       gain.gain.setValueAtTime(this.isMuted ? 0.0001 : customVolume, this.ctx.currentTime);
 
       src.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(bus || this.masterGain);
 
       src.start(0, sprite.start, sprite.duration);
       this._currentOneShots.push(src);
@@ -1789,7 +1874,7 @@ export class SoundSystem {
     if (!this.bgmGain) {
       this.bgmGain = this.ctx.createGain();
       this.bgmGain.gain.setValueAtTime(this.isMuted ? 0.0001 : this.bgmVolume, this.ctx.currentTime);
-      this.bgmGain.connect(this.masterGain);
+      this.bgmGain.connect(this.outputGain || this.masterGain);
     }
 
     const neededBuffer = track === 'boss' ? 'end' : 'main';
@@ -1860,6 +1945,7 @@ export class SoundSystem {
         src.start(0, 31.308549);
       }
 
+      if (src.playbackRate) src.playbackRate.value = this._bgmRate;
       src.connect(this.bgmGain);
       this._currentBGMSource = src;
     } catch (err) {
@@ -1910,6 +1996,7 @@ export class SoundSystem {
   stopBGM() {
     this.isBGMPlaying = false;
     this.isBGMPaused = false;
+    this._bgmRate = 1; // tension speed-up never carries over into the next track
     if (this._currentBGMSource) {
       try { this._currentBGMSource.stop(0); } catch (e) {}
       this._currentBGMSource = null;
@@ -1917,6 +2004,23 @@ export class SoundSystem {
     if (this._bgmInterval) {
       clearInterval(this._bgmInterval);
       this._bgmInterval = null;
+    }
+  }
+
+  /**
+   * Speed the background music up or slow it down (pitch follows speed). Used for the "last heart"
+   * tension: the track quickens while Momo is one hit from defeat.
+   * @param {number} rate 1 = normal; clamped to 0.8 .. 1.4
+   */
+  setBGMRate(rate = 1) {
+    this._bgmRate = Math.max(0.8, Math.min(1.4, rate));
+    const src = this._currentBGMSource;
+    if (src && src.playbackRate && this.ctx) {
+      try {
+        src.playbackRate.setTargetAtTime(this._bgmRate, this.ctx.currentTime, 0.35);
+      } catch (e) {
+        src.playbackRate.value = this._bgmRate;
+      }
     }
   }
 

@@ -8,6 +8,8 @@ import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAG
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
 import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChallengeUrl } from './WizardCardRenderer.js';
+import { MetaUI, PAD_ORDER } from './MetaUI.js';
+import { buildDailyChallengeUrl } from '../core/Challenge.js';
 
 export class UIManager {
   constructor(game) {
@@ -20,7 +22,8 @@ export class UIManager {
       [GAME_STATES.PLAYING]: document.getElementById('hud-playing'),
       [GAME_STATES.PAUSE]: document.getElementById('pause-screen'),
       [GAME_STATES.GAMEOVER]: document.getElementById('gameover-screen'),
-      [GAME_STATES.VICTORY]: document.getElementById('victory-screen')
+      [GAME_STATES.VICTORY]: document.getElementById('victory-screen'),
+      [GAME_STATES.PRACTICE]: document.getElementById('practice-screen')
     };
 
     // HUD Elements
@@ -32,6 +35,7 @@ export class UIManager {
     this.comboMult = document.getElementById('combo-mult');
     this.comboBar = document.getElementById('combo-bar');
     this.gestureFeedback = document.getElementById('gesture-feedback');
+    this.gestureHint = document.getElementById('gesture-hint');
 
     // Level Transition Banner Elements
     this.levelTransitionBanner = document.getElementById('level-transition-banner');
@@ -148,6 +152,23 @@ export class UIManager {
     this._bindButtonEvents();
     this._bindKeyboardEvents();
     this._bindStageSelector();
+
+    // Settings, records, daily challenge, companions, upgrade picker, practice HUD, toasts...
+    this.meta = new MetaUI(this);
+    this._syncMuteButton(this.game.settings.get('muted'));
+    this.game.settings.onChange((key, value) => {
+      if (key === 'muted') this._syncMuteButton(value);
+      if (key === 'altInput') this.meta.applyAltInput();
+      if (key === 'assist') this.meta.applyAssistBadge();
+    });
+  }
+
+  /** Keep the HUD speaker icon in step with the mute setting (it can also be changed in Settings) */
+  _syncMuteButton(muted) {
+    const btn = document.getElementById('btn-mute');
+    if (!btn) return;
+    btn.textContent = muted ? '🔇' : '🔊';
+    btn.title = muted ? 'Bật âm thanh' : 'Tắt âm thanh';
   }
 
   _bindButtonEvents() {
@@ -448,7 +469,11 @@ export class UIManager {
     if (this.btnCopyChallengeLink) {
       this.btnCopyChallengeLink.addEventListener('click', async () => {
         const score = this.wizardCardCanvas?.__cardScore || this.game.score || 0;
-        const url = getChallengeUrl(score, 'Momo');
+        // A daily-challenge card links to that day's challenge; anything else uses the plain score link
+        const dailyKey = this._lastCardData && this._lastCardData.dailyKey;
+        const url = dailyKey
+          ? buildDailyChallengeUrl(getChallengeUrl(0, 'Momo'), dailyKey, score, 'Momo')
+          : getChallengeUrl(score, 'Momo');
         try {
           await navigator.clipboard.writeText(url);
           this.showCardToast('⚔️ Đã sao chép link thách đấu vào bộ nhớ tạm!');
@@ -485,9 +510,8 @@ export class UIManager {
     const btnMute = document.getElementById('btn-mute');
     if (btnMute) {
       btnMute.addEventListener('click', () => {
-        const isMuted = this.game.audioSystem.toggleMute();
-        btnMute.textContent = isMuted ? '🔇' : '🔊';
-        btnMute.title = isMuted ? 'Bật âm thanh' : 'Tắt âm thanh';
+        // The setting is the single source of truth; its listener updates the audio and the icon
+        this.game.settings.set('muted', !this.game.settings.get('muted'));
       });
     }
 
@@ -578,6 +602,34 @@ export class UIManager {
         return;
       }
 
+      // Upgrade picker: keys 1-3 choose a card
+      if (this.meta.isUpgradeOpen()) {
+        const idx = ['1', '2', '3'].indexOf(e.key);
+        if (idx >= 0) this.meta.chooseUpgradeByIndex(idx);
+        return;
+      }
+
+      // Settings / records / daily / companions / codex: Esc closes the top one, other keys are not for the game
+      if (e.key === 'Escape' && this.meta.closeTopOverlay()) return;
+      if (this.meta.hasOpenOverlay()) return;
+
+      const stateNow = this.game.stateMachine.getCurrentStateName();
+
+      // Practice Mode: Esc leaves
+      if (stateNow === GAME_STATES.PRACTICE) {
+        if (e.key === 'Escape') this.game.quitToMenu();
+        return;
+      }
+
+      // Alternative input: keys 1-8 cast a rune for players who cannot draw
+      if (stateNow === GAME_STATES.PLAYING && this.game.settings.get('altInput')) {
+        const n = parseInt(e.key, 10);
+        if (n >= 1 && n <= PAD_ORDER.length) {
+          this.game.castRune(PAD_ORDER[n - 1]);
+          return;
+        }
+      }
+
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.PLAYING) {
@@ -616,9 +668,7 @@ export class UIManager {
     }
 
     if (stateName === GAME_STATES.MENU) {
-      if (this.menuHighScore) {
-        this.menuHighScore.textContent = this.game.highScore.toLocaleString();
-      }
+      this.meta.updateMenu();
       this._stopStoryAnim();
       this._stopVictoryAnim();
     } else if (stateName === GAME_STATES.STORY) {
@@ -649,13 +699,18 @@ export class UIManager {
         elapsedSeconds: payload.elapsedSeconds || 180,
         levelReached: 5,
         isVictory: true,
-        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL'
+        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL',
+        dailyKey: payload.summary && payload.summary.daily ? payload.summary.daily.key : undefined
       };
 
       if (this.vicScore) this.vicScore.textContent = (payload.score || 0).toLocaleString();
       if (this.vicHighScore) this.vicHighScore.textContent = (payload.highScore || 0).toLocaleString();
       if (this.vicStages) this.vicStages.textContent = '5/5 (100%)';
       if (this.vicAccuracy) this.vicAccuracy.textContent = `${payload.accuracy || 100}%`;
+      if (payload.summary) {
+        this.meta.setLastRun(payload.summary);
+        this.meta.renderRunSummary('vic-summary', payload.summary);
+      }
     } else if (stateName === GAME_STATES.GAMEOVER) {
       this._stopStoryAnim();
       this._stopVictoryAnim();
@@ -672,7 +727,8 @@ export class UIManager {
         elapsedSeconds: payload.elapsedSeconds || 60,
         levelReached: payload.wave || this.game.waveSystem.currentLevel || 1,
         isVictory: false,
-        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL'
+        difficulty: payload.difficulty || this.game.difficulty || 'NORMAL',
+        dailyKey: payload.summary && payload.summary.daily ? payload.summary.daily.key : undefined
       };
 
       if (this.goScore) this.goScore.textContent = (payload.score || 0).toLocaleString();
@@ -682,9 +738,24 @@ export class UIManager {
       if (this.goNewRecord) {
         this.goNewRecord.style.display = payload.isNewHighScore ? 'inline-block' : 'none';
       }
+      if (payload.summary) {
+        this.meta.setLastRun(payload.summary);
+        this.meta.renderRunSummary('go-summary', payload.summary);
+      }
     } else if (stateName === GAME_STATES.PLAYING) {
       this._stopStoryAnim();
       this._stopVictoryAnim();
+      this.meta.applyAltInput();
+      this.meta.applyAssistBadge();
+      this.meta.renderBuffs(this.game.upgrades);
+    } else if (stateName === GAME_STATES.PAUSE) {
+      // Endless runs are saved automatically at every wave: tell the player they can leave safely
+      const ws = this.game.waveSystem;
+      this.meta._hidden('pause-save-note', !(ws.gameMode === 'ENDLESS' && !this.game.challenge));
+    } else if (stateName === GAME_STATES.PRACTICE) {
+      this._stopStoryAnim();
+      this._stopVictoryAnim();
+      this.meta.refreshPractice();
     }
   }
 
@@ -1155,8 +1226,15 @@ export class UIManager {
     }
   }
 
-  showGestureFeedback(gesture, score, isSuccess) {
+  /**
+   * @param {string|null} gesture recognised gesture id, or null for a miss
+   * @param {number} score 0..1
+   * @param {boolean} isSuccess
+   * @param {string|null} [hint] explains how to fix a missed stroke (shown under the pill)
+   */
+  showGestureFeedback(gesture, score, isSuccess, hint = null) {
     if (!this.gestureFeedback) return;
+    this._showHint(hint);
 
     if (gesture && RUNES[gesture]) {
       const rune = RUNES[gesture];
@@ -1171,7 +1249,20 @@ export class UIManager {
     clearTimeout(this._feedbackTimeout);
     this._feedbackTimeout = setTimeout(() => {
       this.gestureFeedback.classList.remove('show');
-    }, 1200);
+    }, hint ? 2300 : 1200);
+  }
+
+  _showHint(hint) {
+    if (!this.gestureHint) return;
+    clearTimeout(this._hintTimeout);
+    if (!hint || !this.game.settings.get('missHints')) {
+      this.gestureHint.textContent = '';
+      this.gestureHint.classList.remove('show');
+      return;
+    }
+    this.gestureHint.textContent = hint;
+    this.gestureHint.classList.add('show');
+    this._hintTimeout = setTimeout(() => this.gestureHint.classList.remove('show'), 2300);
   }
 
   // =========================================================================
@@ -1231,9 +1322,20 @@ export class UIManager {
   // =========================================================================
   // ACADEMY CHARACTER CODEX & LORE
   // =========================================================================
-  openCodex() {
+  /**
+   * @param {string} [filter] 'all' | 'ally' | 'spirit' | 'bestiary' | 'achievements'
+   */
+  openCodex(filter) {
     if (!this.codexScreen) return;
-    this.renderCodex(this.currentCodexFilter || 'all');
+    const active = filter || this.currentCodexFilter || 'all';
+    if (this.codexTabs && this.codexTabs.querySelectorAll) {
+      this.codexTabs.querySelectorAll('.codex-tab-btn').forEach((b) => {
+        if (b.getAttribute('data-filter') === active) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    }
+    this.meta.updateCodexTabLabels();
+    this.renderCodex(active);
     this.codexScreen.classList.add('active');
   }
 
@@ -1245,6 +1347,11 @@ export class UIManager {
   renderCodex(filter = 'all') {
     if (!this.codexGrid) return;
     this.currentCodexFilter = filter;
+    if (filter === 'bestiary' || filter === 'achievements') {
+      this.meta.updateCodexTabLabels();
+      this.meta.renderCodexExtra(filter, this.codexGrid);
+      return;
+    }
     this.codexGrid.innerHTML = '';
 
     const list = ACADEMY_CHARACTERS.filter(char => {

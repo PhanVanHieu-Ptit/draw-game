@@ -6,6 +6,7 @@
 
 import { Entity } from './Entity.js';
 import { RUNES, ENEMY_TYPES } from '../core/Constants.js';
+import { applyBorderPattern, resetBorderPattern, drawRunePattern } from './RunePatterns.js';
 
 export class Enemy extends Entity {
   /**
@@ -2494,7 +2495,17 @@ export class Enemy extends Entity {
         ctx.rect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight);
       }
       ctx.fill();
+      if (Enemy.colorBlind) {
+        // Colour-blind mode: tell runes apart by texture (border dash + hatch), not only by colour
+        applyBorderPattern(ctx, runeId);
+        ctx.lineWidth = Math.max(ctx.lineWidth, 2);
+      }
       ctx.stroke();
+      if (Enemy.colorBlind) {
+        resetBorderPattern(ctx);
+        // Last: the hatch starts its own path, so it must not come between fill() and the border stroke()
+        drawRunePattern(ctx, runeId, badgeWidth, badgeHeight, rune.color);
+      }
 
       ctx.fillStyle = rune.color;
       ctx.font = `bold ${isActive ? (this.isFinalBoss ? 22 : 15) : (this.isFinalBoss ? 18 : 13)}px sans-serif`;
@@ -2508,3 +2519,6 @@ export class Enemy extends Entity {
     ctx.restore();
   }
 }
+
+/** Colour-blind rune textures on/off (set from Settings by Game) */
+Enemy.colorBlind = false;

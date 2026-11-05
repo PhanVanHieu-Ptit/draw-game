@@ -6,6 +6,7 @@
  */
 
 import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES, DIFFICULTY_LEVELS } from '../core/Constants.js';
+import { waveRng } from '../core/Challenge.js';
 
 export class WaveSystem {
   constructor() {
@@ -22,6 +23,15 @@ export class WaveSystem {
     this.speedMultiplier = 1.05;
     this.intermissionTimer = 0;
     this.isIntermission = false;
+    // While true the intermission does not count down (the player is picking an upgrade)
+    this.intermissionHold = false;
+
+    // Randomness source. Math.random normally; a per-wave seeded generator for Daily Challenges, so
+    // every player meets the same ghosts in the same wave (see setSeed()).
+    this.rng = Math.random;
+    this.seed = null;
+    // Daily Challenge twist (see Challenge.js DAILY_MODIFIERS), or null
+    this.modifier = null;
 
     // Boss state tracking
     this.isBossSpawned = false;
@@ -50,6 +60,26 @@ export class WaveSystem {
     this.currentLevelIndex = 1;
     this.currentWave = 1;
     this.initLevel(1);
+  }
+
+  /**
+   * Make the ghost sequence reproducible: wave N always draws from the same generator.
+   * Pass null to go back to ordinary randomness.
+   * @param {number|null} seed
+   */
+  setSeed(seed) {
+    this.seed = seed === null || seed === undefined ? null : seed >>> 0;
+    this._reseed(this.currentWave);
+  }
+
+  /** @param {Object|null} modifier a DAILY_MODIFIERS entry, or null for a normal run */
+  setModifier(modifier) {
+    this.modifier = modifier || null;
+    this._applyLevelScaling(this.currentLevelIndex);
+  }
+
+  _reseed(wave) {
+    this.rng = this.seed === null ? Math.random : waveRng(this.seed, wave);
   }
 
   setMode(mode = 'STORY') {
@@ -88,6 +118,12 @@ export class WaveSystem {
       this.spawnInterval = Math.max(0.45, (2.2 * Math.exp(-0.11 * (levelNum - 1))) * diffConfig.spawnIntervalMult);
       this.speedMultiplier = Math.min(2.2, (1.1 + 0.08 * (levelNum - 1)) * diffConfig.speedMult);
     }
+
+    const mod = this.modifier;
+    if (mod) {
+      if (mod.speed) this.speedMultiplier *= mod.speed;
+      if (mod.spawn) this.spawnInterval = Math.max(0.35, this.spawnInterval * mod.spawn);
+    }
   }
 
   /**
@@ -97,6 +133,7 @@ export class WaveSystem {
   initLevel(levelNum) {
     this.currentLevelIndex = levelNum;
     this.currentWave = levelNum; // Keep in sync for compatibility
+    this._reseed(levelNum);
     this.enemiesSpawnedInWave = 0;
     this.isBossSpawned = false;
     this.isBossDefeated = false;
@@ -104,6 +141,7 @@ export class WaveSystem {
     this.bossSpawnGraceTimer = 45.0;
     this.isIntermission = false;
     this.intermissionTimer = 0;
+    this.intermissionHold = false;
 
     this._applyLevelScaling(levelNum);
 
@@ -162,6 +200,7 @@ export class WaveSystem {
 
     // 1. Intermission between stages or victory transition
     if (this.isIntermission) {
+      if (this.intermissionHold) return null;
       this.intermissionTimer -= dt;
       if (this.intermissionTimer <= 0) {
         if (this.gameMode === 'STORY' && this.currentLevelIndex >= 5) {
@@ -241,11 +280,11 @@ export class WaveSystem {
               const remainingSlots = maxMinions - livingMinions;
               let spawnCount = 1;
 
-              if (this.currentLevelIndex >= 5 && remainingSlots >= 3 && Math.random() < 0.75) {
+              if (this.currentLevelIndex >= 5 && remainingSlots >= 3 && this.rng() < 0.75) {
                 spawnCount = Math.min(remainingSlots, 3 + diffConfig.squadBonus);
-              } else if (this.currentLevelIndex >= 4 && remainingSlots >= 2 && Math.random() < 0.70) {
+              } else if (this.currentLevelIndex >= 4 && remainingSlots >= 2 && this.rng() < 0.70) {
                 spawnCount = Math.min(remainingSlots, 2 + diffConfig.squadBonus);
-              } else if (this.currentLevelIndex >= 2 && remainingSlots >= 2 && Math.random() < 0.60) {
+              } else if (this.currentLevelIndex >= 2 && remainingSlots >= 2 && this.rng() < 0.60) {
                 spawnCount = Math.min(remainingSlots, 2);
               }
 
@@ -294,7 +333,7 @@ export class WaveSystem {
           squadSize = 1;
         } else if (this.currentLevelIndex === 2 && this.gameMode === 'STORY') {
           // Level 2: Frequently twins (2 ghosts) or trios (3 ghosts) appearing together
-          const roll = Math.random();
+          const roll = this.rng();
           const wantTrio = roll < (this.difficulty === 'INFERNO' ? 0.45 : (this.difficulty === 'HARDCORE' ? 0.35 : 0.22));
           const wantPair = roll < (this.difficulty === 'INFERNO' ? 0.95 : (this.difficulty === 'HARDCORE' ? 0.90 : 0.82));
           let targetSize = wantTrio ? 3 : (wantPair ? 2 : 1);
@@ -302,18 +341,18 @@ export class WaveSystem {
           squadSize = Math.min(remaining, targetSize);
         } else if (this.currentLevelIndex === 3 && this.gameMode === 'STORY') {
           // Level 3: Flanking squads of 2, 3, or 4 ghosts rushing together
-          const roll = Math.random();
+          const roll = this.rng();
           const targetSize = roll < 0.40 ? 4 : (roll < 0.85 ? 3 : 2);
           squadSize = Math.min(remaining, targetSize + diffConfig.squadBonus);
         } else if (this.currentLevelIndex >= 4 && this.gameMode === 'STORY') {
           // Level 4: Full ambushes of 3, 4, or 5 ghosts simultaneously surrounding Momo
-          const roll = Math.random();
+          const roll = this.rng();
           const targetSize = roll < 0.45 ? 5 : (roll < 0.85 ? 4 : 3);
           squadSize = Math.min(remaining, targetSize + diffConfig.squadBonus);
         } else {
           // Endless Mode: Squads scaling with wave index up to 6 ghosts simultaneously
           const maxSquad = Math.min(6, 2 + Math.floor(this.currentWave * 0.45));
-          const targetSize = Math.floor(Math.random() * (maxSquad - 1)) + 2 + diffConfig.squadBonus;
+          const targetSize = Math.floor(this.rng() * (maxSquad - 1)) + 2 + diffConfig.squadBonus;
           squadSize = Math.min(remaining, targetSize);
         }
 
@@ -343,7 +382,7 @@ export class WaveSystem {
   _generateEnemyConfig(playerHp) {
     const W = this.currentWave;
     const lvl = this.levelData;
-    const rand = Math.random();
+    const rand = this.rng();
     let archetype = 'REGULAR';
 
     if (lvl) {
@@ -377,8 +416,12 @@ export class WaveSystem {
     }
 
     // Available rune pool
-    const pool = (lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape'];
-    if (!lvl && W >= 2) pool.push('lightning');
+    const mod = this.modifier;
+    const restricted = !!(mod && mod.runes);
+    const pool = restricted
+      ? [...mod.runes]
+      : ((lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape']);
+    if (!restricted && !lvl && W >= 2) pool.push('lightning');
 
     // Guided Level 1 Tutorial: Ghost 1 is Horizontal [ — ], Ghost 2 is Vertical [ | ]
     if (this.currentLevelIndex === 1 && this.gameMode === 'STORY') {
@@ -404,34 +447,34 @@ export class WaveSystem {
 
     if (archetype === 'REGULAR') {
       if (this.currentLevelIndex === 1) {
-        count = (this.enemiesSpawnedInWave > 4 && Math.random() < 0.40) ? 2 : 1;
+        count = (this.enemiesSpawnedInWave > 4 && this.rng() < 0.40) ? 2 : 1;
       } else if (this.currentLevelIndex === 2) {
-        count = Math.random() < 0.65 ? 2 : 1;
+        count = this.rng() < 0.65 ? 2 : 1;
       } else if (this.currentLevelIndex === 3) {
-        count = Math.random() < 0.45 ? 3 : 2;
+        count = this.rng() < 0.45 ? 3 : 2;
       } else if (this.currentLevelIndex >= 4) {
-        count = Math.random() < 0.50 ? 4 : 3;
+        count = this.rng() < 0.50 ? 4 : 3;
       } else {
-        count = Math.min(4, Math.floor(Math.random() * 2) + Math.min(3, Math.floor(W * 0.3) + 1));
+        count = Math.min(4, Math.floor(this.rng() * 2) + Math.min(3, Math.floor(W * 0.3) + 1));
       }
     } else if (archetype === 'SPEEDSTER') {
       if (this.currentLevelIndex <= 2) {
-        count = Math.random() < 0.30 ? 2 : 1;
+        count = this.rng() < 0.30 ? 2 : 1;
       } else if (this.currentLevelIndex === 3) {
-        count = Math.random() < 0.55 ? 2 : 1;
+        count = this.rng() < 0.55 ? 2 : 1;
       } else {
-        count = Math.random() < 0.40 ? 3 : 2;
+        count = this.rng() < 0.40 ? 3 : 2;
       }
     } else if (archetype === 'ARMORED') {
       if (this.currentLevelIndex <= 3) {
-        count = Math.floor(Math.random() * 2) + 4; // 4 or 5
+        count = Math.floor(this.rng() * 2) + 4; // 4 or 5
       } else {
-        count = Math.floor(Math.random() * 2) + 5; // 5 or 6
+        count = Math.floor(this.rng() * 2) + 5; // 5 or 6
       }
     }
 
     for (let i = 0; i < count; i++) {
-      const rune = pool[Math.floor(Math.random() * pool.length)];
+      const rune = pool[Math.floor(this.rng() * pool.length)];
       symbolQueue.push(rune);
     }
 
@@ -445,16 +488,18 @@ export class WaveSystem {
     // When critical (<=2 HP): ~24%
     // When wounded (<5 HP): ~15%
     // When full health (5 HP): ~8%
-    const heartChance = (playerHp <= 2 ? 0.24 : (playerHp < 5 ? 0.15 : 0.08)) * heartMult;
+    // A daily twist can remove healing ghosts, or restrict the run to a few gestures (no tactical ghosts then,
+    // since their hearts / circles / spirals would break the restriction)
+    const heartChance = (mod && (mod.noHearts || restricted)) ? 0 : (playerHp <= 2 ? 0.24 : (playerHp < 5 ? 0.15 : 0.08)) * heartMult;
 
     // Freeze ghost: slows or completely freezes all ghosts on screen
-    const canSpawnTactical = (this.gameMode === 'ENDLESS' || this.currentLevelIndex >= 2 || this.enemiesSpawnedInWave >= 4);
+    const canSpawnTactical = !restricted && (this.gameMode === 'ENDLESS' || this.currentLevelIndex >= 2 || this.enemiesSpawnedInWave >= 4);
     const freezeChance = canSpawnTactical ? 0.12 * freezeMult : 0;
 
     // Blast ghost: knocks back and pushes all ghosts far away from Momo
     const blastChance = canSpawnTactical ? 0.12 * blastMult : 0;
 
-    const roll = Math.random();
+    const roll = this.rng();
     let isHeartGhost = false;
     let isFreezeGhost = false;
     let isBlastGhost = false;
@@ -490,7 +535,7 @@ export class WaveSystem {
   _generateBossMinionConfig(playerHp) {
     const lvl = this.levelData;
     const pool = (lvl && lvl.allowedRunes) ? lvl.allowedRunes : ['horizontal', 'vertical', 'caret', 'v_shape'];
-    const rand = Math.random();
+    const rand = this.rng();
 
     let archetype = 'REGULAR';
     if (lvl) {
@@ -504,17 +549,17 @@ export class WaveSystem {
     const symbolQueue = [];
     let count = 1;
     if (archetype === 'ARMORED') {
-      count = Math.floor(Math.random() * 2) + 4;
+      count = Math.floor(this.rng() * 2) + 4;
     } else if (this.currentLevelIndex >= 4) {
-      count = Math.random() < 0.60 ? 3 : 2;
+      count = this.rng() < 0.60 ? 3 : 2;
     } else if (this.currentLevelIndex >= 2) {
-      count = Math.random() < 0.55 ? 2 : 1;
+      count = this.rng() < 0.55 ? 2 : 1;
     } else {
       count = 1;
     }
 
     for (let i = 0; i < count; i++) {
-      const rune = pool[Math.floor(Math.random() * pool.length)];
+      const rune = pool[Math.floor(this.rng() * pool.length)];
       symbolQueue.push(rune);
     }
 
@@ -528,7 +573,7 @@ export class WaveSystem {
     const freezeChance = 0.11 * freezeMult;
     const blastChance = 0.11 * blastMult;
 
-    const roll = Math.random();
+    const roll = this.rng();
     let isHeartGhost = false;
     let isFreezeGhost = false;
     let isBlastGhost = false;

@@ -158,6 +158,10 @@ const gameContext = {
   },
   projectiles: [],
   projectilePool: { release: () => {} },
+  // Game.updatePlaying also depends on the run upgrades and long-term progress (added with the meta features)
+  upgrades: { enemySpeedScale: 1, scoreMultiplier: 1 },
+  progress: { addStat: () => {}, markSeen: () => false, save: () => {} },
+  _addScore: Game.prototype._addScore,
   metrics: { damageTaken: 0, enemiesDefeated: 0 },
   score: 0,
   displayedScore: 0,
