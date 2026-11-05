@@ -6,10 +6,17 @@
  * exact deltaTime scaling across high-refresh monitors (60Hz, 120Hz, 144Hz), and Retina DPR calibration.
  */
 
-import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS } from './Constants.js';
+import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS, PLAYER_CONFIG, ACADEMY_CHARACTERS } from './Constants.js';
 import { StateMachine } from './StateMachine.js';
+import { SettingsStore, AUDIO_SCALE } from './Settings.js';
+import { ProgressStore } from './ProgressStore.js';
+import { evaluateAchievements, bestiaryId } from './Achievements.js';
+import { UpgradeState, UPGRADES, rollUpgradeChoices, shouldOfferUpgrade } from './Upgrades.js';
+import { getCompanion, isCompanionUnlocked, companionsUnlockedByLevel, DEFAULT_COMPANION } from './Companions.js';
+import { getDailyChallenge, dateKey, buildDailyChallengeUrl } from './Challenge.js';
+import { RunSaveStore, buildEndlessSnapshot, MIN_SAVE_WAVE } from './RunSave.js';
 import { ObjectPool } from './ObjectPool.js';
-import { GestureEngine } from '../GestureEngine.js';
+import { GestureEngine, getMissHint } from '../GestureEngine.js';
 import { Player } from '../entities/Player.js';
 import { Enemy } from '../entities/Enemy.js';
 import { Projectile } from '../entities/Projectile.js';
@@ -20,7 +27,15 @@ import { HapticSystem } from '../systems/HapticSystem.js';
 import { InputHandler } from '../systems/InputHandler.js';
 import { BackgroundRenderer } from '../systems/BackgroundRenderer.js';
 import { QualityManager, installShadowBlurScaler } from '../systems/QualityManager.js';
+import { DangerIndicator } from '../systems/DangerIndicator.js';
+import { PracticeSession } from '../systems/PracticeSession.js';
 import { UIManager } from '../ui/UIManager.js';
+
+/** 3-2-1 shown after resuming from pause: seconds per number, and how many numbers */
+const COUNTDOWN_STEP = 0.8;
+const COUNTDOWN_STEPS = 3;
+/** Combo counts that trigger a short slow-motion "wow" moment */
+const SLOWMO_COMBOS = [5, 10, 20, 35];
 
 export class Game {
   constructor(canvas) {
@@ -94,23 +109,47 @@ export class Game {
     this.difficulty = this._loadDifficulty();
     this.waveSystem.setDifficulty(this.difficulty);
 
+    // Player preferences and long-term progress (records, stats, achievements, bestiary)
+    this.settings = new SettingsStore();
+    this.progress = new ProgressStore();
+    // Best score from before records were split per mode/difficulty (shown in the records screen)
+    this.legacyHighScore = this._loadHighScore();
+
+    // Run-scoped upgrades picked between stages
+    this.upgrades = new UpgradeState();
+    this.upgradePending = false;
+    this._levelStartDamage = 0;
+    this._upgradeTimer = null;
+    this._stagesClearedThisRun = 0;
+    this._newCompanions = [];
+
+    // Saved Endless run, the active Daily Challenge (null = ordinary run) and accessibility flags
+    this.runSave = new RunSaveStore();
+    this.challenge = null;
+    this.runAssisted = false; // true once an assist was on / used during this run: the run is not ranked
+    this.assistScale = 1;     // ghost speed multiplier from the slow-motion assist setting
+    this._pendingRestore = null;
+
+    // "Wow" moments and pressure cues
+    this.slowMo = { timer: 0, total: 1, scale: 1 };
+    this._slowMoCooldown = 0;
+    this.resumeCountdown = 0;
+    this.danger = new DangerIndicator();
+    this._moodRate = 1;
+
+    // Equip the saved companion's passive
+    this._equipCompanion();
+
     // Scoring & Combo runtime state
     this.score = 0;
     this.displayedScore = 0;
-    this.highScore = this._loadHighScore();
+    this.highScore = 0; // best score of the current mode + difficulty, see refreshHighScore()
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
 
     // Session Metrics
-    this.metrics = {
-      spellsCast: 0,
-      spellsHit: 0,
-      damageTaken: 0,
-      enemiesDefeated: 0,
-      maxCombo: 0,
-      startTime: Date.now()
-    };
+    this.metrics = this._newMetrics();
 
     // Screen visual flash & freeze overlay timers
     this.lightningFlashTimer = 0;
@@ -135,8 +174,19 @@ export class Game {
       (tapPoint) => this.onCanvasTap(tapPoint)
     );
 
+    // The touch buzz on pen-down follows the haptics setting
+    this.inputHandler.canVibrate = () => this.settings.get('haptics');
+
     // Push the initial quality tier into the subsystems
     this._applyQuality();
+
+    // Apply saved preferences (volume, sensitivity, haptics, shake, graphics) and keep them live
+    this._applyAllSettings();
+    this.settings.onChange((key, value) => this._applySetting(key, value));
+    this.refreshHighScore();
+
+    // Practice Mode (drawing trainer)
+    this.practice = new PracticeSession(this);
 
     // UI Manager
     this.uiManager = new UIManager(this);
@@ -244,6 +294,8 @@ export class Game {
 
     this.waveSystem.onLevelComplete = (lvlNum, lvlData) => {
       this.triggerShake(10, 0.45);
+      // The boss falls: a beat of slow motion to savour it
+      this.triggerSlowMo(1.3, 0.28, true);
       this.uiManager.showLevelComplete(lvlNum, lvlData);
       this.particleSystem.emitFloatingText(
         `MÀN ${lvlNum} HOÀN THÀNH!`,
@@ -277,12 +329,94 @@ export class Game {
 
     this.waveSystem.onWaveStart = (waveNum) => {
       this.uiManager.updateWave(waveNum);
+      // A new level/wave: the flawless-clear baseline restarts and the combo shield recharges
+      this._levelStartDamage = this.metrics ? this.metrics.damageTaken : 0;
+      this.upgrades.refillShield();
+      this.uiManager.meta.renderBuffs(this.upgrades);
+      this._saveEndlessProgress(waveNum);
     };
 
     this.waveSystem.onWaveComplete = (waveNum) => {
       this.triggerShake(5, 0.3);
       this.audioSystem.playWaveComplete();
+      this._onStageCleared(waveNum);
     };
+
+    // Persist progress when the page is hidden/closed (kills and stats are only held in memory in between)
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && this.progress) this.progress.save();
+      });
+    }
+    window.addEventListener('pagehide', () => {
+      if (this.progress) this.progress.save();
+    });
+  }
+
+  // =========================================================================
+  // SETTINGS
+  // =========================================================================
+
+  /** Push every saved preference into the subsystems it controls */
+  _applyAllSettings() {
+    const all = this.settings.all();
+    for (const key of Object.keys(all)) {
+      this._applySetting(key, all[key]);
+    }
+  }
+
+  /**
+   * Apply one preference. Called once per key at start-up and again whenever the player changes it.
+   * @param {string} key
+   * @param {*} value
+   */
+  _applySetting(key, value) {
+    switch (key) {
+      case 'masterVolume':
+        this.audioSystem.setVolume((value / 100) * AUDIO_SCALE.master);
+        break;
+      case 'musicVolume':
+        this.audioSystem.setBGMVolume((value / 100) * AUDIO_SCALE.music);
+        break;
+      case 'sfxVolume':
+        this.audioSystem.setSfxVolume((value / 100) * AUDIO_SCALE.sfx);
+        break;
+      case 'catVolume':
+        this.audioSystem.setCatVolume((value / 100) * AUDIO_SCALE.cat);
+        break;
+      case 'muted':
+        this.audioSystem.setMute(value);
+        break;
+      case 'sensitivity':
+        this.gestureEngine.setSensitivity(value);
+        break;
+      case 'haptics':
+        this.hapticSystem.setEnabled(value);
+        break;
+      case 'screenShake':
+        this.particleSystem.setShakeEnabled(value);
+        break;
+      case 'quality':
+        this.quality.setPreference(value);
+        break;
+      case 'colorBlind':
+        Enemy.colorBlind = !!value;
+        break;
+      case 'assist':
+        // Applies to ghosts that spawn from now on. Turning it on mid-run makes the run unranked for good.
+        this.assistScale = 1 - value / 100;
+        if (value > 0) this.runAssisted = true;
+        break;
+      default:
+        break; // missHints and altInput are read on demand
+    }
+  }
+
+  /** Reload the displayed "best score" for the current mode + difficulty */
+  refreshHighScore() {
+    const mode = this.waveSystem ? this.waveSystem.gameMode : 'STORY';
+    this.highScore = this.progress.getRecord(mode, this.difficulty).score;
+    return this.highScore;
   }
 
   /**
@@ -401,6 +535,8 @@ export class Game {
     };
     window.addEventListener('resize', schedule);
     window.addEventListener('orientationchange', () => {
+      // Rotating the phone mid-fight: pause first, the player resumes with a 3-2-1
+      this._pauseIfPlaying();
       schedule();
       setTimeout(() => this.resize(), 150);
       setTimeout(() => this.resize(), 400);
@@ -482,6 +618,13 @@ export class Game {
     if (sizeKey === this._sizeKey) return;
     this._sizeKey = sizeKey;
 
+    // A portrait <-> landscape flip on a phone pauses the run (the layout under the player's hand just changed)
+    const portrait = height > width;
+    if (isMobile && this._wasPortrait !== undefined && portrait !== this._wasPortrait) {
+      this._pauseIfPlaying();
+    }
+    this._wasPortrait = portrait;
+
     this.dpr = dpr;
     this.width = width;
     this.height = height;
@@ -540,15 +683,148 @@ export class Game {
     }
   }
 
+  /**
+   * Legacy single "best score" key, kept up to date so older builds / saved data stay consistent.
+   * The per-mode records that the UI shows live in ProgressStore.
+   * @param {number} score
+   * @returns {boolean} true if it beat the all-time best
+   */
   saveHighScore(score) {
-    if (score > this.highScore) {
-      this.highScore = score;
+    if (score > this.legacyHighScore) {
+      this.legacyHighScore = score;
       try {
         localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, score.toString());
       } catch (e) {}
       return true;
     }
     return false;
+  }
+
+  /**
+   * Close out the current run: save records/stats, evaluate achievements, clear the Endless autosave.
+   * Called by GameOverState / VictoryState.
+   *
+   * Three kinds of run are told apart:
+   *  - ordinary: updates the (mode x difficulty) records;
+   *  - Daily Challenge: has its own per-day board, regular records are untouched;
+   *  - assisted (slow-motion assist / alternative input used): not ranked at all.
+   *
+   * @param {boolean} victory
+   * @returns {Object} summary the end-of-run screen displays
+   */
+  finishRun(victory) {
+    const mode = this.waveSystem.gameMode;
+    const daily = this.challenge;
+    const difficulty = daily ? daily.difficulty : (this.difficulty || 'NORMAL');
+    const assisted = this.isAssisted();
+    const m = this.metrics;
+    const level = mode === 'STORY'
+      ? (victory ? 5 : this.waveSystem.currentLevelIndex)
+      : this.waveSystem.currentWave;
+    const accuracy = m.spellsCast > 0 ? Math.round((m.spellsHit / m.spellsCast) * 100) : 100;
+    const seconds = m.startTime ? Math.round((Date.now() - m.startTime) / 1000) : 0;
+
+    const result = this.progress.recordRun({
+      mode, difficulty,
+      score: this.score,
+      level,
+      combo: m.maxCombo || 0,
+      accuracy,
+      victory,
+      spellsCast: m.spellsCast,
+      spellsHit: m.spellsHit,
+      seconds,
+      ranked: !assisted && !daily,
+      assisted
+    });
+
+    let dailyInfo = null;
+    let highScore = result.record.score;
+    let previousBest = result.previous.score;
+    let isNewHighScore = result.isNewScore;
+    if (daily) {
+      dailyInfo = { key: daily.key, name: daily.modifier.name, isNewBest: false, streak: 0 };
+      if (!assisted && daily.key === dateKey()) {
+        const d = this.progress.recordDaily(daily.key, { score: this.score, wave: level, combo: m.maxCombo || 0 });
+        dailyInfo.isNewBest = d.isNewBest;
+        dailyInfo.streak = d.streak;
+        dailyInfo.record = d.record;
+        highScore = d.record.score;
+        previousBest = d.previous;
+        isNewHighScore = d.isNewBest;
+      } else {
+        highScore = this.score;
+      }
+    }
+
+    if (!assisted && !daily) {
+      this.saveHighScore(this.score);
+      this.highScore = result.record.score;
+    }
+    if (mode === 'ENDLESS' && !daily) this.runSave.clear();
+
+    // The end screen lists new achievements itself: play the fanfare but skip the toasts on top of it
+    const achievements = evaluateAchievements(this.progress);
+    this._announceAchievements(achievements, false);
+
+    const summary = {
+      mode, difficulty, level, accuracy, seconds, victory, assisted,
+      daily: dailyInfo,
+      score: this.score,
+      maxCombo: m.maxCombo || 0,
+      highScore,
+      previousBest,
+      scoreGap: (assisted || daily) ? 0 : result.scoreGap,
+      isNewHighScore: !assisted && isNewHighScore,
+      isNewLevel: !assisted && !daily && result.isNewLevel,
+      isNewCombo: !assisted && !daily && result.isNewCombo,
+      record: result.record,
+      replay: this.getRunReplay(),
+      unlockedCompanions: this._newCompanions.slice(),
+      achievements
+    };
+    this._newCompanions = [];
+    return summary;
+  }
+
+  /**
+   * Facts for the end-of-run recap: favourite rune, sharpest stroke, rune that needs practice.
+   * @returns {{topRune: string|null, topRuneCount: number, bestAccuracy: number, bestAccuracyRune: string|null, avgAccuracy: number, weakestRune: string|null, weakestMissRate: number}}
+   */
+  getRunReplay() {
+    const m = this.metrics || {};
+    const use = m.runeUse || {};
+    const miss = m.runeMiss || {};
+
+    let topRune = null;
+    let topRuneCount = 0;
+    for (const [rune, n] of Object.entries(use)) {
+      if (n > topRuneCount) { topRune = rune; topRuneCount = n; }
+    }
+
+    let weakestRune = null;
+    let weakestRate = 0;
+    for (const rune of Object.keys(RUNES)) {
+      const total = (use[rune] || 0) + (miss[rune] || 0);
+      if (total < 4) continue;
+      const rate = (miss[rune] || 0) / total;
+      if (rate >= 0.25 && rate > weakestRate) { weakestRune = rune; weakestRate = rate; }
+    }
+
+    return {
+      topRune,
+      topRuneCount,
+      bestAccuracy: Math.round((m.accBest || 0) * 100),
+      bestAccuracyRune: m.accBestRune || null,
+      avgAccuracy: m.accCount ? Math.round((m.accSum / m.accCount) * 100) : 0,
+      weakestRune,
+      weakestMissRate: Math.round(weakestRate * 100)
+    };
+  }
+
+  /** @returns {boolean} whether this run used an assist and is therefore left out of the records */
+  isAssisted() {
+    return !!this.runAssisted || (this.settings ? this.settings.get('assist') > 0 : false);
   }
 
   _loadDifficulty() {
@@ -569,9 +845,28 @@ export class Game {
       localStorage.setItem(STORAGE_KEYS.DIFFICULTY, difficulty);
     } catch (e) {}
     this.waveSystem.setDifficulty(difficulty);
+    this.refreshHighScore();
     if (this.uiManager && typeof this.uiManager.updateDifficultyUI === 'function') {
       this.uiManager.updateDifficultyUI(difficulty);
     }
+  }
+
+  /** Fresh per-run counters (runeUse / runeMiss / acc* feed the end-of-run recap) */
+  _newMetrics() {
+    return {
+      spellsCast: 0,
+      spellsHit: 0,
+      damageTaken: 0,
+      enemiesDefeated: 0,
+      maxCombo: 0,
+      startTime: Date.now(),
+      runeUse: {},
+      runeMiss: {},
+      accBest: 0,
+      accBestRune: null,
+      accSum: 0,
+      accCount: 0
+    };
   }
 
   resetGameData() {
@@ -581,18 +876,32 @@ export class Game {
     this.comboMultiplier = 1;
     this.comboTimer = 0;
 
-    this.metrics = {
-      spellsCast: 0,
-      spellsHit: 0,
-      damageTaken: 0,
-      enemiesDefeated: 0,
-      maxCombo: 0,
-      startTime: Date.now()
-    };
+    this.metrics = this._newMetrics();
+    this.runAssisted = this.settings.get('assist') > 0;
+    this._stagesClearedThisRun = 0;
+    this._newCompanions = [];
+    this.slowMo.timer = 0;
+    this._slowMoCooldown = 0;
+    this.resumeCountdown = 0;
+    this._moodRate = 1;
+    this.audioSystem.setBGMRate(1);
+    this.danger.critical = false;
     this.freezeOverlayTimer = 0;
     this.lightningFlashTimer = 0;
     this.bossEntranceWarningActive = false;
     this.bossEntranceWarningTimer = 0;
+
+    // Upgrades only last for one run: undo their effects on the player before it is reset
+    this.upgrades.reset();
+    this.upgradePending = false;
+    clearTimeout(this._upgradeTimer);
+    this._levelStartDamage = 0;
+    // Hearts: a daily twist can lower them; the equipped companion may add invulnerability time
+    const dailyMaxHp = this.challenge && this.challenge.modifier.maxHp;
+    this.player.maxHp = dailyMaxHp || PLAYER_CONFIG.MAX_HP;
+    this.player.invulnerableBonus = this.upgrades.invulnerableBonus;
+    this.upgrades.refillShield();
+    this.refreshHighScore();
 
     this.player.resize(this.width, this.height);
     this.player.reset();
@@ -603,6 +912,8 @@ export class Game {
 
     this.particleSystem.clear();
     this.inputHandler.clear();
+    // Seed / daily twist / difficulty must be in place BEFORE the first wave is generated
+    this._applyRunConfig();
     this.waveSystem.reset();
 
     this.isTutorialActive = false;
@@ -615,6 +926,31 @@ export class Game {
     this.uiManager.updateScore(0);
     this.uiManager.updateCombo(0, 1, 0);
     this.uiManager.updateWave(1);
+    this.uiManager.meta.hideUpgradePicker();
+    this.uiManager.meta.renderBuffs(this.upgrades);
+    this.uiManager.meta.setCountdown(0);
+
+    // "Continue Endless": put back what the autosave kept
+    if (this._pendingRestore) {
+      const snap = this._pendingRestore;
+      this._pendingRestore = null;
+      this._restoreEndless(snap);
+    }
+  }
+
+  /** Point WaveSystem at this run's rules: the daily seed + twist, or plain random at the chosen difficulty */
+  _applyRunConfig() {
+    const ws = this.waveSystem;
+    const ch = this.challenge;
+    if (ch) {
+      ws.setSeed(ch.seed);
+      ws.setModifier(ch.modifier);
+      ws.setDifficulty(ch.difficulty); // fixed so scores are comparable; the saved difficulty is untouched
+    } else {
+      ws.setSeed(null);
+      ws.setModifier(null);
+      ws.setDifficulty(this.difficulty);
+    }
   }
 
   start() {
@@ -926,12 +1262,17 @@ export class Game {
           symbolQueue: enemyConfig.symbolQueue,
           bossPhases: enemyConfig.bossPhases,
           bossLives: enemyConfig.bossLives,
-          speedMultiplier: enemyConfig.speedMultiplier,
+          speedMultiplier: enemyConfig.speedMultiplier !== undefined
+            ? enemyConfig.speedMultiplier * (isBoss ? 1 : this.upgrades.enemySpeedScale) * (this.assistScale || 1)
+            : enemyConfig.speedMultiplier,
           targetPlayerPos: this.player,
           levelIndex: this.waveSystem ? this.waveSystem.currentLevelIndex : 1,
           levelId: (this.waveSystem && this.waveSystem.levelData) ? this.waveSystem.levelData.id : 'library'
         });
         this.enemies.push(newEnemy);
+        if (this.progress.markSeen(bestiaryId(newEnemy))) {
+          this.progress.save(); // first meeting with this kind of ghost: remember it (rare event)
+        }
 
         // Boss / Armored entrance feedback
         if (isBoss) {
@@ -951,8 +1292,7 @@ export class Game {
                 this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, 'HEART', 20);
               } else {
                 this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, minion.type, 24);
-                const reward = (minion.scoreValue || 100) * this.comboMultiplier;
-                this.score += reward;
+                const reward = this._addScore((minion.scoreValue || 100) * this.comboMultiplier);
                 this.particleSystem.emitFloatingText(`+${reward}`, minion.x, minion.y - 18, '#fde047', 18);
               }
               cleansedCount++;
@@ -1013,6 +1353,7 @@ export class Game {
           // Touching Heart Ghost peacefully heals Momo!
           const healed = this.player.heal(1);
           if (healed) {
+            this.progress.addStat('heals');
             this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
             this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
           }
@@ -1120,8 +1461,7 @@ export class Game {
                   '#f43f5e',
                   24
                 );
-                const phaseReward = 500 * this.comboMultiplier;
-                this.score += phaseReward;
+                const phaseReward = this._addScore(500 * this.comboMultiplier);
                 this.particleSystem.emitFloatingText(
                   `+${phaseReward}`,
                   proj.targetEnemy.x,
@@ -1160,8 +1500,7 @@ export class Game {
                   if (minion !== proj.targetEnemy && !minion.isDead) {
                     minion.isDead = true;
                     this.particleSystem.emitMonsterDeathExplosion(minion.x, minion.y, minion.type, 22);
-                    const minionReward = (minion.scoreValue || 100) * this.comboMultiplier;
-                    this.score += minionReward;
+                    const minionReward = this._addScore((minion.scoreValue || 100) * this.comboMultiplier);
                     this.particleSystem.emitFloatingText(
                       `+${minionReward}`,
                       minion.x,
@@ -1182,6 +1521,7 @@ export class Game {
               } else if (proj.targetEnemy.isHeartGhost || proj.gesture === 'heart') {
                 const healed = this.player.heal(1);
                 if (healed) {
+                  this.progress.addStat('heals');
                   this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
                   this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
                 }
@@ -1194,8 +1534,8 @@ export class Game {
                 isTargetBoss ? 35 : 28
               );
 
-              const reward = proj.targetEnemy.scoreValue * this.comboMultiplier;
-              this.score += reward;
+              const reward = this._addScore(proj.targetEnemy.scoreValue * this.comboMultiplier);
+              this._onEnemyDefeated(proj.targetEnemy, proj.gesture, isTargetBoss);
               this.particleSystem.emitFloatingText(
                 `+${reward}`,
                 proj.targetEnemy.x,
@@ -1247,7 +1587,7 @@ export class Game {
     this.inputHandler.update(dt);
 
     // 8. Update Combo UI
-    const decayPercent = this.comboCount > 0 ? (this.comboTimer / COMBO_CONFIG.DECAY_TIME) : 0;
+    const decayPercent = this.comboCount > 0 ? (this.comboTimer / this.comboDecayTime) : 0;
     this.uiManager.updateCombo(this.comboCount, this.comboMultiplier, decayPercent);
   }
 
@@ -1292,6 +1632,9 @@ export class Game {
     this.inputHandler.render(ctx);
 
     ctx.restore();
+
+    // 9. Pressure cues in screen space (not shaken): edge arrows, last-heart glow, slow-motion tint
+    if (this.danger) this.danger.render(ctx, this);
   }
 
   /**
@@ -1594,17 +1937,27 @@ export class Game {
    * @param {Array<{x: number, y: number}>} rawStroke 
    */
   onGestureRecognized(result, rawStroke) {
-    if (this.stateMachine.getCurrentStateName() !== GAME_STATES.PLAYING) return;
+    const stateName = this.stateMachine.getCurrentStateName();
+    if (stateName === GAME_STATES.PRACTICE) {
+      this.practice.handleStroke(rawStroke);
+      return;
+    }
+    if (stateName !== GAME_STATES.PLAYING) return;
 
     this.metrics.spellsCast++;
 
     const gesture = result.gesture;
     if (!gesture || !RUNES[gesture]) {
+      this._trackMiss(result);
       this.audioSystem.playFizzle();
-      this.uiManager.showGestureFeedback(null, 0, false);
+      const hint = getMissHint(result.reason, result.candidate, result.score);
+      this.uiManager.showGestureFeedback(null, 0, false, hint);
+      this._showMissGuide(result, rawStroke);
       this._fizzleCombo();
       return;
     }
+
+    this._trackCast(gesture, result);
 
     // Find all enemies whose active (0th) symbol matches the recognized gesture
     const matchingEnemies = this.enemies.filter(e => e.matchesActiveSymbol(gesture));
@@ -1638,6 +1991,7 @@ export class Game {
       if (gesture === 'heart') {
         const healed = this.player.heal(1);
         if (healed) {
+          this.progress.addStat('heals');
           this.particleSystem.emitFloatingText('+1 HP ❤️ Purr~', this.player.x, this.player.y - 60, '#f43f5e', 24);
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
           if (typeof this.audioSystem.playCatPurr === 'function') {
@@ -1681,9 +2035,18 @@ export class Game {
       // Combo Progression
       this.comboCount++;
       this.metrics.maxCombo = Math.max(this.metrics.maxCombo || 0, this.comboCount);
-      this.comboTimer = COMBO_CONFIG.DECAY_TIME;
+      this.comboTimer = this.comboDecayTime;
       this.comboMultiplier = this._calculateComboMultiplier(this.comboCount);
       this.audioSystem.playCombo(this.comboCount);
+
+      // Combo milestone: a beat of slow motion, and "combo 5 without being hit" is tracked for an achievement
+      if (SLOWMO_COMBOS.includes(this.comboCount)) {
+        this.triggerSlowMo(0.75, 0.4);
+        this.particleSystem.emitFloatingText(`🔥 COMBO x${this.comboCount}!`, this.width / 2, this.height * 0.3, '#fbbf24', 30);
+      }
+      if (this.comboCount === 5 && this.metrics.damageTaken === this._levelStartDamage && !this.isAssisted()) {
+        this.progress.addStat('cleanCombos');
+      }
 
       // Play cheerful meow milestone at combo x3, x6, x9, x12...
       if (this.comboCount >= 3 && this.comboCount % 3 === 0) {
@@ -1696,8 +2059,7 @@ export class Game {
       }
 
       const runeData = RUNES[gesture];
-      const points = (runeData.baseScore || 100) * this.comboMultiplier;
-      this.score += points;
+      const points = this._addScore((runeData.baseScore || 100) * this.comboMultiplier);
 
       this.particleSystem.emitFloatingText(
         `+${points}`,
@@ -1713,6 +2075,7 @@ export class Game {
         // In Google Doodle, drawing heart always restores HP even without enemies having heart
         const healed = this.player.heal(1);
         if (healed) {
+          this.progress.addStat('heals');
           this.audioSystem.playSpell('heart');
           if (typeof this.audioSystem.playCatPurr === 'function') {
             this.audioSystem.playCatPurr(0.9);
@@ -1748,6 +2111,8 @@ export class Game {
    * @param {number} [duration=4.5] 
    */
   triggerFreezeAll(duration = 4.5) {
+    duration += this.upgrades.freezeBonus;
+    this.progress.addStat('freezes');
     this.freezeOverlayTimer = duration;
     let frozenCount = 0;
     for (let i = 0; i < this.enemies.length; i++) {
@@ -1759,11 +2124,9 @@ export class Game {
     }
     this.audioSystem.soundFreeze();
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#38bdf8', 32);
-    this.particleSystem.emitFloatingText('❄️ ĐÓNG BĂNG TOÀN DIỆN! (4.5s)', this.player.x, this.player.y - 75, '#38bdf8', 26);
+    this.particleSystem.emitFloatingText(`❄️ ĐÓNG BĂNG TOÀN DIỆN! (${duration.toFixed(1)}s)`, this.player.x, this.player.y - 75, '#38bdf8', 26);
     this.triggerShake(6, 0.3);
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(20); } catch (e) {}
-    }
+    if (this.hapticSystem) this.hapticSystem.pulse(20);
   }
 
   /**
@@ -1771,6 +2134,8 @@ export class Game {
    * @param {number} [force=320] 
    */
   triggerPushbackAll(force = 320) {
+    force *= this.upgrades.galeMultiplier;
+    this.progress.addStat('gales');
     let pushedCount = 0;
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
@@ -1788,9 +2153,7 @@ export class Game {
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#34d399', 38);
     this.particleSystem.emitFloatingText('💥 CUỒNG PHONG ĐẨY LÙI!', this.player.x, this.player.y - 75, '#34d399', 26);
     this.triggerShake(16, 0.45);
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(20); } catch (e) {}
-    }
+    if (this.hapticSystem) this.hapticSystem.pulse(20);
   }
 
   /**
@@ -1834,11 +2197,413 @@ export class Game {
 
   _fizzleCombo() {
     if (this.comboCount > 0) {
+      if (this.upgrades.consumeShield()) {
+        this.particleSystem.emitFloatingText('🛡️ LÁ CHẮN COMBO!', this.player.x, this.player.y - 50, '#38bdf8', 18);
+        this.uiManager.meta.renderBuffs(this.upgrades);
+        return;
+      }
       this.comboCount = 0;
       this.comboMultiplier = 1;
       this.comboTimer = 0;
       this.particleSystem.emitFloatingText('COMBO VỠ!', this.player.x, this.player.y - 50, '#94a3b8', 18);
     }
+  }
+
+  /** Seconds a combo survives without a hit (base value + upgrades) */
+  get comboDecayTime() {
+    return COMBO_CONFIG.DECAY_TIME + this.upgrades.comboTimeBonus;
+  }
+
+  /**
+   * Add points to the score, applying the run's score upgrades.
+   * @param {number} points base points (already multiplied by the combo)
+   * @returns {number} the points actually awarded (use this for floating text)
+   */
+  _addScore(points) {
+    const awarded = Math.round(points * this.upgrades.scoreMultiplier);
+    this.score += awarded;
+    return awarded;
+  }
+
+  /**
+   * After a missed stroke, show the shape the player was probably aiming for.
+   * Skipped when the setting is off, the stroke was just a stray touch, or it resembled nothing.
+   */
+  _showMissGuide(result, rawStroke) {
+    if (!this.settings.get('missHints')) return;
+    if (!result.candidate || !RUNES[result.candidate]) return;
+    if (result.reason === 'too_short' || result.reason === 'no_input') return;
+    if (result.reason === 'low_score' && result.score < 0.35) return;
+    this.inputHandler.showGuide(result.candidate, RUNES[result.candidate].color, rawStroke);
+  }
+
+  /**
+   * Bookkeeping for a defeated enemy: kill stats, bestiary and achievements.
+   * @param {Enemy} enemy
+   * @param {string} gesture rune that landed the final blow
+   * @param {boolean} isBoss
+   */
+  _onEnemyDefeated(enemy, gesture, isBoss) {
+    this.progress.recordKill(bestiaryId(enemy), gesture);
+    if (isBoss) {
+      this.progress.addStat('bossesDefeated');
+      this.progress.save();
+    }
+    if (!this.isAssisted()) this.progress.maxStat('bestCombo', this.comboCount);
+    this._announceAchievements(evaluateAchievements(this.progress));
+  }
+
+  /**
+   * A story level or endless wave was cleared: update stats and, when due, offer an upgrade.
+   * Fired from WaveSystem.onWaveComplete (once per cleared level/wave).
+   * @param {number} index level (1..5) in Story, wave number in Endless
+   */
+  _onStageCleared(index) {
+    const mode = this.waveSystem.gameMode;
+    this.progress.addStat('levelsCleared');
+    this._stagesClearedThisRun++;
+    const assisted = this.isAssisted();
+    if (!assisted && this.metrics.damageTaken === this._levelStartDamage) {
+      this.progress.addStat('flawlessLevels');
+    }
+    if (!assisted) this.progress.maxStat('bestCombo', this.metrics.maxCombo || 0);
+
+    // Clearing a Story level unlocks the companion tied to it (assisted clears count too: it is progress, not rank)
+    if (mode === 'STORY' && this.progress.markLevelCleared(index)) {
+      for (const def of companionsUnlockedByLevel(index)) {
+        const char = ACADEMY_CHARACTERS.find(c => c.id === def.id);
+        const name = char ? char.name : def.id;
+        this._newCompanions.push(name);
+        this.uiManager.meta.showToast(
+          `<span class="toast-icon">🐾</span><span class="toast-body"><b>Mở khóa đồng hành!</b><br>${name} — ${def.passive}</span>`,
+          'unlock'
+        );
+      }
+    }
+
+    // Oliver's cookie soup: heal one heart every N cleared stages
+    const healEvery = this.upgrades.healEvery;
+    if (healEvery > 0 && this._stagesClearedThisRun % healEvery === 0 && this.player.heal(1)) {
+      this.progress.addStat('heals');
+      this.particleSystem.emitFloatingText('🥣 SÚP BÁNH QUY +1 ❤️', this.player.x, this.player.y - 70, '#fb923c', 22);
+      this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+    }
+    this.progress.save();
+    this._announceAchievements(evaluateAchievements(this.progress));
+
+    if (shouldOfferUpgrade(mode, index)) {
+      this._offerUpgrade();
+    }
+  }
+
+  /**
+   * Hold the intermission and let the player choose 1 of 3 upgrades.
+   * No-op when there is nothing useful left to offer.
+   */
+  _offerUpgrade() {
+    const choices = rollUpgradeChoices(this.upgrades, { hp: this.player.hp, maxHp: this.player.maxHp }, 3);
+    if (choices.length === 0) return;
+
+    this.upgradePending = true;
+    this.waveSystem.intermissionHold = true;
+
+    // Give the "stage complete" banner a moment before covering the screen
+    clearTimeout(this._upgradeTimer);
+    this._upgradeTimer = setTimeout(() => {
+      if (!this.upgradePending) return;
+      this.uiManager.meta.showUpgradePicker(choices, (id) => this.pickUpgrade(id));
+    }, 1500);
+  }
+
+  /**
+   * Apply the chosen upgrade and let the game continue.
+   * @param {string} id
+   */
+  pickUpgrade(id) {
+    if (!this.upgradePending) return false;
+    const def = UPGRADES[id];
+    if (!def || !this.upgrades.add(id)) return false;
+
+    if (def.apply) def.apply(this.player);
+    this.player.invulnerableBonus = this.upgrades.invulnerableBonus;
+
+    this.upgradePending = false;
+    this.waveSystem.intermissionHold = false;
+    // Short breather, then the next level/wave starts
+    this.waveSystem.intermissionTimer = Math.min(this.waveSystem.intermissionTimer, 0.8);
+
+    this.progress.addStat('upgradesTaken');
+    this.progress.save();
+    this._announceAchievements(evaluateAchievements(this.progress));
+
+    this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+    this.uiManager.meta.renderBuffs(this.upgrades);
+    this.particleSystem.emitFloatingText(`${def.icon} ${def.name}`, this.width / 2, this.height * 0.4, '#fbbf24', 26);
+    if (this.audioSystem) this.audioSystem.playSpell('heart');
+    if (this.hapticSystem) this.hapticSystem.pulse(18);
+    return true;
+  }
+
+  /**
+   * Fanfare, plus a toast per newly earned achievement.
+   * @param {Array} list
+   * @param {boolean} [toasts=true] false when the screen already lists them (end of run)
+   */
+  _announceAchievements(list, toasts = true) {
+    if (!list || list.length === 0) return;
+    if (toasts) {
+      for (const def of list) {
+        if (this.uiManager && this.uiManager.meta) this.uiManager.meta.showAchievementToast(def);
+      }
+    }
+    if (this.audioSystem && typeof this.audioSystem.playWaveComplete === 'function') {
+      this.audioSystem.playWaveComplete();
+    }
+  }
+
+  // =========================================================================
+  // RUN STATISTICS (feed the end-of-run recap)
+  // =========================================================================
+
+  /** A recognised stroke: count it for the favourite-rune and accuracy facts */
+  _trackCast(gesture, result) {
+    const m = this.metrics;
+    if (!m.runeUse) m.runeUse = {};
+    m.runeUse[gesture] = (m.runeUse[gesture] || 0) + 1;
+    // Strokes from the on-screen pad are not drawn, so their "accuracy" says nothing
+    if (result.synthetic || !(result.score > 0)) return;
+    m.accSum = (m.accSum || 0) + result.score;
+    m.accCount = (m.accCount || 0) + 1;
+    if (result.score > (m.accBest || 0)) {
+      m.accBest = result.score;
+      m.accBestRune = gesture;
+    }
+  }
+
+  /** A stroke that matched nothing: remember which rune it was closest to */
+  _trackMiss(result) {
+    const m = this.metrics;
+    if (!result || !result.candidate || !RUNES[result.candidate] || !(result.score >= 0.35)) return;
+    if (!m.runeMiss) m.runeMiss = {};
+    m.runeMiss[result.candidate] = (m.runeMiss[result.candidate] || 0) + 1;
+  }
+
+  // =========================================================================
+  // WOW MOMENTS, PRESSURE CUES & SMART RESUME
+  // =========================================================================
+
+  /**
+   * Brief slow motion for a big moment (boss down, combo milestone).
+   * @param {number} [duration=0.9] real seconds
+   * @param {number} [scale=0.3] game speed at the slowest point (1 = normal)
+   * @param {boolean} [force=false] ignore the cooldown (used for bosses)
+   */
+  triggerSlowMo(duration = 0.9, scale = 0.3, force = false) {
+    if (!this.slowMo) return;
+    if (!force && this._slowMoCooldown > 0) return;
+    this.slowMo.timer = duration;
+    this.slowMo.total = duration;
+    this.slowMo.scale = scale;
+    // Rare moments only: never chain slow motion back to back
+    this._slowMoCooldown = duration + 5;
+  }
+
+  /**
+   * Per-frame work that is not simulation: advances the slow-motion clock, the danger cues and the music mood.
+   * Returns the (possibly slowed) time step for the simulation.
+   * @param {number} dt real seconds
+   * @returns {number} game seconds
+   */
+  advanceEffects(dt) {
+    let scaled = dt;
+    const sm = this.slowMo;
+    if (sm.timer > 0) {
+      sm.timer = Math.max(0, sm.timer - dt);
+      const progress = 1 - sm.timer / sm.total;
+      // Hold the slow speed, then ease back to normal over the last 35%
+      const ease = progress < 0.65 ? 0 : (progress - 0.65) / 0.35;
+      scaled = dt * (sm.scale + (1 - sm.scale) * ease);
+    }
+    if (this._slowMoCooldown > 0) this._slowMoCooldown -= dt;
+
+    this.danger.update(dt, this);
+    this._updateAudioMood();
+    return scaled;
+  }
+
+  /** Music slows a little in slow motion and quickens while Momo is on her last heart */
+  _updateAudioMood() {
+    let target = 1;
+    if (this.slowMo.timer > 0) target = 0.86;
+    else if (this.danger.critical) target = 1.14;
+    if (target !== this._moodRate) {
+      this._moodRate = target;
+      if (this.audioSystem.setBGMRate) this.audioSystem.setBGMRate(target);
+    }
+  }
+
+  /** After unpausing: freeze the world for 3-2-1 so the player can get their hand back on the screen */
+  beginResumeCountdown() {
+    this.resumeCountdown = COUNTDOWN_STEP * COUNTDOWN_STEPS;
+    this.inputHandler.setEnabled(false);
+    this.uiManager.meta.setCountdown(COUNTDOWN_STEPS);
+  }
+
+  cancelResumeCountdown() {
+    if (this.resumeCountdown > 0) this.resumeCountdown = 0;
+    if (this.uiManager && this.uiManager.meta) this.uiManager.meta.setCountdown(0);
+  }
+
+  /**
+   * @param {number} dt
+   * @returns {boolean} true while the countdown is running (the simulation should be skipped)
+   */
+  tickResumeCountdown(dt) {
+    if (this.resumeCountdown <= 0) return false;
+    this.resumeCountdown -= dt;
+    if (this.resumeCountdown <= 0) {
+      this.resumeCountdown = 0;
+      this.uiManager.meta.setCountdown(0);
+      this.inputHandler.setEnabled(true);
+      if (this.audioSystem && typeof this.audioSystem.resumeBGM === 'function') this.audioSystem.resumeBGM();
+      return false;
+    }
+    this.uiManager.meta.setCountdown(Math.ceil(this.resumeCountdown / COUNTDOWN_STEP));
+    return true;
+  }
+
+  // =========================================================================
+  // ENDLESS AUTOSAVE, DAILY CHALLENGE, PRACTICE & COMPANIONS
+  // =========================================================================
+
+  /** Snapshot an Endless run at the start of each wave so it can be continued later */
+  _saveEndlessProgress(wave) {
+    if (this.waveSystem.gameMode !== 'ENDLESS' || this.challenge || wave < MIN_SAVE_WAVE) return;
+    this.runSave.save(buildEndlessSnapshot(this));
+  }
+
+  /** Continue the saved Endless run from the start of the wave it was saved at */
+  resumeEndless() {
+    const snap = this.runSave.load();
+    if (!snap) return false;
+    this.challenge = null;
+    this._pendingRestore = snap;
+    this.waveSystem.setMode('ENDLESS');
+    this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+    return true;
+  }
+
+  /** Called at the end of resetGameData when a saved run is being continued */
+  _restoreEndless(snap) {
+    if (snap.difficulty !== this.difficulty) this.setDifficulty(snap.difficulty);
+    this.score = snap.score;
+    this.displayedScore = snap.score;
+    this.runAssisted = this.runAssisted || snap.assisted;
+
+    this.upgrades.stacks = { ...snap.upgrades };
+    this.upgrades.refillShield();
+    this.player.maxHp = snap.maxHp;
+    this.player.hp = snap.hp;
+    this.player.invulnerableBonus = this.upgrades.invulnerableBonus;
+
+    const m = this.metrics;
+    m.spellsCast = snap.metrics.spellsCast;
+    m.spellsHit = snap.metrics.spellsHit;
+    m.damageTaken = snap.metrics.damageTaken;
+    m.enemiesDefeated = snap.metrics.enemiesDefeated;
+    m.maxCombo = snap.metrics.maxCombo;
+    m.startTime = Date.now() - snap.metrics.elapsedMs;
+
+    this.waveSystem.initLevel(snap.wave);
+    this.uiManager.updateScore(this.score);
+    this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+    this.uiManager.meta.renderBuffs(this.upgrades);
+    this.uiManager.meta.applyAssistBadge();
+    this.particleSystem.emitFloatingText(`▶ TIẾP TỤC ĐỢT ${snap.wave}`, this.width / 2, this.height * 0.3, '#fbbf24', 28);
+  }
+
+  /**
+   * Start today's Daily Challenge (or an older date from a friend's link).
+   * @param {string} [key] 'YYYY-MM-DD', defaults to today (UTC)
+   */
+  startDaily(key = dateKey()) {
+    this.challenge = getDailyChallenge(key);
+    this.waveSystem.setMode('ENDLESS');
+    this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+  }
+
+  /** Link that challenges a friend to beat today's best score */
+  getDailyShareUrl() {
+    const key = dateKey();
+    const best = this.progress.getDaily(key);
+    let base = 'https://arcane-paws.game/';
+    try {
+      if (typeof window !== 'undefined' && window.location && window.location.href) base = window.location.href;
+    } catch (e) { /* keep the default */ }
+    return buildDailyChallengeUrl(base, key, best ? best.score : 0, 'Momo');
+  }
+
+  /** Practice Mode: draw freely with accuracy feedback and no enemies */
+  startPractice() {
+    this.stateMachine.changeState(GAME_STATES.PRACTICE);
+  }
+
+  /** Clear the arena and park Momo low on the screen so the template has room above her */
+  preparePracticeScene() {
+    this.enemyPool.releaseAll(this.enemies);
+    this.projectilePool.releaseAll(this.projectiles);
+    this.particleSystem.clear();
+    this.inputHandler.clear();
+    this.audioSystem.stopBGM();
+    this.player.reset();
+    // Held sideways the info panel covers the bottom, so Momo steps to the left instead
+    const compact = this.height < 520 && this.width > this.height;
+    this.player.x = compact ? this.width * 0.1 : this.width / 2;
+    this.player.y = compact ? this.height * 0.62 : this.height * 0.76;
+  }
+
+  /** Leave a run or Practice Mode for the main menu */
+  quitToMenu() {
+    if (this.audioSystem && typeof this.audioSystem.stopBGM === 'function') this.audioSystem.stopBGM();
+    this.stateMachine.changeState(GAME_STATES.MENU);
+  }
+
+  /** Make the saved companion's passive active */
+  _equipCompanion() {
+    let id = this.progress.getCompanion();
+    if (!isCompanionUnlocked(id, this.progress)) id = DEFAULT_COMPANION;
+    this.upgrades.setCompanionEffects(getCompanion(id).effects);
+    if (this.player) this.player.invulnerableBonus = this.upgrades.invulnerableBonus;
+  }
+
+  /**
+   * Choose the companion for upcoming runs.
+   * @param {string} id
+   * @returns {boolean} false if it is locked
+   */
+  setCompanion(id) {
+    if (!isCompanionUnlocked(id, this.progress)) return false;
+    this.progress.setCompanion(id);
+    this.progress.save();
+    this._equipCompanion();
+    this.uiManager.meta.renderBuffs(this.upgrades);
+    return true;
+  }
+
+  /**
+   * Alternative input: cast a rune without drawing it (on-screen pad or keys 1-8).
+   * Such a run is not ranked.
+   * @param {string} gesture rune id
+   * @returns {boolean} whether the cast was accepted
+   */
+  castRune(gesture) {
+    if (!RUNES[gesture]) return false;
+    if (this.stateMachine.getCurrentStateName() !== GAME_STATES.PLAYING) return false;
+    if (this.resumeCountdown > 0 || this.uiManager.meta.isUpgradeOpen()) return false;
+    this.runAssisted = true;
+    this.uiManager.meta.applyAssistBadge();
+    this.onGestureRecognized({ gesture, score: 1, candidate: gesture, reason: null, synthetic: true }, []);
+    return true;
   }
 
   _calculateComboMultiplier(count) {
@@ -1857,6 +2622,7 @@ export class Game {
    */
   onCanvasTap(pt) {
     if (!this.player) return false;
+    if (this.stateMachine && this.stateMachine.getCurrentStateName() === GAME_STATES.PRACTICE) return false;
 
     // Hit-test against Momo the cat (radius ~85px around player position)
     const distToMomo = Math.hypot(pt.x - this.player.x, pt.y - this.player.y);

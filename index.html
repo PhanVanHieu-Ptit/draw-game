@@ -179,6 +179,10 @@
         </div>
       </div>
 
+      <!-- Run upgrades + equipped companion passive -->
+      <div id="buff-row" class="buff-row" aria-label="Nâng cấp đang có"></div>
+      <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
+
       <!-- Stage Companion & Mentor Banner -->
       <div id="hud-companion-badge" class="hud-companion-badge" title="Đồng minh hỗ trợ màn này • Bấm để nghe lời thoại">
         <div class="companion-avatar-wrap" id="companion-avatar-wrap"></div>
@@ -206,9 +210,12 @@
         <button class="dialogue-close-btn" id="diag-close" title="Đóng nhanh">✕</button>
       </div>
 
-      <!-- Bottom Gesture Feedback Pill -->
+      <!-- Bottom Gesture Feedback Pill + miss hint -->
       <div class="hud-bottom-bar">
         <div class="gesture-pill" id="gesture-feedback">ARCANE SLASH</div>
+        <div class="gesture-hint" id="gesture-hint"></div>
+        <!-- Alternative input for players who cannot draw: tap a rune (or press keys 1-8) -->
+        <div class="rune-pad hidden" id="rune-pad" aria-label="Bảng ấn ký thay thế"></div>
       </div>
     </div>
 
@@ -320,6 +327,38 @@
             <span>CHẾ ĐỘ VÔ TẬN</span>
             <span>⚡</span>
           </button>
+          <button class="btn-gold hidden" id="btn-resume-endless">
+            <span id="resume-endless-label">▶ TIẾP TỤC VÔ TẬN</span>
+          </button>
+        </div>
+
+        <!-- Meta features -->
+        <div class="menu-meta-grid">
+          <button class="meta-tile" id="btn-open-daily">
+            <span class="meta-tile-icon">📅</span>
+            <span class="meta-tile-label">Thử Thách Ngày</span>
+            <span class="meta-tile-badge" id="daily-menu-badge">MỚI</span>
+          </button>
+          <button class="meta-tile" id="btn-open-practice">
+            <span class="meta-tile-icon">🎯</span>
+            <span class="meta-tile-label">Luyện Vẽ</span>
+          </button>
+          <button class="meta-tile" id="btn-open-companions">
+            <span class="meta-tile-icon">🐾</span>
+            <span class="meta-tile-label">Đồng Hành</span>
+          </button>
+          <button class="meta-tile" id="btn-open-records">
+            <span class="meta-tile-icon">🏆</span>
+            <span class="meta-tile-label">Kỷ Lục</span>
+          </button>
+          <button class="meta-tile" id="btn-open-achievements">
+            <span class="meta-tile-icon">🏅</span>
+            <span class="meta-tile-label">Thành Tựu</span>
+          </button>
+          <button class="meta-tile" id="btn-open-settings">
+            <span class="meta-tile-icon">⚙️</span>
+            <span class="meta-tile-label">Cài Đặt</span>
+          </button>
         </div>
 
         <div class="menu-action-buttons">
@@ -335,8 +374,9 @@
         </div>
 
         <div class="high-score-tag">
-          <span>🏆 Kỷ lục Điểm:</span>
+          <span>🏆 Kỷ lục:</span>
           <span id="menu-high-score">0</span>
+          <span class="high-score-sub" id="menu-high-score-sub"></span>
         </div>
       </div>
     </div>
@@ -433,6 +473,8 @@
           </div>
         </div>
 
+        <div class="run-summary" id="vic-summary"></div>
+
         <div class="button-group">
           <button class="btn-primary" id="btn-vic-replay-story">
             <span>CHƠI LẠI CỐT TRUYỆN</span>
@@ -464,6 +506,8 @@
           <button class="codex-tab-btn active" data-filter="all">Tất Cả (10)</button>
           <button class="codex-tab-btn" data-filter="ally">🐾 Hội Bạn Mèo (5)</button>
           <button class="codex-tab-btn" data-filter="spirit">👻 U Linh & Chúa Tể (5)</button>
+          <button class="codex-tab-btn" data-filter="bestiary" id="codex-tab-bestiary">📚 Sưu Tầm U Linh</button>
+          <button class="codex-tab-btn" data-filter="achievements" id="codex-tab-achievements">🏅 Thành Tựu</button>
         </div>
 
         <!-- Codex Cards Container Grid -->
@@ -497,6 +541,11 @@
           <button class="btn-primary" id="btn-resume">TIẾP TỤC</button>
           <button class="btn-secondary" id="btn-restart">CHƠI LẠI</button>
         </div>
+        <div class="button-group pause-extra-group">
+          <button class="btn-subtle" id="btn-pause-settings">⚙️ Cài Đặt</button>
+          <button class="btn-subtle" id="btn-pause-menu">🏠 Về Menu</button>
+        </div>
+        <p class="pause-save-note hidden" id="pause-save-note">💾 Vô Tận được lưu tự động — vào Menu để tiếp tục sau.</p>
       </div>
     </div>
 
@@ -526,6 +575,8 @@
           </div>
         </div>
 
+        <div class="run-summary" id="go-summary"></div>
+
         <div class="button-group">
           <button class="btn-primary" id="btn-play-again">
             <span>CHƠI LẠI</span>
@@ -537,6 +588,179 @@
         </div>
       </div>
     </div>
+
+    <!-- UI Overlay: SETTINGS -->
+    <div id="settings-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card settings-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">⚙️ TÙY CHỈNH</span>
+            <h2 class="game-title meta-title">CÀI ĐẶT</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-settings">ĐÓNG ✕</button>
+        </div>
+
+        <div class="settings-body">
+          <section class="settings-group">
+            <h3 class="settings-heading">🔊 Âm thanh</h3>
+            <label class="setting-row"><span class="setting-label">Âm lượng tổng</span>
+              <input type="range" min="0" max="100" step="5" data-setting="masterVolume"><output class="setting-out" data-out="masterVolume"></output></label>
+            <label class="setting-row"><span class="setting-label">🎵 Nhạc nền</span>
+              <input type="range" min="0" max="100" step="5" data-setting="musicVolume"><output class="setting-out" data-out="musicVolume"></output></label>
+            <label class="setting-row"><span class="setting-label">✨ Hiệu ứng (SFX)</span>
+              <input type="range" min="0" max="100" step="5" data-setting="sfxVolume"><output class="setting-out" data-out="sfxVolume"></output></label>
+            <label class="setting-row"><span class="setting-label">🐱 Tiếng mèo</span>
+              <input type="range" min="0" max="100" step="5" data-setting="catVolume"><output class="setting-out" data-out="catVolume"></output></label>
+            <label class="setting-row"><span class="setting-label">Tắt toàn bộ âm thanh</span>
+              <input type="checkbox" class="switch" data-setting="muted"></label>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-heading">✍️ Nhận diện cử chỉ</h3>
+            <div class="setting-row"><span class="setting-label">Độ nhạy</span>
+              <div class="seg" data-setting="sensitivity">
+                <button type="button" data-value="easy">Dễ</button>
+                <button type="button" data-value="normal">Chuẩn</button>
+                <button type="button" data-value="strict">Chặt</button>
+              </div></div>
+            <p class="setting-note" id="sensitivity-note"></p>
+            <label class="setting-row"><span class="setting-label">Gợi ý khi vẽ sai (hiện nét mẫu)</span>
+              <input type="checkbox" class="switch" data-setting="missHints"></label>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-heading">📳 Cảm giác</h3>
+            <label class="setting-row"><span class="setting-label">Rung (haptic)</span>
+              <input type="checkbox" class="switch" data-setting="haptics"></label>
+            <label class="setting-row"><span class="setting-label">Rung màn hình (screen shake)</span>
+              <input type="checkbox" class="switch" data-setting="screenShake"></label>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-heading">🖥️ Đồ họa</h3>
+            <div class="setting-row"><span class="setting-label">Chất lượng</span>
+              <div class="seg" data-setting="quality">
+                <button type="button" data-value="auto">Tự động</button>
+                <button type="button" data-value="high">Cao</button>
+                <button type="button" data-value="medium">Vừa</button>
+                <button type="button" data-value="low">Thấp</button>
+              </div></div>
+            <p class="setting-note" id="quality-note"></p>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-heading">♿ Trợ năng</h3>
+            <label class="setting-row"><span class="setting-label">Chế độ mù màu (thêm hoa văn cho ấn ký)</span>
+              <input type="checkbox" class="switch" data-setting="colorBlind"></label>
+            <div class="setting-row"><span class="setting-label">Hỗ trợ giảm tốc u linh</span>
+              <div class="seg" data-setting="assist">
+                <button type="button" data-value="0">Tắt</button>
+                <button type="button" data-value="20">-20%</button>
+                <button type="button" data-value="30">-30%</button>
+              </div></div>
+            <label class="setting-row"><span class="setting-label">Nút ấn ký thay thế (phím 1–8 hoặc chạm nút)</span>
+              <input type="checkbox" class="switch" data-setting="altInput"></label>
+            <p class="setting-note">Giảm tốc u linh (hoặc dùng nút thay thế trong lượt chơi) giúp mọi người cùng chơi được, nhưng lượt đó <strong>không tính vào bảng điểm</strong>.</p>
+          </section>
+        </div>
+
+        <button class="btn-subtle" id="btn-reset-settings">↺ Khôi phục mặc định</button>
+      </div>
+    </div>
+
+    <!-- UI Overlay: RECORDS (per mode x difficulty) -->
+    <div id="records-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card records-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">🏆 BẢNG VÀNG</span>
+            <h2 class="game-title meta-title">KỶ LỤC</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-records">ĐÓNG ✕</button>
+        </div>
+        <div class="records-body" id="records-body"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: DAILY CHALLENGE -->
+    <div id="daily-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card daily-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">📅 MỖI NGÀY MỘT THỬ THÁCH</span>
+            <h2 class="game-title meta-title">THỬ THÁCH HẰNG NGÀY</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-daily">ĐÓNG ✕</button>
+        </div>
+        <div class="daily-friend hidden" id="daily-friend"></div>
+        <div class="daily-modifier" id="daily-modifier"></div>
+        <div class="daily-stats" id="daily-stats"></div>
+        <div class="button-group daily-actions">
+          <button class="btn-primary" id="btn-start-daily"><span>BẮT ĐẦU</span><span>⚔️</span></button>
+          <button class="btn-secondary" id="btn-share-daily">🔗 Sao chép link thách đấu</button>
+        </div>
+        <div class="daily-history" id="daily-history"></div>
+        <p class="setting-note daily-note">Mọi người trên thế giới gặp cùng một dãy u linh trong ngày (tính theo giờ UTC). Độ khó cố định: Tiêu Chuẩn.</p>
+      </div>
+    </div>
+
+    <!-- UI Overlay: COMPANIONS -->
+    <div id="companion-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card companion-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">🐾 HỘI BẠN MÈO</span>
+            <h2 class="game-title meta-title">ĐỒNG HÀNH</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-companions">ĐÓNG ✕</button>
+        </div>
+        <p class="game-subtitle companion-sub">Mỗi bạn đồng hành có một kỹ năng bị động. Qua màn Cốt Truyện để mở khóa thêm bạn mới!</p>
+        <div class="companion-grid" id="companion-grid"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: UPGRADE PICKER (between stages) -->
+    <div id="upgrade-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card upgrade-card">
+        <span class="meta-badge">🎁 PHẦN THƯỞNG</span>
+        <h2 class="game-title meta-title">CHỌN MỘT NÂNG CẤP</h2>
+        <p class="game-subtitle" id="upgrade-subtitle">Chỉ có hiệu lực trong lượt chơi này.</p>
+        <div class="upgrade-choices" id="upgrade-choices"></div>
+        <div class="upgrade-owned" id="upgrade-owned"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: PRACTICE MODE (HUD over the canvas) -->
+    <div id="practice-screen" class="ui-screen practice-hud">
+      <div class="practice-top">
+        <button class="btn-text-skip practice-exit" id="btn-practice-exit">← VỀ MENU</button>
+        <div class="practice-title">🎯 PHÒNG LUYỆN VẼ</div>
+        <button class="icon-btn" id="btn-practice-template" title="Bật/tắt nét mẫu">👁️</button>
+      </div>
+      <div class="practice-runes" id="practice-runes"></div>
+      <div class="practice-bottom">
+        <div class="practice-tip" id="practice-tip"></div>
+        <div class="practice-meter" aria-label="Độ chính xác">
+          <div class="practice-meter-fill" id="practice-meter-fill"></div>
+          <div class="practice-meter-mark" id="practice-meter-mark"></div>
+          <span class="practice-meter-pct" id="practice-meter-pct">0%</span>
+        </div>
+        <div class="practice-verdict" id="practice-verdict">Vẽ ấn ký bất kỳ lúc nào — không có u linh nào tấn công.</div>
+        <div class="practice-progress">
+          <span id="practice-mastery"></span>
+          <span class="practice-history" id="practice-history"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown shown when resuming from pause -->
+    <div id="countdown-overlay" class="countdown-overlay" aria-live="assertive">
+      <span class="countdown-num" id="countdown-num">3</span>
+      <span class="countdown-hint">Chuẩn bị vung đũa phép…</span>
+    </div>
+
+    <!-- Achievement / info toasts -->
+    <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
     <!-- UI Overlay: WIZARD CAT LICENSE / SHARE CARD MODAL -->
     <div id="wizard-card-modal" class="ui-screen modal-overlay">

@@ -1,6 +1,6 @@
 /**
  * @file StateMachine.js
- * @description Finite State Machine managing MENU, STORY, PLAYING, PAUSE, GAMEOVER, and VICTORY states.
+ * @description Finite State Machine managing MENU, STORY, PLAYING, PAUSE, GAMEOVER, VICTORY and PRACTICE states.
  */
 
 import { GAME_STATES } from './Constants.js';
@@ -24,6 +24,8 @@ export class MenuState extends State {
 
   enter() {
     this.game.inputHandler.setEnabled(false);
+    // Back at the menu: the next run is an ordinary one unless a daily challenge is started again
+    this.game.challenge = null;
     this.game.uiManager.showScreen(GAME_STATES.MENU);
   }
 
@@ -82,15 +84,18 @@ export class PlayingState extends State {
       if (payload.startLevel) {
         this.game.waveSystem.initLevel(payload.startLevel);
       }
-    }
-
-    if (this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
-      this.game.audioSystem.resumeBGM();
+      if (this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
+        this.game.audioSystem.resumeBGM();
+      }
+    } else {
+      // Coming back from pause: give the player a 3-2-1 to get their hand ready. The music resumes with it.
+      this.game.beginResumeCountdown();
     }
   }
 
   exit(nextState) {
     this.game.inputHandler.setEnabled(false);
+    this.game.cancelResumeCountdown();
     if (nextState !== GAME_STATES.PAUSE) {
       this.game.uiManager.hideScreen(GAME_STATES.PLAYING);
       if (this.game.audioSystem && typeof this.game.audioSystem.stopBGM === 'function') {
@@ -104,7 +109,10 @@ export class PlayingState extends State {
   }
 
   update(dt) {
-    this.game.updatePlaying(dt);
+    // 3-2-1 after resuming: the world is frozen
+    if (this.game.tickResumeCountdown(dt)) return;
+    // Slow-motion moments and per-frame cues (heartbeat, danger arrows)
+    this.game.updatePlaying(this.game.advanceEffects(dt));
   }
 
   render(ctx) {
@@ -127,9 +135,7 @@ export class PauseState extends State {
 
   exit(nextState) {
     this.game.uiManager.hideScreen(GAME_STATES.PAUSE);
-    if (nextState === GAME_STATES.PLAYING && this.game.audioSystem && typeof this.game.audioSystem.resumeBGM === 'function') {
-      this.game.audioSystem.resumeBGM();
-    }
+    // The music comes back when the 3-2-1 countdown ends (see Game.beginResumeCountdown)
   }
 
   update(dt) {
@@ -158,34 +164,28 @@ export class GameOverState extends State {
     }
     this.game.audioSystem.playGameOver();
 
-    // Check & save High Score
-    const finalScore = this.game.score;
-    const isNewHighScore = this.game.saveHighScore(finalScore);
+    // Save the run: per mode x difficulty records, lifetime stats, achievements
+    const summary = this.game.finishRun(false);
 
     // Haptic feedback for game over
     if (this.game.hapticSystem) {
       this.game.hapticSystem.gameover();
     }
 
-    const elapsed = this.game.metrics.startTime
-      ? Math.round((Date.now() - this.game.metrics.startTime) / 1000)
-      : 60;
-
     this.game.uiManager.showScreen(GAME_STATES.GAMEOVER, {
-      score: finalScore,
-      highScore: this.game.highScore,
-      isNewHighScore,
+      score: summary.score,
+      highScore: summary.highScore,
+      isNewHighScore: summary.isNewHighScore,
       wave: this.game.waveSystem.currentWave,
       spellsCast: this.game.metrics.spellsCast,
       spellsHit: this.game.metrics.spellsHit,
       damageTaken: this.game.metrics.damageTaken,
       enemiesDefeated: this.game.metrics.enemiesDefeated,
       maxCombo: this.game.metrics.maxCombo || this.game.comboCount || 1,
-      elapsedSeconds: elapsed,
-      difficulty: this.game.difficulty || 'NORMAL',
-      accuracy: this.game.metrics.spellsCast > 0
-        ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
-        : 100
+      elapsedSeconds: summary.seconds || 60,
+      difficulty: summary.difficulty,
+      accuracy: summary.accuracy,
+      summary
     });
   }
 
@@ -232,27 +232,21 @@ export class VictoryState extends State {
       this.game.hapticSystem.victory();
     }
 
-    const finalScore = this.game.score;
-    const isNewHighScore = this.game.saveHighScore(finalScore);
-
-    const elapsed = this.game.metrics.startTime
-      ? Math.round((Date.now() - this.game.metrics.startTime) / 1000)
-      : 180;
+    const summary = this.game.finishRun(true);
 
     this.game.uiManager.showScreen(GAME_STATES.VICTORY, {
-      score: finalScore,
-      highScore: this.game.highScore,
-      isNewHighScore,
+      score: summary.score,
+      highScore: summary.highScore,
+      isNewHighScore: summary.isNewHighScore,
       spellsCast: this.game.metrics.spellsCast,
       spellsHit: this.game.metrics.spellsHit,
       damageTaken: this.game.metrics.damageTaken,
       enemiesDefeated: this.game.metrics.enemiesDefeated,
       maxCombo: this.game.metrics.maxCombo || this.game.comboCount || 1,
-      elapsedSeconds: elapsed,
-      difficulty: this.game.difficulty || 'NORMAL',
-      accuracy: this.game.metrics.spellsCast > 0
-        ? Math.round((this.game.metrics.spellsHit / this.game.metrics.spellsCast) * 100)
-        : 100
+      elapsedSeconds: summary.seconds || 180,
+      difficulty: summary.difficulty,
+      accuracy: summary.accuracy,
+      summary
     });
   }
 
@@ -276,6 +270,46 @@ export class VictoryState extends State {
   }
 }
 
+export class PracticeState extends State {
+  constructor(game) {
+    super(GAME_STATES.PRACTICE, game);
+  }
+
+  enter() {
+    const g = this.game;
+    g.preparePracticeScene();
+    g.inputHandler.setEnabled(true);
+    g.uiManager.showScreen(GAME_STATES.PRACTICE);
+    g.practice.start();
+  }
+
+  exit() {
+    const g = this.game;
+    g.inputHandler.setEnabled(false);
+    g.inputHandler.clear();
+    g.practice.stop();
+    g.uiManager.hideScreen(GAME_STATES.PRACTICE);
+  }
+
+  update(dt) {
+    const g = this.game;
+    g.player.setDrawing(g.inputHandler.isDrawing, g.inputHandler.lastPoint);
+    g.player.update(dt, []);
+    g.particleSystem.update(dt);
+    g.inputHandler.update(dt);
+    g.practice.update(dt);
+  }
+
+  render(ctx) {
+    const g = this.game;
+    g.player.render(ctx);
+    g.particleSystem.render(ctx);
+    // No darkness overlay here: the template and the player's stroke must stay easy to see
+    g.practice.render(ctx);
+    g.inputHandler.render(ctx);
+  }
+}
+
 export class StateMachine {
   constructor(game) {
     this.game = game;
@@ -289,6 +323,7 @@ export class StateMachine {
     this.registerState(new PauseState(game));
     this.registerState(new GameOverState(game));
     this.registerState(new VictoryState(game));
+    this.registerState(new PracticeState(game));
   }
 
   registerState(stateInstance) {

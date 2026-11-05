@@ -183,6 +183,7 @@ export class ParticleSystem {
    * @param {number} duration Duration in seconds
    */
   triggerShake(intensity = 10, duration = 0.3) {
+    if (this.shakeEnabled === false) return;
     if (this.screenShake.timer > 0) {
       this.screenShake.intensity = Math.max(this.screenShake.intensity, intensity);
       this.screenShake.duration = Math.max(this.screenShake.duration, duration);
@@ -191,6 +192,17 @@ export class ParticleSystem {
       this.screenShake.intensity = intensity;
       this.screenShake.duration = duration;
       this.screenShake.timer = duration;
+    }
+  }
+
+  /**
+   * Enable/disable screen shake (accessibility / comfort setting). Disabling also cancels a running shake.
+   * @param {boolean} enabled
+   */
+  setShakeEnabled(enabled) {
+    this.shakeEnabled = !!enabled;
+    if (!this.shakeEnabled && this.screenShake) {
+      this.screenShake.timer = 0;
     }
   }
 

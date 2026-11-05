@@ -19,6 +19,7 @@ export class Player extends Entity {
 
     this.maxHp = PLAYER_CONFIG.MAX_HP;
     this.hp = this.maxHp;
+    this.invulnerableBonus = 0; // extra i-frame seconds granted by run upgrades
     this.radius = PLAYER_CONFIG.HITBOX_RADIUS;
     this.dangerRadius = PLAYER_CONFIG.DANGER_RADIUS;
 
@@ -165,7 +166,7 @@ export class Player extends Entity {
     if (this.isInvulnerable || this.hp <= 0) return false;
 
     this.hp = Math.max(0, this.hp - amount);
-    this.invulnerableTimer = PLAYER_CONFIG.INVULNERABLE_DURATION;
+    this.invulnerableTimer = PLAYER_CONFIG.INVULNERABLE_DURATION + (this.invulnerableBonus || 0);
     this.isInvulnerable = true;
     this.hurtTimer = 0.35;
 

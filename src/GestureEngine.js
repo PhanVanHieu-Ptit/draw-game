@@ -12,6 +12,8 @@
  * - 'heart'      : Trái tim đơn giản hóa (❤️)
  */
 
+import { RUNES } from './core/Constants.js';
+
 /**
  * Tính khoảng cách Euclidean giữa 2 điểm
  * @param {{x: number, y: number}} p1 
@@ -409,7 +411,7 @@ export class GestureEngine {
   /**
    * Kiểm định hình học (Heuristic Geometric Gate)
    * Ngăn chặn các nét vẽ chéo hoặc nguệch ngoạc vô tình khớp điểm cao với các nét cơ bản.
-   * 
+   *
    * @private
    * @param {string} gesture Tên cử chỉ ứng viên
    * @param {{width: number, height: number}} rawBox Hộp bounding box nét gốc
@@ -417,29 +419,42 @@ export class GestureEngine {
    * @returns {boolean}
    */
   _validateGeometry(gesture, rawBox, normalizedPoints) {
+    return this._checkGeometry(gesture, rawBox, normalizedPoints) === null;
+  }
+
+  /**
+   * Như _validateGeometry nhưng trả về MÃ LÝ DO khi nét vẽ không đạt (null nếu hợp lệ).
+   * Mã lý do được dùng để gợi ý người chơi cách sửa nét vẽ (xem getMissHint).
+   *
+   * @private
+   * @param {string} gesture
+   * @param {{width: number, height: number}} rawBox
+   * @param {Array<{x: number, y: number}>} normalizedPoints
+   * @returns {string|null} 'tilted' | 'short' | 'off_center' | 'shallow' | 'no_zigzag' | 'bad_ratio' | 'open' | null
+   */
+  _checkGeometry(gesture, rawBox, normalizedPoints) {
     const { width, height } = rawBox;
     const aspect = width / Math.max(1e-5, height);
 
     switch (gesture) {
       case 'horizontal': {
         // Nét ngang bắt buộc width phải vượt trội so với height
-        if (aspect < 1.7) return false;
+        if (aspect < 1.7) return 'tilted';
         // Điểm đầu và điểm cuối phải quét ngang rõ rệt
         const dx = Math.abs(normalizedPoints[31].x - normalizedPoints[0].x);
-        return dx >= 65;
+        return dx >= 65 ? null : 'short';
       }
 
       case 'vertical': {
         // Nét dọc bắt buộc height phải vượt trội so với width
-        if (aspect > 1 / 1.7) return false;
+        if (aspect > 1 / 1.7) return 'tilted';
         // Điểm đầu và điểm cuối phải quét dọc rõ rệt
         const dy = Math.abs(normalizedPoints[31].y - normalizedPoints[0].y);
-        return dy >= 65;
+        return dy >= 65 ? null : 'short';
       }
 
       case 'v_shape': {
         // Chữ V: Đi xuống rồi đi lên
-        // Điểm đầu và cuối nằm ở nửa trên (y thấp)
         const startY = normalizedPoints[0].y;
         const endY = normalizedPoints[31].y;
         // Đáy chữ V (cực đại y) phải nằm ở sâu bên dưới
@@ -452,13 +467,12 @@ export class GestureEngine {
           }
         }
         // Đáy phải ở khoảng giữa [20% .. 80%] và sâu hơn điểm đầu/cuối ít nhất 35px
-        const inMiddle = maxIndex >= 6 && maxIndex <= 26;
-        return inMiddle && (maxY - startY >= 35) && (maxY - endY >= 35);
+        if (maxIndex < 6 || maxIndex > 26) return 'off_center';
+        return (maxY - startY >= 35) && (maxY - endY >= 35) ? null : 'shallow';
       }
 
       case 'caret': {
         // Chữ V ngược: Đi lên rồi đi xuống
-        // Điểm đầu và cuối nằm ở nửa dưới (y cao)
         const startY = normalizedPoints[0].y;
         const endY = normalizedPoints[31].y;
         // Đỉnh (cực tiểu y) phải nằm ở tít trên cao
@@ -471,8 +485,8 @@ export class GestureEngine {
           }
         }
         // Đỉnh phải ở khoảng giữa [20% .. 80%] và cao hơn điểm đầu/cuối ít nhất 35px
-        const inMiddle = minIndex >= 6 && minIndex <= 26;
-        return inMiddle && (startY - minY >= 35) && (endY - minY >= 35);
+        if (minIndex < 6 || minIndex > 26) return 'off_center';
+        return (startY - minY >= 35) && (endY - minY >= 35) ? null : 'shallow';
       }
 
       case 'lightning': {
@@ -495,55 +509,57 @@ export class GestureEngine {
             dirY = sy;
           }
         }
-        return (xReversals >= 1 || yReversals >= 1);
+        return (xReversals >= 1 || yReversals >= 1) ? null : 'no_zigzag';
       }
 
       case 'heart': {
         // Trái tim: Chiều cao và chiều rộng tương đương, không thể là nét dẹt 1D
-        if (aspect < 0.35 || aspect > 2.8) return false;
-        return true;
+        if (aspect < 0.35 || aspect > 2.8) return 'bad_ratio';
+        return null;
       }
 
       case 'circle': {
         // Vòng tròn (Frost Nova): Tỷ lệ khung tương đối vuông vức (không phải nét 1D)
-        if (aspect < 0.35 || aspect > 2.8) return false;
+        if (aspect < 0.35 || aspect > 2.8) return 'bad_ratio';
         // Điểm đầu và cuối tương đối gần nhau (< 72px trong ô 100x100 cho phép vẽ nhanh 75%-85% vòng)
         const closeDist = distance(normalizedPoints[0], normalizedPoints[31]);
-        if (closeDist > 72) return false;
+        if (closeDist > 72) return 'open';
         // Chiều dài đường bao quanh đủ lớn để tạo thành đường cong khép góc
         const totalCurve = pathLength(normalizedPoints);
-        return totalCurve >= 115;
+        return totalCurve >= 115 ? null : 'short';
       }
 
       case 'spiral': {
         // Xoắn ốc / Cơn lốc cuộn gió (Gale Shockwave):
         // Nét vẽ 2D dạng cuộn xoáy dài (hỗ trợ cả vẽ cuộn vào trong lẫn xoắn từ tâm ra ngoài)
-        if (aspect < 0.35 || aspect > 2.8) return false;
+        if (aspect < 0.35 || aspect > 2.8) return 'bad_ratio';
         const totalCurve = pathLength(normalizedPoints);
-        return totalCurve >= 115;
+        return totalCurve >= 115 ? null : 'short';
       }
 
       default:
-        return true;
+        return null;
     }
   }
 
   /**
-   * Phương thức nhận diện cử chỉ chính
-   * 
-   * @param {Array<{x: number, y: number, timestamp?: number}>} rawPoints Mảng các điểm thu thập từ Pointer Events
-   * @returns {{ gesture: string | null, score: number }} Kết quả nhận diện và điểm số tự tin (0..1)
+   * Phân tích một nét vẽ: resample, chuẩn hóa và chấm điểm với toàn bộ template.
+   * Dùng chung cho recognize() và scoreFor().
+   *
+   * @private
+   * @param {Array<{x: number, y: number}>} rawPoints
+   * @returns {{status: 'no_input'|'too_short'|'ok', rawBox?: object, normalized?: Array, bestGesture?: string|null, bestScore?: number, perGesture?: Object<string, number>}}
    */
-  recognize(rawPoints) {
+  _analyze(rawPoints) {
     // 1. Kiểm tra đầu vào hợp lệ
     if (!rawPoints || !Array.isArray(rawPoints) || rawPoints.length < 2) {
-      return { gesture: null, score: 0 };
+      return { status: 'no_input' };
     }
 
     // 2. Chống nhiễu khi click vô tình: tổng chiều dài nét vẽ < 15px
     const totalLen = pathLength(rawPoints);
     if (totalLen < this.minPathLength) {
-      return { gesture: null, score: 0 };
+      return { status: 'too_short' };
     }
 
     // 3. Resampling nét vẽ về đúng 32 điểm
@@ -561,33 +577,169 @@ export class GestureEngine {
 
     let bestGesture = null;
     let bestScore = -Infinity;
+    const perGesture = {};
 
     for (const template of this.templates) {
       const avgDist = pathDistance(normalized, template.points);
       // Điểm số chuẩn hóa 0..1 (score = 1 - d / (0.5 * diagonal))
       const score = Math.max(0, 1 - avgDist / halfDiagonal);
 
+      if (perGesture[template.name] === undefined || score > perGesture[template.name]) {
+        perGesture[template.name] = score;
+      }
       if (score > bestScore) {
         bestScore = score;
         bestGesture = template.name;
       }
     }
 
+    return { status: 'ok', rawBox, normalized, bestGesture, bestScore, perGesture };
+  }
+
+  /**
+   * Đổi mức độ nhạy nhận diện (ngưỡng điểm tối thiểu).
+   * @param {'easy'|'normal'|'strict'} level
+   */
+  setSensitivity(level = 'normal') {
+    const value = SENSITIVITY_LEVELS[level];
+    if (value !== undefined) this.minScore = value;
+  }
+
+  /**
+   * Phương thức nhận diện cử chỉ chính
+   *
+   * Khi không nhận diện được (gesture === null), kết quả còn kèm:
+   *  - candidate: cử chỉ giống nét vẽ nhất (hoặc null nếu không có gì đáng kể)
+   *  - reason: vì sao thất bại ('no_input' | 'too_short' | 'low_score' | mã lỗi hình học)
+   * để UI có thể hướng dẫn người chơi sửa nét vẽ.
+   *
+   * @param {Array<{x: number, y: number, timestamp?: number}>} rawPoints Mảng các điểm thu thập từ Pointer Events
+   * @returns {{ gesture: string | null, score: number, candidate: string | null, reason: string | null }}
+   */
+  recognize(rawPoints) {
+    const a = this._analyze(rawPoints);
+    if (a.status !== 'ok') {
+      return { gesture: null, score: 0, candidate: null, reason: a.status };
+    }
+
+    const { bestGesture, bestScore, rawBox, normalized } = a;
+    const roundedBest = Number(Math.max(0, bestScore).toFixed(3));
+
     // 7. Xác thực hình học (Heuristic Validation Gate)
-    if (bestGesture && !this._validateGeometry(bestGesture, rawBox, normalized)) {
-      return { gesture: null, score: Number(Math.max(0, bestScore).toFixed(3)) };
+    const geometryFail = bestGesture ? this._checkGeometry(bestGesture, rawBox, normalized) : null;
+    if (geometryFail) {
+      return { gesture: null, score: roundedBest, candidate: bestGesture, reason: geometryFail };
     }
 
     // 8. So sánh với ngưỡng chấp nhận (Threshold Filter)
     if (bestScore < this.minScore) {
-      return { gesture: null, score: Number(Math.max(0, bestScore).toFixed(3)) };
+      return { gesture: null, score: roundedBest, candidate: bestGesture, reason: 'low_score' };
     }
 
     return {
       gesture: bestGesture,
-      score: Number(bestScore.toFixed(3))
+      score: Number(bestScore.toFixed(3)),
+      candidate: bestGesture,
+      reason: null
     };
   }
+
+  /**
+   * Chấm một nét vẽ theo MỘT cử chỉ mục tiêu (dùng cho Phòng Luyện Vẽ).
+   *
+   * @param {Array<{x: number, y: number}>} rawPoints
+   * @param {string} target Tên cử chỉ cần luyện
+   * @returns {{ passed: boolean, accuracy: number, recognizedAs: string|null, reason: string|null }}
+   *   accuracy: độ giống 0..1 với mẫu của cử chỉ mục tiêu (0 nếu nét quá ngắn)
+   *   reason: null khi đạt; ngược lại là mã lý do (xem getMissHint)
+   */
+  scoreFor(rawPoints, target) {
+    const a = this._analyze(rawPoints);
+    if (a.status !== 'ok') {
+      return { passed: false, accuracy: 0, recognizedAs: null, reason: a.status };
+    }
+
+    const accuracy = Number((a.perGesture[target] || 0).toFixed(3));
+    const recognized = this.recognize(rawPoints);
+    const passed = recognized.gesture === target;
+
+    let reason = null;
+    if (!passed) {
+      const geometryFail = this._checkGeometry(target, a.rawBox, a.normalized);
+      if (geometryFail) reason = geometryFail;
+      else if (recognized.gesture && recognized.gesture !== target) reason = 'confused';
+      else reason = 'low_score';
+    }
+
+    return { passed, accuracy, recognizedAs: recognized.gesture, reason };
+  }
+}
+
+// Ngưỡng điểm tối thiểu theo mức độ nhạy (easy = dễ tính, strict = chặt)
+export const SENSITIVITY_LEVELS = {
+  easy: 0.55,
+  normal: 0.65,
+  strict: 0.75
+};
+
+/**
+ * Nét mẫu "chuẩn" (toạ độ 0..100) dùng để vẽ lớp phủ hướng dẫn.
+ * @param {string} gesture
+ * @returns {Array<{x: number, y: number}>} mảng rỗng nếu cử chỉ không tồn tại
+ */
+export function getGuideStroke(gesture) {
+  const list = DEFAULT_RAW_TEMPLATES[gesture];
+  if (!list || list.length === 0) return [];
+  // Chọn mẫu dễ đọc nhất cho từng cử chỉ (mẫu đầu tiên là chuẩn, trừ tia sét: chọn nét dựng đứng kinh điển)
+  const preferred = gesture === 'lightning' ? list[4] : list[0];
+  return preferred.map(p => ({ x: p.x, y: p.y }));
+}
+
+/** Mẹo vẽ ngắn gọn cho từng cử chỉ (hiển thị trong Phòng Luyện Vẽ). */
+export const GESTURE_TIPS = {
+  horizontal: 'Kéo một đường thẳng ngang, từ trái sang phải (hoặc ngược lại).',
+  vertical: 'Kéo một đường thẳng đứng, từ trên xuống dưới (hoặc ngược lại).',
+  caret: 'Vẽ nét đi lên rồi bẻ góc đi xuống, đỉnh nhọn ở chính giữa (∧).',
+  v_shape: 'Vẽ nét đi xuống rồi bẻ góc đi lên, đáy nhọn ở chính giữa (∨).',
+  lightning: 'Vẽ nét gấp khúc zíc-zắc nhọn, ít nhất 2 lần đổi hướng (⚡).',
+  heart: 'Vẽ liền một nét hình trái tim, hai thuỳ trên và mũi nhọn ở đáy.',
+  circle: 'Vẽ một vòng tròn gần khép kín, điểm đầu và cuối gần nhau.',
+  spiral: 'Vẽ một nét xoắn ốc cuộn vào trong (hoặc xoáy ra ngoài), ít nhất 1 vòng rưỡi.'
+};
+
+const MISS_HINTS = {
+  too_short: 'Nét quá ngắn — kéo dài tay ra hơn',
+  tilted: 'Nét bị nghiêng — giữ tay thẳng hơn',
+  short: 'Nét chưa đủ dài — vẽ dài và dứt khoát hơn',
+  off_center: 'Điểm bẻ góc chưa ở chính giữa — bẻ ngay giữa nét',
+  shallow: 'Góc bẻ còn nông — bẻ góc nhọn và sâu hơn',
+  no_zigzag: 'Chưa đủ gấp khúc — đổi hướng nhọn ít nhất 2 lần',
+  bad_ratio: 'Hình bị dẹt — vẽ đều cả chiều rộng lẫn chiều cao',
+  open: 'Vòng chưa khép — kéo điểm cuối về gần điểm đầu',
+  low_score: 'Nét hơi lệch — vẽ gọn và rõ góc hơn',
+  confused: 'Bị nhận nhầm sang ấn ký khác — vẽ rõ hình hơn'
+};
+
+/**
+ * Câu gợi ý (tiếng Việt) giúp người chơi sửa nét vẽ.
+ *
+ * @param {string|null} reason Mã lý do từ GestureEngine.recognize()/scoreFor()
+ * @param {string|null} [candidate] Cử chỉ giống nét vẽ nhất
+ * @param {number} [score=0] Độ giống với candidate (0..1)
+ * @returns {string|null} null khi không có gì để gợi ý (vd. chạm nhầm, nét quá ngắn do click)
+ */
+export function getMissHint(reason, candidate = null, score = 0) {
+  if (!reason || reason === 'no_input') return null;
+  const body = MISS_HINTS[reason];
+  if (!body) return null;
+  if (reason === 'too_short') return body;
+
+  const rune = candidate && RUNES[candidate] ? RUNES[candidate] : null;
+  // Nét quá khác mọi mẫu: đừng khẳng định "giống X" khi thật ra không giống gì
+  if (!rune || score < 0.35) {
+    return reason === 'low_score' ? 'Chưa rõ hình ấn ký nào — thử vẽ chậm và rõ nét hơn' : body;
+  }
+  return `Giống ${rune.name} (${rune.symbol}): ${body.charAt(0).toLowerCase()}${body.slice(1)}`;
 }
 
 export default GestureEngine;
