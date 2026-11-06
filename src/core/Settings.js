@@ -39,11 +39,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   quality: 'auto',
   colorBlind: false,
   assist: 0,
-  altInput: false
+  altInput: false,
+  highlight: true
 });
 
 const NUMBER_KEYS = ['masterVolume', 'musicVolume', 'sfxVolume', 'catVolume'];
-const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput'];
+const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight'];
 
 /**
  * Coerce a value for `key` into something valid, or return undefined if it is not salvageable.

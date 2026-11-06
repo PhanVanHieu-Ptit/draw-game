@@ -127,6 +127,93 @@ enemy.blinkTimer = 0.05;
 enemy.update(0.1, playerPos);
 assert(enemy.isBlinking === true, 'Enemy enters isBlinking state when blinkTimer expires');
 
+// 9. Announcements must not hide the ghosts (floating texts under ghosts, no stacking, banner timing)
+console.log('\n--- 9. Floating announcements vs ghosts ---');
+{
+  const recCtx = () => {
+    const log = [];
+    const c = new Proxy({}, {
+      get(_t, prop) {
+        if (prop === '_log') return log;
+        return (...args) => { log.push(String(prop)); return undefined; };
+      },
+      set() { return true; }
+    });
+    return c;
+  };
+
+  // Overlap resolution
+  const a = new ParticleSystem();
+  a.emitFloatingText('COMBO x3', 400, 200, '#fbbf24', 24);
+  a.emitFloatingText('MỞ KHÓA', 400, 200, '#fde047', 24);
+  const [first, second] = a.floatingTexts;
+  assert(first.y === 200, 'The first text keeps the requested position');
+  assert(second.y - first.y >= 28, 'A second text on the same spot is pushed down by at least 28px');
+
+  const b = new ParticleSystem();
+  b.emitFloatingText('+1', 100, 200, '#fff', 18);
+  b.emitFloatingText('+1', 700, 200, '#fff', 18);
+  assert(b.floatingTexts[0].y === 200 && b.floatingTexts[1].y === 200, 'Texts far apart horizontally are left alone');
+
+  const c = new ParticleSystem();
+  for (let i = 0; i < 8; i++) c.emitFloatingText('SPAM SPAM SPAM', 400, 200, '#fff', 24);
+  const live = c.floatingTexts.filter(t => t.life > 0);
+  let stacked = false;
+  for (let i = 0; i < live.length; i++) {
+    for (let j = i + 1; j < live.length; j++) {
+      if (Math.abs(live[i].y - live[j].y) < 28 && Math.abs(live[i].x - live[j].x) < 60) stacked = true;
+    }
+  }
+  assert(!stacked, 'A burst of identical announcements never leaves two live texts on top of each other');
+  assert(live[live.length - 1].text === 'SPAM SPAM SPAM', 'The newest announcement is the one that survives');
+
+  // Layering: texts are drawn on their own, outlined, and the particle pass draws none
+  const d = new ParticleSystem();
+  d.emitFloatingText('+1 HP', 100, 100, '#f43f5e', 24);
+  d.emitMagicSparks(50, 50, 3);
+  const tctx = recCtx();
+  d.renderTexts(tctx);
+  assert(tctx._log.includes('strokeText') && tctx._log.indexOf('strokeText') < tctx._log.indexOf('fillText'),
+    'Floating text gets a dark outline stroked before it is filled');
+  const pctx = recCtx();
+  d.renderParticles(pctx);
+  assert(!pctx._log.includes('fillText') && !pctx._log.includes('strokeText'), 'renderParticles draws no text');
+  const bothCtx = recCtx();
+  d.render(bothCtx);
+  assert(bothCtx._log.includes('fillText') && (bothCtx._log.includes('arc') || bothCtx._log.includes('fill')),
+    'render() still draws both layers for the other game states');
+
+  // Playing state draw order: player, texts, ghosts, particles
+  const { Game } = await import('./src/core/Game.js');
+  const order = [];
+  const fake = {
+    width: 800, height: 600,
+    particleSystem: {
+      screenShake: { timer: 0 },
+      renderTexts: () => order.push('texts'),
+      renderParticles: () => order.push('particles')
+    },
+    player: { render: () => order.push('player') },
+    enemies: [{ render: () => order.push('ghost') }, { render: () => order.push('ghost') }],
+    projectiles: [{ render: () => order.push('projectile') }],
+    inputHandler: { render: () => order.push('trail') },
+    _renderTutorialGuide: () => {},
+    _renderDynamicLighting: () => {},
+    danger: null,
+    events: null
+  };
+  Game.prototype.renderPlaying.call(fake, recCtx());
+  assert(order.join(',') === 'player,texts,ghost,ghost,projectile,particles,trail',
+    `Announcement texts are drawn under the ghosts, sparks over them (got ${order.join(',')})`);
+
+  // Banner / spawner timing: nothing arrives while the banner is still up
+  const { INTRO_TIMING } = await import('./src/core/Constants.js');
+  const bannerTotal = INTRO_TIMING.READY_MS + INTRO_TIMING.DRAW_MS;
+  assert(INTRO_TIMING.DRAW_MS <= 800, 'The DRAW! cue is short (<= 0.8 s)');
+  assert(INTRO_TIMING.FIRST_SPAWN_S * 1000 > bannerTotal, 'The first ghost spawns after the stage banner has gone');
+  assert(0.45 * 1000 + INTRO_TIMING.BOSS_WARNING_MS < 2200, 'The boss warning banner ends before the boss is let in (2.2 s hold)');
+}
+
 console.log(`\n========================================`);
 console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
 console.log(`========================================\n`);

@@ -380,7 +380,65 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * Rough on-screen width of a floating text (no canvas context needed; emoji count as normal glyphs).
+   * @private
+   */
+  static _textWidth(text, fontSize) {
+    return text.length * fontSize * 0.55;
+  }
+
+  /**
+   * Keep a new floating text from landing on top of one that is still visible. While it collides with a
+   * live text it steps down one line (older texts drift upward, so the newest ends up lowest, like a chat
+   * log). If the column is still crowded after a few steps the colliding texts are dropped instead.
+   * @private
+   * @returns {number} the y the new text should use
+   */
+  _resolveTextOverlap(text, x, y, fontSize) {
+    const step = Math.max(28, Math.round(fontSize * 1.1));
+    const halfW = ParticleSystem._textWidth(text, fontSize) / 2;
+
+    const collides = (t) => (
+      t.life > 0 &&
+      Math.abs(t.y - y) < step &&
+      Math.abs(t.x - x) < halfW + ParticleSystem._textWidth(t.text, t.fontSize) / 2
+    );
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let hit = false;
+      for (let i = 0; i < this.activeTextCount; i++) {
+        if (collides(this.textPool[i])) { hit = true; break; }
+      }
+      if (!hit) return y;
+      y += step;
+    }
+
+    // Still crowded: the newest announcement wins, so retire the older ones in the way
+    for (let i = 0; i < this.activeTextCount; i++) {
+      const t = this.textPool[i];
+      if (collides(t)) t.life = 0; // update() recycles it on the next tick
+    }
+    return y;
+  }
+
   emitFloatingText(text, x, y, color = '#fef08a', fontSize = 18) {
+    // The same message raised again while it is still on screen (e.g. a stage start that fires twice)
+    // refreshes the live text instead of stacking a duplicate under it
+    for (let i = 0; i < this.activeTextCount; i++) {
+      const live = this.textPool[i];
+      if (live.life > 0 && live.text === text && Math.abs(live.x - x) < 2 && Math.abs(live.y - y) < 40) {
+        live.y = y;
+        live.life = 1.0;
+        live.color = color;
+        live.fontSize = fontSize;
+        return;
+      }
+    }
+
+    // Resolve against the texts that are already live, before the pool hands out (or recycles) a slot
+    y = this._resolveTextOverlap(String(text), x, y, fontSize);
+
     const t = this._acquireText();
     if (!t) return;
 
@@ -497,11 +555,22 @@ export class ParticleSystem {
   }
 
   /**
-   * Render all pooled active particles and floating texts
-   * @param {CanvasRenderingContext2D} ctx 
+   * Render all pooled active particles and floating texts.
+   * The game draws the two layers separately (texts under the ghosts, particles over them); this keeps
+   * the old single-call behaviour for everything else.
+   * @param {CanvasRenderingContext2D} ctx
    */
   render(ctx) {
-    if (this.activeParticleCount === 0 && this.activeTextCount === 0) return;
+    this.renderTexts(ctx);
+    this.renderParticles(ctx);
+  }
+
+  /**
+   * Sparks, rings, bursts: the effect layer that belongs above the ghosts.
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  renderParticles(ctx) {
+    if (this.activeParticleCount === 0) return;
 
     ctx.save();
 
@@ -610,15 +679,36 @@ export class ParticleSystem {
       }
     }
 
+    ctx.restore();
+  }
+
+  /**
+   * Floating announcements ("+1 HP", combo, event banners). Drawn before the ghosts so a ghost always
+   * covers the text, never the other way round; the dark outline keeps the text readable on any backdrop.
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  renderTexts(ctx) {
+    if (this.activeTextCount === 0) return;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+
     // Render floating texts with fallback system fonts
     for (let i = 0; i < this.activeTextCount; i++) {
       const t = this.textPool[i];
       ctx.globalAlpha = Math.max(0, Math.min(1, t.life));
       ctx.font = `800 ${t.fontSize}px Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+      // Outline first, with no glow, so it stays a plain (cheap) stroke
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = Math.max(3, t.fontSize * 0.22);
+      ctx.strokeStyle = 'rgba(10, 6, 24, 0.85)';
+      ctx.strokeText(t.text, t.x, t.y);
+
       ctx.fillStyle = t.color;
       ctx.shadowColor = t.color;
       ctx.shadowBlur = 12;
-      ctx.textAlign = 'center';
       ctx.fillText(t.text, t.x, t.y);
 
       ctx.shadowBlur = 0;

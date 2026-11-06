@@ -6,7 +6,9 @@
  */
 
 import { getGuideStroke } from '../GestureEngine.js';
+import { trailColors } from '../core/Cosmetics.js';
 
+const DEFAULT_TRAIL_COLORS = { glow: '#a855f7', active: '#e879f9', mid: '#f472b6' };
 const GUIDE_LIFE = 1.7; // seconds the "correct shape" overlay stays on screen after a missed stroke
 
 /** Total travelled length of a polyline */
@@ -53,6 +55,8 @@ export class InputHandler {
 
     // When false the neon trail is drawn with stacked translucent strokes instead of shadowBlur
     this.glow = true;
+    // Equipped ink trail (cosmetic); null = the default purple
+    this.trailStyle = null;
 
     // Optional hook so the settings screen can switch the touch buzz on pen-down off
     this.canVibrate = () => true;
@@ -404,22 +408,43 @@ export class InputHandler {
     // 0. "Correct shape" overlay after a miss
     this._drawGuide(ctx);
 
+    // Equipped ink colour (the rainbow trail asks for new colours every frame)
+    const colors = this._trailColors();
+
     // 1. Render fading strokes
     for (let i = 0; i < this.fadingStrokes.length; i++) {
       const stroke = this.fadingStrokes[i];
-      this._drawStrokeLine(ctx, stroke.points, '#a855f7', stroke.alpha * 0.75);
+      this._drawStrokeLine(ctx, stroke.points, colors.glow, stroke.alpha * 0.75, colors.mid);
     }
 
     // 2. Render current active stroke with vibrant neon glow
     if (this.currentPoints.length > 1) {
-      this._drawStrokeLine(ctx, this.currentPoints, '#e879f9', 1.0);
+      this._drawStrokeLine(ctx, this.currentPoints, colors.active, 1.0, colors.mid);
     }
+  }
+
+  /**
+   * Choose the ink colour of the neon trail (a cosmetic, see core/Cosmetics.js).
+   * @param {Object|null} trail a TRAILS entry, or null for the default purple
+   */
+  setTrailStyle(trail) {
+    this.trailStyle = trail || null;
+  }
+
+  _trailColors() {
+    const t = this.trailStyle;
+    if (!t) return DEFAULT_TRAIL_COLORS;
+    if (t.rainbow) {
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() / 1000 : 0;
+      return trailColors(t, now);
+    }
+    return t.colors || DEFAULT_TRAIL_COLORS;
   }
 
   /**
    * Draw stroke with smooth quadratic curve interpolation, multi-layered neon glow, and solid white core
    */
-  _drawStrokeLine(ctx, points, glowColor, alpha) {
+  _drawStrokeLine(ctx, points, glowColor, alpha, midColor = '#f472b6') {
     if (points.length < 2) return;
 
     ctx.save();
@@ -465,7 +490,7 @@ export class InputHandler {
       // Layer 2: Medium Radiant Glow
       ctx.shadowBlur = 10 * strokeScale;
       ctx.lineWidth = 4.8 * strokeScale;
-      ctx.strokeStyle = '#f472b6';
+      ctx.strokeStyle = midColor;
       traceSmoothPath();
       ctx.stroke();
 
@@ -491,7 +516,7 @@ export class InputHandler {
 
       ctx.globalAlpha = alpha;
       ctx.lineWidth = 4.8 * strokeScale;
-      ctx.strokeStyle = '#f472b6';
+      ctx.strokeStyle = midColor;
       ctx.stroke();
 
       ctx.lineWidth = 2.4 * strokeScale;

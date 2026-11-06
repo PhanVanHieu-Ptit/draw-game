@@ -5,7 +5,7 @@
  * with fallback to Endless Mode defense after victory.
  */
 
-import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES, DIFFICULTY_LEVELS } from '../core/Constants.js';
+import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
 import { waveRng } from '../core/Challenge.js';
 
 export class WaveSystem {
@@ -32,6 +32,15 @@ export class WaveSystem {
     this.seed = null;
     // Daily Challenge twist (see Challenge.js DAILY_MODIFIERS), or null
     this.modifier = null;
+
+    // Boss Rush: Story levels without the minion phase, so each level is just its boss
+    this.bossRush = false;
+
+    // Extra ghosts injected by mid-wave events and boss gimmicks (see EventSystem). Each entry is a spawn
+    // result (one config or a squad array) that update() hands to the game before anything else.
+    this.spawnQueue = [];
+    // Multiplier on the speed of ghosts generated while a "blood moon" style event is active
+    this.eventSpeedScale = 1;
 
     // Boss state tracking
     this.isBossSpawned = false;
@@ -72,6 +81,22 @@ export class WaveSystem {
     this._reseed(this.currentWave);
   }
 
+  /**
+   * Hand extra ghosts to the spawner. They come out of update() one entry per call, ahead of the normal
+   * wave, so they go through exactly the same placement code as every other ghost.
+   * @param {Object|Object[]} spawn a ghost config or a squad (array of configs)
+   */
+  queueSpawn(spawn) {
+    if (!spawn) return;
+    this.spawnQueue.push(spawn);
+  }
+
+  /** @param {boolean} on Boss Rush: every Story level starts straight at its boss */
+  setBossRush(on) {
+    this.bossRush = !!on;
+    this._applyLevelScaling(this.currentLevelIndex);
+  }
+
   /** @param {Object|null} modifier a DAILY_MODIFIERS entry, or null for a normal run */
   setModifier(modifier) {
     this.modifier = modifier || null;
@@ -108,7 +133,7 @@ export class WaveSystem {
     if (levelNum <= 5 && this.gameMode === 'STORY') {
       // 5-Level Story Campaign
       this.levelData = LEVEL_CONFIGS[levelNum - 1];
-      this.totalEnemiesInWave = this.levelData.totalMinions;
+      this.totalEnemiesInWave = this.bossRush ? 0 : this.levelData.totalMinions;
       this.spawnInterval = this.levelData.baseSpawnInterval * diffConfig.spawnIntervalMult;
       this.speedMultiplier = this.levelData.speedMultiplier * diffConfig.speedMult;
     } else {
@@ -142,10 +167,11 @@ export class WaveSystem {
     this.isIntermission = false;
     this.intermissionTimer = 0;
     this.intermissionHold = false;
+    this.spawnQueue.length = 0;
 
     this._applyLevelScaling(levelNum);
 
-    this.spawnTimer = 1.6; // Gentle breathing time before first ghost
+    this.spawnTimer = INTRO_TIMING.FIRST_SPAWN_S; // Wait for the stage banner to clear before the first ghost
 
     if (this.onLevelStart && this.levelData) {
       this.onLevelStart(this.currentLevelIndex, this.levelData);
@@ -161,6 +187,15 @@ export class WaveSystem {
    */
   initWave(waveNum) {
     this.initLevel(waveNum);
+  }
+
+  /**
+   * True while playing the level whose clearing ends the Story campaign (Level 5).
+   * Clearing it goes to the Victory screen instead of another level.
+   * @returns {boolean}
+   */
+  get isFinalLevel() {
+    return this.gameMode === 'STORY' && this.currentLevelIndex >= 5;
   }
 
   /**
@@ -203,7 +238,7 @@ export class WaveSystem {
       if (this.intermissionHold) return null;
       this.intermissionTimer -= dt;
       if (this.intermissionTimer <= 0) {
-        if (this.gameMode === 'STORY' && this.currentLevelIndex >= 5) {
+        if (this.isFinalLevel) {
           // Final 5th Level complete -> trigger Victory cutscene
           if (this.onGameVictory) {
             this.onGameVictory();
@@ -213,6 +248,11 @@ export class WaveSystem {
         }
       }
       return null;
+    }
+
+    // 1b. Ghosts requested by an event or a boss gimmick come first
+    if (this.spawnQueue.length > 0) {
+      return this.spawnQueue.shift();
     }
 
     // 2. Story Mode: Minions cleared -> Boss Battle
@@ -524,7 +564,7 @@ export class WaveSystem {
       isHeartGhost,
       isFreezeGhost,
       isBlastGhost,
-      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier))
+      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier * this.eventSpeedScale))
     };
   }
 
@@ -599,7 +639,7 @@ export class WaveSystem {
       isFreezeGhost,
       isBlastGhost,
       isBoss: false,
-      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier * 0.98))
+      speedMultiplier: isHeartGhost ? 0 : (isFreezeGhost ? 0.40 : (isBlastGhost ? 0.45 : this.speedMultiplier * 0.98 * this.eventSpeedScale))
     };
   }
 }

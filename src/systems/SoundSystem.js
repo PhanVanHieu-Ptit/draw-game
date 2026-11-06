@@ -92,6 +92,10 @@ export class SoundSystem {
     this.catGain = null;
     /** @type {DynamicsCompressorNode|null} */
     this.compressor = null;
+    /** Capture tap for the best-moment recorder (built on first use, see getRecordingTrack) */
+    this._recordDest = null;
+    /** Mute gate of that tap: the tap sits before the output stage, so it needs its own mute */
+    this._recordGain = null;
 
     // Active continuous draw voice state
     this._drawVoice = null;
@@ -359,10 +363,68 @@ export class SoundSystem {
         now + 0.05
       );
     }
+    if (this._recordGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this._recordGain.gain.cancelScheduledValues(now);
+      this._recordGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : 1, now + 0.05);
+    }
     if (this.isMuted) {
       this.stopDraw();
     }
     return this.isMuted;
+  }
+
+  /**
+   * A fresh audio track carrying everything the game plays (music, SFX, Momo), for the best-moment recorder.
+   *
+   * The tap sits on the three source buses, before the output stage, so the clip's loudness does not follow the
+   * Master Volume slider; the mute button still silences it through the tap's own gate (_recordGain). A private
+   * compressor keeps overlapping effects from clipping. The caller owns the returned track and may stop() it: it is a clone,
+   * so the shared graph keeps working for the next run.
+   * @returns {MediaStreamTrack|null} null where MediaStreamAudioDestinationNode is not available
+   */
+  getRecordingTrack() {
+    try {
+      const ctx = this.ctx || this.init();
+      if (!ctx || typeof ctx.createMediaStreamDestination !== 'function') return null;
+
+      if (!this._recordDest) {
+        const dest = ctx.createMediaStreamDestination();
+        if (!dest || !dest.stream || typeof dest.stream.getAudioTracks !== 'function') return null;
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.setValueAtTime(-6, ctx.currentTime);
+        comp.knee.setValueAtTime(10, ctx.currentTime);
+        comp.ratio.setValueAtTime(4, ctx.currentTime);
+        comp.attack.setValueAtTime(0.003, ctx.currentTime);
+        comp.release.setValueAtTime(0.12, ctx.currentTime);
+        const rec = ctx.createGain();
+        rec.gain.setValueAtTime(this.isMuted ? 0 : 1, ctx.currentTime);
+        rec.connect(comp);
+        comp.connect(dest);
+        for (const bus of [this.masterGain, this.catGain, this.bgmGain]) {
+          if (bus) bus.connect(rec);
+        }
+        this._recordDest = dest;
+        this._recordGain = rec;
+      }
+
+      const track = this._recordDest.stream.getAudioTracks()[0];
+      if (!track) return null;
+      return typeof track.clone === 'function' ? track.clone() : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /**
+   * Cut off the one-shot sounds that are still playing (fanfares, jingles). Music is left to pauseBGM/stopBGM.
+   */
+  stopOneShots() {
+    const playing = this._currentOneShots.slice();
+    this._currentOneShots.length = 0;
+    for (const src of playing) {
+      try { src.stop(0); } catch (e) { /* already finished */ }
+    }
   }
 
   /* -------------------------------------------------------------------------

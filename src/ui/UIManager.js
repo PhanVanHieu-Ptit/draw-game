@@ -4,7 +4,7 @@
  * level transition banners (Ready... Set... Draw!), Story Cutscenes, and Victory screens.
  */
 
-import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS } from '../core/Constants.js';
+import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
 import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChallengeUrl } from './WizardCardRenderer.js';
@@ -319,6 +319,7 @@ export class UIManager {
         if (typeof this.game.audioSystem.playCatMeow === 'function') {
           setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
         }
+        this.game.bossRush = false; // "replay story" after a Boss Rush must be the real Story
         this.game.waveSystem.setMode('STORY');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true, startLevel: 1 });
       });
@@ -331,6 +332,7 @@ export class UIManager {
         if (typeof this.game.audioSystem.playCatMeow === 'function') {
           setTimeout(() => this.game.audioSystem.playCatMeow('cheerful'), 180);
         }
+        this.game.bossRush = false;
         this.game.waveSystem.setMode('ENDLESS');
         this.game.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
       });
@@ -947,6 +949,7 @@ export class UIManager {
 
     clearTimeout(this._ltbTimeout);
     clearTimeout(this._ltbDrawTimeout);
+    this.hideDialogue(); // the banner takes the dialogue's place at the top of the arena
 
     if (this.ltbNumber) this.ltbNumber.textContent = `CẤP ĐỘ ${levelNum}`;
     if (this.ltbTitle) this.ltbTitle.textContent = levelData ? levelData.name.toUpperCase() : `ĐỢT ${levelNum}`;
@@ -965,7 +968,7 @@ export class UIManager {
       }
     }
 
-    // Phase 2: VẼ! (DRAW!) - explosive action trigger at 1000ms
+    // Phase 2: VẼ! (DRAW!) - explosive action trigger once READY is over
     this._ltbDrawTimeout = setTimeout(() => {
       if (!this.levelTransitionBanner) return;
       this.levelTransitionBanner.className = 'level-transition-banner show phase-draw';
@@ -985,31 +988,44 @@ export class UIManager {
           this.game.player.setDrawing(false);
         }
       }
-    }, 1000);
+    }, INTRO_TIMING.READY_MS);
 
-    // Phase 3: Banner fades out, game actions intensify!
+    // Phase 3: Banner fades out, game actions intensify! (the first ghost spawns after this, see WaveSystem)
     this._ltbTimeout = setTimeout(() => {
       if (this.levelTransitionBanner) {
         this.levelTransitionBanner.className = 'level-transition-banner';
       }
       // If Level 1 and tutorial has not been completed, automatically prompt tutorial
-      if (levelNum === 1 && !this._hasCompletedTutorial()) {
+      if (levelNum === 1 && !this._hasCompletedTutorial() && !this.game.bossRush) {
         this.showTutorial(1);
       }
-    }, 2100);
+    }, INTRO_TIMING.READY_MS + INTRO_TIMING.DRAW_MS);
   }
 
-  showLevelComplete(levelNum, levelData) {
+  /**
+   * "Stage complete" banner.
+   * @param {number} levelNum
+   * @param {object} [levelData]
+   * @param {boolean} [isFinal=false] last Story level: nothing comes after it but the Victory screen
+   */
+  showLevelComplete(levelNum, levelData, isFinal = false) {
     if (!this.levelTransitionBanner) return;
 
     clearTimeout(this._ltbTimeout);
     clearTimeout(this._ltbDrawTimeout);
+    this.hideDialogue();
 
     this.levelTransitionBanner.className = 'level-transition-banner show phase-clear';
-    if (this.ltbNumber) this.ltbNumber.textContent = `🎉 HOÀN THÀNH CẤP ĐỘ ${levelNum}! 🎉`;
+    if (this.ltbNumber) {
+      this.ltbNumber.textContent = isFinal ? `🏆 HOÀN THÀNH CẤP ĐỘ ${levelNum}! 🏆` : `🎉 HOÀN THÀNH CẤP ĐỘ ${levelNum}! 🎉`;
+    }
     if (this.ltbTitle) this.ltbTitle.textContent = levelData ? levelData.name.toUpperCase() : 'KHU VỰC ĐÃ GIẢI CỨU';
-    if (this.ltbEn) this.ltbEn.textContent = 'STAGE COMPLETED!';
-    if (this.ltbPrompt) this.ltbPrompt.textContent = '✨ CHUẨN BỊ TIẾN VÀO KHU VỰC MỚI... ✨';
+    if (this.ltbEn) this.ltbEn.textContent = isFinal ? 'ALL STAGES COMPLETED!' : 'STAGE COMPLETED!';
+    if (this.ltbPrompt) {
+      this.ltbPrompt.textContent = isFinal
+        ? '🎊 HỌC VIỆN ĐÃ ĐƯỢC GIẢI CỨU! 🎊'
+        : '✨ CHUẨN BỊ TIẾN VÀO KHU VỰC MỚI... ✨';
+    }
 
     this._ltbTimeout = setTimeout(() => {
       if (this.levelTransitionBanner) {
@@ -1023,6 +1039,7 @@ export class UIManager {
 
     clearTimeout(this._ltbTimeout);
     clearTimeout(this._ltbDrawTimeout);
+    this.hideDialogue();
 
     this.levelTransitionBanner.className = 'level-transition-banner show phase-boss-warning';
     if (this.ltbNumber) this.ltbNumber.textContent = '⚠️ CẢNH BÁO NGUY HIỂM ⚠️';
@@ -1034,7 +1051,7 @@ export class UIManager {
       if (this.levelTransitionBanner) {
         this.levelTransitionBanner.className = 'level-transition-banner';
       }
-    }, 2200);
+    }, INTRO_TIMING.BOSS_WARNING_MS); // gone before the boss walks in (Game holds the boss back for 2.2 s)
   }
 
   // =========================================================================

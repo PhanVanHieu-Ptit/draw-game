@@ -181,6 +181,7 @@
 
       <!-- Run upgrades + equipped companion passive -->
       <div id="buff-row" class="buff-row" aria-label="Nâng cấp đang có"></div>
+      <div id="boost-pill" class="boost-pill hidden" aria-live="polite"></div>
       <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
 
       <!-- Stage Companion & Mentor Banner -->
@@ -212,6 +213,8 @@
 
       <!-- Bottom Gesture Feedback Pill + miss hint -->
       <div class="hud-bottom-bar">
+        <!-- Strokes of a Spell Phrase in progress (hidden when the chain is empty) -->
+        <div class="phrase-chain hidden" id="phrase-chain" aria-live="polite"></div>
         <div class="gesture-pill" id="gesture-feedback">ARCANE SLASH</div>
         <div class="gesture-hint" id="gesture-hint"></div>
         <!-- Alternative input for players who cannot draw: tap a rune (or press keys 1-8) -->
@@ -355,6 +358,21 @@
             <span class="meta-tile-icon">🏅</span>
             <span class="meta-tile-label">Thành Tựu</span>
           </button>
+          <button class="meta-tile" id="btn-open-spellbook">
+            <span class="meta-tile-icon">📖</span>
+            <span class="meta-tile-label">Sổ Phép</span>
+            <span class="meta-tile-badge" id="spellbook-menu-badge"></span>
+          </button>
+          <button class="meta-tile" id="btn-open-wardrobe">
+            <span class="meta-tile-icon">🎨</span>
+            <span class="meta-tile-label">Tủ Đồ</span>
+            <span class="meta-tile-badge hidden" id="wardrobe-menu-badge">MỚI</span>
+          </button>
+          <button class="meta-tile meta-tile-hot" id="btn-start-rush" title="Hạ liên tiếp cả 5 trùm, không có quân lính lẻ">
+            <span class="meta-tile-icon">💀</span>
+            <span class="meta-tile-label">Boss Rush</span>
+            <span class="meta-tile-badge hidden" id="rush-menu-badge"></span>
+          </button>
           <button class="meta-tile" id="btn-open-settings">
             <span class="meta-tile-icon">⚙️</span>
             <span class="meta-tile-label">Cài Đặt</span>
@@ -483,6 +501,9 @@
           <button class="btn-gold" id="btn-vic-wizard-card">
             <span>🪪 XUẤT THẺ PHÁP SƯ</span>
           </button>
+          <button class="btn-secondary hidden" id="btn-vic-clip">
+            <span>🎬 KHOẢNH KHẮC ĐỈNH CAO</span>
+          </button>
           <button class="btn-secondary" id="btn-vic-play-endless">
             <span>CHẾ ĐỘ VÔ TẬN ⚡</span>
           </button>
@@ -585,6 +606,9 @@
           <button class="btn-gold" id="btn-go-wizard-card">
             <span>🪪 XUẤT THẺ PHÁP SƯ</span>
           </button>
+          <button class="btn-secondary hidden" id="btn-go-clip">
+            <span>🎬 KHOẢNH KHẮC ĐỈNH CAO</span>
+          </button>
         </div>
       </div>
     </div>
@@ -649,6 +673,13 @@
           </section>
 
           <section class="settings-group">
+            <h3 class="settings-heading">🎬 Khoảnh khắc đỉnh cao</h3>
+            <label class="setting-row"><span class="setting-label">Ghi lại đoạn combo hay nhất để lưu / chia sẻ</span>
+              <input type="checkbox" class="switch" data-setting="highlight"></label>
+            <p class="setting-note">Game ghi hình sân đấu (tối đa vài giây gần nhất) và giữ lại đoạn kịch tính nhất. Tốn thêm hiệu năng nên tự tắt trên máy yếu / điện thoại cấu hình thấp.</p>
+          </section>
+
+          <section class="settings-group">
             <h3 class="settings-heading">♿ Trợ năng</h3>
             <label class="setting-row"><span class="setting-label">Chế độ mù màu (thêm hoa văn cho ấn ký)</span>
               <input type="checkbox" class="switch" data-setting="colorBlind"></label>
@@ -695,6 +726,7 @@
         <div class="daily-friend hidden" id="daily-friend"></div>
         <div class="daily-modifier" id="daily-modifier"></div>
         <div class="daily-stats" id="daily-stats"></div>
+        <div class="streak-rewards" id="daily-rewards" aria-label="Phần thưởng chuỗi ngày"></div>
         <div class="button-group daily-actions">
           <button class="btn-primary" id="btn-start-daily"><span>BẮT ĐẦU</span><span>⚔️</span></button>
           <button class="btn-secondary" id="btn-share-daily">🔗 Sao chép link thách đấu</button>
@@ -716,6 +748,57 @@
         </div>
         <p class="game-subtitle companion-sub">Mỗi bạn đồng hành có một kỹ năng bị động. Qua màn Cốt Truyện để mở khóa thêm bạn mới!</p>
         <div class="companion-grid" id="companion-grid"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: SPELLBOOK (secret Spell Phrases) -->
+    <div id="spellbook-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card companion-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">📖 CÔNG THỨC BÍ MẬT</span>
+            <h2 class="game-title meta-title">SỔ PHÉP</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-spellbook">ĐÓNG ✕</button>
+        </div>
+        <p class="game-subtitle companion-sub" id="spellbook-sub">Vẽ đúng 3 nét liên tiếp (mỗi nét phải trúng u linh, cách nhau dưới 2,6 giây) để niệm Câu Thần Chú.</p>
+        <div class="companion-grid" id="spellbook-grid"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: WARDROBE (ink trails and hats) -->
+    <div id="wardrobe-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card companion-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">🎨 PHẦN THƯỞNG</span>
+            <h2 class="game-title meta-title">TỦ ĐỒ CỦA MOMO</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-wardrobe">ĐÓNG ✕</button>
+        </div>
+        <p class="game-subtitle companion-sub">Đồ trang trí chỉ để làm đẹp, không đổi cách chơi. Mở khóa bằng thành tựu và chuỗi ngày chơi Thử Thách Hằng Ngày.</p>
+        <h3 class="wardrobe-heading">✒️ Vệt mực</h3>
+        <div class="wardrobe-grid" id="wardrobe-trails"></div>
+        <h3 class="wardrobe-heading">🎩 Mũ của Momo</h3>
+        <div class="wardrobe-grid" id="wardrobe-hats"></div>
+      </div>
+    </div>
+
+    <!-- UI Overlay: BEST-MOMENT CLIP -->
+    <div id="clip-modal" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card clip-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">🎬 KHOẢNH KHẮC ĐỈNH CAO</span>
+            <h2 class="game-title meta-title" id="clip-title">COMBO HAY NHẤT</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-clip">ĐÓNG ✕</button>
+        </div>
+        <video id="clip-video" class="clip-video" controls loop playsinline></video>
+        <div class="button-group">
+          <button class="btn-primary" id="btn-clip-share"><span>📤 CHIA SẺ</span></button>
+          <button class="btn-secondary" id="btn-clip-download"><span>📥 TẢI VỀ</span></button>
+        </div>
       </div>
     </div>
 

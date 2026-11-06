@@ -293,6 +293,56 @@ async function runTests() {
   const hissNodes = soundSys.ctx.createdNodes.slice(preHissCount);
   assert(hissNodes.length >= 2, `soundCatHiss creates sharp defensive cat hiss (found ${hissNodes.length})`);
 
+  // Test: capture tap for the best-moment clip
+  console.log('\n--- Recording tap (best-moment clip) ---');
+  assert(soundSys.getRecordingTrack() === null, 'getRecordingTrack() is null where MediaStreamDestination is unavailable');
+  assert(soundSys.stopOneShots() === undefined, 'stopOneShots() is safe when nothing is playing');
+
+  class MockTrack {
+    constructor() { this.stopped = false; }
+    clone() { return new MockTrack(); }
+    stop() { this.stopped = true; }
+  }
+  const tapped = new MockTrack();
+  class RecordingAudioContext extends MockAudioContext {
+    createMediaStreamDestination() {
+      const node = new MockAudioNode('MediaStreamDestination');
+      node.stream = { getAudioTracks: () => [tapped] };
+      this.createdNodes.push(node);
+      return node;
+    }
+  }
+  globalThis.AudioContext = RecordingAudioContext;
+  globalThis.window.AudioContext = RecordingAudioContext;
+  const tapSys = new SoundSystem({ autoUnlock: false });
+  await tapSys.resume();
+  const outputBefore = tapSys.outputGain.connections.slice();
+  const trackA = tapSys.getRecordingTrack();
+  const trackB = tapSys.getRecordingTrack();
+  assert(trackA instanceof MockTrack && trackA !== tapped, 'getRecordingTrack() hands out a clone, never the shared track');
+  assert(trackA !== trackB, 'every call returns a fresh track');
+  trackA.stop();
+  assert(trackB.stopped === false && tapped.stopped === false, 'stopping one clip\'s track does not touch the shared one');
+  const tapNodes = tapSys.ctx.createdNodes.filter(n => n.name === 'MediaStreamDestination');
+  assert(tapNodes.length === 1, 'the capture destination is built once, not per run');
+  const recGain = tapSys.masterGain.connections.find(n => n.name === 'GainNode' && n !== tapSys.outputGain);
+  assert(!!recGain && tapSys.catGain.connections.includes(recGain) && tapSys.bgmGain.connections.includes(recGain),
+    'SFX, Momo and music buses all feed the capture tap');
+  assert(tapSys.outputGain.connections.length === outputBefore.length && tapSys.compressor.connections[0] === tapSys.ctx.destination,
+    'the playback chain is left untouched');
+
+  assert(tapSys._recordGain && tapSys._recordGain.gain.value === 1, 'the capture tap is open while the game is unmuted');
+  tapSys.setMute(true);
+  assert(tapSys._recordGain.gain.value === 0, 'muting the game also closes the capture tap');
+  tapSys.setMute(false);
+  assert(tapSys._recordGain.gain.value === 1, 'unmuting opens the capture tap again');
+
+  // stopOneShots() cuts off ringing one-shots
+  const fakeShot = { stopped: false, stop() { this.stopped = true; } };
+  tapSys._currentOneShots.push(fakeShot);
+  tapSys.stopOneShots();
+  assert(fakeShot.stopped && tapSys._currentOneShots.length === 0, 'stopOneShots() stops and forgets playing one-shots');
+
   console.log(`\n========================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);

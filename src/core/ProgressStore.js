@@ -14,6 +14,8 @@
 import { STORAGE_KEYS, RUNES } from './Constants.js';
 import { DEFAULT_COMPANION, COMPANIONS } from './Companions.js';
 import { shiftDateKey, isValidDateKey } from './Challenge.js';
+import { SPELL_PHRASES } from './Spells.js';
+import { getCosmetic, DEFAULT_TRAIL, DEFAULT_HAT, TRAILS, HATS } from './Cosmetics.js';
 
 export const MODES = ['STORY', 'ENDLESS'];
 export const DIFFICULTIES = ['NORMAL', 'HARDCORE', 'INFERNO'];
@@ -72,8 +74,16 @@ function emptyStats() {
     dailyPlays: 0,
     bestDailyStreak: 0,
     cleanCombos: 0,
+    goldenCaught: 0,
+    phrasesCast: 0,
+    rushClears: 0,
     killsByRune: {}
   };
+}
+
+function emptyRush() {
+  // seconds = fastest clear (0 = never cleared), level = furthest boss reached
+  return { score: 0, seconds: 0, level: 0, plays: 0, clears: 0 };
 }
 
 function freshData() {
@@ -87,7 +97,10 @@ function freshData() {
     practice: {},
     cleared: {},
     companion: DEFAULT_COMPANION,
-    daily: {}
+    daily: {},
+    phrases: {},
+    cosmetics: { trail: DEFAULT_TRAIL, hat: DEFAULT_HAT, seen: {} },
+    rush: emptyRush()
   };
 }
 
@@ -201,6 +214,30 @@ export class ProgressStore {
 
     if (typeof parsed.companion === 'string' && COMPANIONS[parsed.companion]) {
       d.companion = parsed.companion;
+    }
+
+    if (parsed.phrases && typeof parsed.phrases === 'object') {
+      for (const phrase of SPELL_PHRASES) {
+        const n = Math.round(nonNegative(parsed.phrases[phrase.id]));
+        if (n > 0) d.phrases[phrase.id] = n;
+      }
+    }
+
+    if (parsed.cosmetics && typeof parsed.cosmetics === 'object') {
+      const c = parsed.cosmetics;
+      if (getCosmetic('trail', c.trail)) d.cosmetics.trail = c.trail;
+      if (getCosmetic('hat', c.hat)) d.cosmetics.hat = c.hat;
+      if (c.seen && typeof c.seen === 'object') {
+        for (const def of [...TRAILS, ...HATS]) {
+          if (c.seen[def.id]) d.cosmetics.seen[def.id] = true;
+        }
+      }
+    }
+
+    if (parsed.rush && typeof parsed.rush === 'object') {
+      const r = emptyRush();
+      for (const k of Object.keys(r)) r[k] = Math.round(nonNegative(parsed.rush[k]));
+      d.rush = r;
     }
 
     if (parsed.daily && typeof parsed.daily === 'object') {
@@ -483,6 +520,94 @@ export class ProgressStore {
       cursor = shiftDateKey(cursor, -1);
     }
     return streak;
+  }
+
+  // ------------------------------------------------------------------ spell phrases
+
+  /**
+   * Count a cast Spell Phrase.
+   * @param {string} id
+   * @returns {{isNew: boolean, count: number}} isNew: the first time this phrase has ever been cast
+   */
+  recordPhrase(id) {
+    if (!SPELL_PHRASES.some(p => p.id === id)) return { isNew: false, count: 0 };
+    const before = this.data.phrases[id] || 0;
+    this.data.phrases[id] = before + 1;
+    this.data.stats.phrasesCast += 1;
+    return { isNew: before === 0, count: before + 1 };
+  }
+
+  isPhraseDiscovered(id) {
+    return (this.data.phrases[id] || 0) > 0;
+  }
+
+  getPhraseCount(id) {
+    return this.data.phrases[id] || 0;
+  }
+
+  discoveredPhraseCount() {
+    return SPELL_PHRASES.filter(p => this.isPhraseDiscovered(p.id)).length;
+  }
+
+  // ------------------------------------------------------------------ cosmetics
+
+  /** @param {'trail'|'hat'} kind */
+  getEquipped(kind) {
+    return kind === 'hat' ? this.data.cosmetics.hat : this.data.cosmetics.trail;
+  }
+
+  /**
+   * @param {'trail'|'hat'} kind
+   * @param {string} id (the caller checks it is unlocked)
+   * @returns {boolean} false if there is no such cosmetic
+   */
+  equipCosmetic(kind, id) {
+    if (!getCosmetic(kind, id)) return false;
+    if (kind === 'hat') this.data.cosmetics.hat = id;
+    else this.data.cosmetics.trail = id;
+    return true;
+  }
+
+  isCosmeticSeen(id) {
+    return !!this.data.cosmetics.seen[id];
+  }
+
+  markCosmeticSeen(id) {
+    this.data.cosmetics.seen[id] = true;
+  }
+
+  // ------------------------------------------------------------------ boss rush
+
+  /** @returns {{score:number, seconds:number, level:number, plays:number, clears:number}} */
+  getRush() {
+    return { ...this.data.rush };
+  }
+
+  /**
+   * Fold a finished Boss Rush run in.
+   * @param {{score:number, level:number, seconds:number, victory:boolean}} run level = bosses reached (1..5)
+   * @returns {{isNewScore: boolean, isNewTime: boolean, record: Object, previous: Object}}
+   */
+  recordRush(run) {
+    const prev = this.getRush();
+    const r = this.data.rush;
+    const score = Math.max(0, Math.round(nonNegative(run.score)));
+    const seconds = Math.max(1, Math.round(nonNegative(run.seconds, 1)));
+    const level = Math.min(5, Math.max(0, Math.round(nonNegative(run.level))));
+
+    const isNewScore = score > prev.score;
+    const isNewTime = !!run.victory && (prev.seconds === 0 || seconds < prev.seconds);
+
+    r.plays += 1;
+    r.score = Math.max(r.score, score);
+    r.level = Math.max(r.level, level);
+    if (run.victory) {
+      r.clears += 1;
+      this.data.stats.rushClears += 1;
+      if (isNewTime) r.seconds = seconds;
+    }
+    this.save();
+    return { isNewScore: isNewScore && score > 0, isNewTime, record: this.getRush(), previous: prev };
   }
 
   // ------------------------------------------------------------------ misc
