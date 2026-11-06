@@ -26,6 +26,7 @@ export class MenuState extends State {
     this.game.inputHandler.setEnabled(false);
     // Back at the menu: the next run is an ordinary one unless a daily challenge is started again
     this.game.challenge = null;
+    this.game.bossRush = false;
     this.game.uiManager.showScreen(GAME_STATES.MENU);
   }
 
@@ -105,6 +106,8 @@ export class PlayingState extends State {
       if (this.game.audioSystem && typeof this.game.audioSystem.pauseBGM === 'function') {
         this.game.audioSystem.pauseBGM();
       }
+      // The best-moment recorder does not film the pause screen
+      if (this.game.highlight) this.game.highlight.pause();
     }
   }
 

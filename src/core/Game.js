@@ -15,6 +15,8 @@ import { UpgradeState, UPGRADES, rollUpgradeChoices, shouldOfferUpgrade } from '
 import { getCompanion, isCompanionUnlocked, companionsUnlockedByLevel, DEFAULT_COMPANION } from './Companions.js';
 import { getDailyChallenge, dateKey, buildDailyChallengeUrl } from './Challenge.js';
 import { RunSaveStore, buildEndlessSnapshot, MIN_SAVE_WAVE } from './RunSave.js';
+import { PhraseTracker, PHRASE_RUNES } from './Spells.js';
+import { evaluateCosmetics, getCosmetic, getTrail, isCosmeticUnlocked, DEFAULT_TRAIL, DEFAULT_HAT } from './Cosmetics.js';
 import { ObjectPool } from './ObjectPool.js';
 import { GestureEngine, getMissHint } from '../GestureEngine.js';
 import { Player } from '../entities/Player.js';
@@ -29,6 +31,8 @@ import { BackgroundRenderer } from '../systems/BackgroundRenderer.js';
 import { QualityManager, installShadowBlurScaler } from '../systems/QualityManager.js';
 import { DangerIndicator } from '../systems/DangerIndicator.js';
 import { PracticeSession } from '../systems/PracticeSession.js';
+import { EventSystem } from '../systems/EventSystem.js';
+import { HighlightRecorder } from '../systems/HighlightRecorder.js';
 import { UIManager } from '../ui/UIManager.js';
 
 /** 3-2-1 shown after resuming from pause: seconds per number, and how many numbers */
@@ -61,6 +65,12 @@ export class Game {
     // Route every ctx.shadowBlur assignment through the quality tier (no-op on mock contexts)
     installShadowBlurScaler(this.ctx, () => this.quality.glowScale);
 
+    // Ghost glows are cached sprites (not per-frame shadowBlur): size them for the starting tier now,
+    // so the first squad that spawns does not have to build them mid-fight.
+    Enemy.setGlowScale(this.quality.glowScale);
+    Enemy.setPixelRatio(this.dpr);
+    Enemy.prewarmGlow();
+
     this.width = typeof window !== 'undefined' ? window.innerWidth : 1280;
     this.height = typeof window !== 'undefined' ? window.innerHeight : 720;
 
@@ -84,6 +94,20 @@ export class Game {
     this.particleSystem = new ParticleSystem(particleBudget, 50); // Pooled particle system
     this.waveSystem = new WaveSystem();
     this.backgroundRenderer = new BackgroundRenderer();
+
+    // Surprises (golden ghost, meteor shower...), secret Spell Phrases, Boss Rush and the best-moment clip
+    this.events = new EventSystem();
+    this.phrases = new PhraseTracker();
+    this.bossRush = false;
+    this.highlight = new HighlightRecorder(canvas, {
+      // The clip carries the game's sound (music, effects, Momo); a fresh track per run
+      getAudioTrack: () => (this.audioSystem && typeof this.audioSystem.getRecordingTrack === 'function'
+        ? this.audioSystem.getRecordingTrack()
+        : null)
+    });
+    this.clipResult = null;
+    this._boostShown = 0;
+    Enemy.onGoldenEscape = (e) => this._onGoldenEscaped(e);
 
     // Object Pools for Projectile and Enemy entities
     this.projectilePool = new ObjectPool(
@@ -176,6 +200,9 @@ export class Game {
 
     // The touch buzz on pen-down follows the haptics setting
     this.inputHandler.canVibrate = () => this.settings.get('haptics');
+
+    // Equipped ink colour and hat
+    this._applyCosmetics();
 
     // Push the initial quality tier into the subsystems
     this._applyQuality();
@@ -296,9 +323,11 @@ export class Game {
       this.triggerShake(10, 0.45);
       // The boss falls: a beat of slow motion to savour it
       this.triggerSlowMo(1.3, 0.28, true);
-      this.uiManager.showLevelComplete(lvlNum, lvlData);
+      // The last Story level has no "next area": its banner announces the victory instead
+      const isFinal = !!this.waveSystem.isFinalLevel;
+      this.uiManager.showLevelComplete(lvlNum, lvlData, isFinal);
       this.particleSystem.emitFloatingText(
-        `MÀN ${lvlNum} HOÀN THÀNH!`,
+        isFinal ? '🏆 GIẢI CỨU HỌC VIỆN!' : `MÀN ${lvlNum} HOÀN THÀNH!`,
         this.width / 2,
         this.height * 0.35,
         '#34d399',
@@ -328,6 +357,7 @@ export class Game {
     };
 
     this.waveSystem.onWaveStart = (waveNum) => {
+      this.events.startWave(waveNum, { enabled: this._eventsAllowed() });
       this.uiManager.updateWave(waveNum);
       // A new level/wave: the flawless-clear baseline restarts and the combo shield recharges
       this._levelStartDamage = this.metrics ? this.metrics.damageTaken : 0;
@@ -579,6 +609,8 @@ export class Game {
 
     this.lightScale = q.lightScale;
 
+    if (Enemy.setGlowScale(q.glowScale)) Enemy.prewarmGlow();
+
     if (this.particleSystem) {
       this.particleSystem.setGlow(q.particleGlow);
       if (this.particleBudget) {
@@ -587,6 +619,10 @@ export class Game {
     }
     if (this.inputHandler) {
       this.inputHandler.setGlow(q.glowScale > 0);
+    }
+    // Recording the arena costs CPU: stop if the device had to drop to the lowest tier
+    if (this.highlight && this.highlight.running && !this._highlightAllowed()) {
+      this.highlight.discard();
     }
 
     // DPR / lightmap size changed: re-allocate buffers (no-op until the first resize ran)
@@ -628,6 +664,8 @@ export class Game {
     this.dpr = dpr;
     this.width = width;
     this.height = height;
+    // Glow sprites are DPR-aware: rebuild them (once) if the canvas density changed
+    if (Enemy.setPixelRatio(dpr)) Enemy.prewarmGlow();
 
     // Internal pixel buffer scaled by DPR
     this.canvas.width = Math.round(this.width * this.dpr);
@@ -723,6 +761,7 @@ export class Game {
       : this.waveSystem.currentWave;
     const accuracy = m.spellsCast > 0 ? Math.round((m.spellsHit / m.spellsCast) * 100) : 100;
     const seconds = m.startTime ? Math.round((Date.now() - m.startTime) / 1000) : 0;
+    const rush = !!this.bossRush && mode === 'STORY' && !daily;
 
     const result = this.progress.recordRun({
       mode, difficulty,
@@ -730,11 +769,12 @@ export class Game {
       level,
       combo: m.maxCombo || 0,
       accuracy,
-      victory,
+      // A Boss Rush clear is not a Story clear (it would unlock "Giải Cứu Học Viện")
+      victory: victory && !rush,
       spellsCast: m.spellsCast,
       spellsHit: m.spellsHit,
       seconds,
-      ranked: !assisted && !daily,
+      ranked: !assisted && !daily && !rush,
       assisted
     });
 
@@ -757,7 +797,22 @@ export class Game {
       }
     }
 
-    if (!assisted && !daily) {
+    // Boss Rush keeps its own board: best score, fastest clear and furthest boss
+    let rushInfo = null;
+    if (rush) {
+      rushInfo = { seconds, isNewScore: false, isNewTime: false, record: this.progress.getRush() };
+      if (!assisted) {
+        const r = this.progress.recordRush({ score: this.score, level, seconds, victory });
+        rushInfo = { seconds, isNewScore: r.isNewScore, isNewTime: r.isNewTime, record: r.record, previous: r.previous };
+        highScore = r.record.score;
+        previousBest = r.previous.score;
+        isNewHighScore = r.isNewScore;
+      } else {
+        highScore = this.score;
+      }
+    }
+
+    if (!assisted && !daily && !rush) {
       this.saveHighScore(this.score);
       this.highScore = result.record.score;
     }
@@ -765,19 +820,24 @@ export class Game {
 
     // The end screen lists new achievements itself: play the fanfare but skip the toasts on top of it
     const achievements = evaluateAchievements(this.progress);
+    const cosmetics = this._checkCosmetics(false);
     this._announceAchievements(achievements, false);
+    this._collectHighlight();
 
     const summary = {
       mode, difficulty, level, accuracy, seconds, victory, assisted,
       daily: dailyInfo,
+      bossRush: rush,
+      rush: rushInfo,
+      cosmetics,
       score: this.score,
       maxCombo: m.maxCombo || 0,
       highScore,
       previousBest,
-      scoreGap: (assisted || daily) ? 0 : result.scoreGap,
+      scoreGap: (assisted || daily || rush) ? 0 : result.scoreGap,
       isNewHighScore: !assisted && isNewHighScore,
-      isNewLevel: !assisted && !daily && result.isNewLevel,
-      isNewCombo: !assisted && !daily && result.isNewCombo,
+      isNewLevel: !assisted && !daily && !rush && result.isNewLevel,
+      isNewCombo: !assisted && !daily && !rush && result.isNewCombo,
       record: result.record,
       replay: this.getRunReplay(),
       unlockedCompanions: this._newCompanions.slice(),
@@ -891,6 +951,16 @@ export class Game {
     this.bossEntranceWarningActive = false;
     this.bossEntranceWarningTimer = 0;
 
+    // Surprises, phrase chain and the clip recorder start fresh with every run
+    this.events.reset();
+    this.phrases.reset();
+    this.waveSystem.eventSpeedScale = 1;
+    this.waveSystem.spawnQueue.length = 0;
+    this.clipResult = null;
+    this.uiManager.meta.renderPhraseChain([]);
+    this.uiManager.meta.setClip(null);
+    this._beginHighlight();
+
     // Upgrades only last for one run: undo their effects on the player before it is reset
     this.upgrades.reset();
     this.upgradePending = false;
@@ -946,11 +1016,14 @@ export class Game {
       ws.setSeed(ch.seed);
       ws.setModifier(ch.modifier);
       ws.setDifficulty(ch.difficulty); // fixed so scores are comparable; the saved difficulty is untouched
+      this.events.setSeed(ch.seed);
     } else {
       ws.setSeed(null);
       ws.setModifier(null);
       ws.setDifficulty(this.difficulty);
+      this.events.setSeed(null);
     }
+    ws.setBossRush(this.bossRush);
   }
 
   start() {
@@ -1101,8 +1174,9 @@ export class Game {
     }
 
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
-    const livingEnemiesCount = this.enemies.filter(e => !e.isDead).length;
-    const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost).length;
+    // The golden ghost is a bonus: it never holds a wave (or a boss fight) open
+    const livingEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isGolden).length;
+    const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost && !e.isGolden).length;
 
     // Boss Entrance Build-up Delay: when all wave minions have been cleared in Story Mode,
     // pause briefly ("từ từ", ~2.2s) with warning banner and ominous ambience before Boss appears
@@ -1259,6 +1333,7 @@ export class Game {
           isHeartGhost: isHeart,
           isFreezeGhost: isFreeze,
           isBlastGhost: isBlast,
+          isGolden: Boolean(enemyConfig.isGolden),
           symbolQueue: enemyConfig.symbolQueue,
           bossPhases: enemyConfig.bossPhases,
           bossLives: enemyConfig.bossLives,
@@ -1609,32 +1684,44 @@ export class Game {
     // 2. Render Player Momo
     this.player.render(ctx);
 
-    // 3. Render Enemies
+    // 3. Floating announcements sit under the ghosts: a ghost must never be hidden by a message
+    this.particleSystem.renderTexts(ctx);
+
+    // 4. Render Enemies
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemies[i].render(ctx);
     }
 
-    // 4. Render Projectiles
+    // 5. Render Projectiles
     for (let i = 0; i < this.projectiles.length; i++) {
       this.projectiles[i].render(ctx);
     }
 
-    // 5. Render Particles & Floating texts
-    this.particleSystem.render(ctx);
+    // 6. Render Particles (hit bursts, sparks) over everything
+    this.particleSystem.renderParticles(ctx);
 
-    // 6. Render On-Canvas Interactive Tutorial Guide if active
+    // 7. Render On-Canvas Interactive Tutorial Guide if active
     this._renderTutorialGuide(ctx);
 
-    // 7. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
+    // 8. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
     this._renderDynamicLighting(ctx);
 
-    // 8. Render Neon Drawing Trail
+    // 9. Render Neon Drawing Trail
     this.inputHandler.render(ctx);
 
     ctx.restore();
 
-    // 9. Pressure cues in screen space (not shaken): edge arrows, last-heart glow, slow-motion tint
+    // 10. Pressure cues in screen space (not shaken): edge arrows, last-heart glow, slow-motion tint
     if (this.danger) this.danger.render(ctx, this);
+
+    // 11. Blood moon: the whole arena glows red while it lasts
+    if (this.events && this.events.speedTimer > 0) {
+      const pulse = 0.10 + 0.04 * Math.sin(performance.now() / 260);
+      ctx.save();
+      ctx.fillStyle = `rgba(190, 18, 60, ${pulse})`;
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.restore();
+    }
   }
 
   /**
@@ -2047,6 +2134,8 @@ export class Game {
       if (this.comboCount === 5 && this.metrics.damageTaken === this._levelStartDamage && !this.isAssisted()) {
         this.progress.addStat('cleanCombos');
       }
+      if (this.highlight) this.highlight.noteHit(this.comboCount);
+      this._trackPhrase(gesture);
 
       // Play cheerful meow milestone at combo x3, x6, x9, x12...
       if (this.comboCount >= 3 && this.comboCount % 3 === 0) {
@@ -2196,6 +2285,7 @@ export class Game {
   }
 
   _fizzleCombo() {
+    this._breakPhraseChain();
     if (this.comboCount > 0) {
       if (this.upgrades.consumeShield()) {
         this.particleSystem.emitFloatingText('🛡️ LÁ CHẮN COMBO!', this.player.x, this.player.y - 50, '#38bdf8', 18);
@@ -2220,7 +2310,8 @@ export class Game {
    * @returns {number} the points actually awarded (use this for floating text)
    */
   _addScore(points) {
-    const awarded = Math.round(points * this.upgrades.scoreMultiplier);
+    const eventMult = this.events ? this.events.scoreMult : 1;
+    const awarded = Math.round(points * this.upgrades.scoreMultiplier * eventMult);
     this.score += awarded;
     return awarded;
   }
@@ -2244,6 +2335,7 @@ export class Game {
    * @param {boolean} isBoss
    */
   _onEnemyDefeated(enemy, gesture, isBoss) {
+    if (enemy.isGolden) this._onGoldenCaught(enemy);
     this.progress.recordKill(bestiaryId(enemy), gesture);
     if (isBoss) {
       this.progress.addStat('bossesDefeated');
@@ -2269,7 +2361,7 @@ export class Game {
     if (!assisted) this.progress.maxStat('bestCombo', this.metrics.maxCombo || 0);
 
     // Clearing a Story level unlocks the companion tied to it (assisted clears count too: it is progress, not rank)
-    if (mode === 'STORY' && this.progress.markLevelCleared(index)) {
+    if (mode === 'STORY' && !this.bossRush && this.progress.markLevelCleared(index)) {
       for (const def of companionsUnlockedByLevel(index)) {
         const char = ACADEMY_CHARACTERS.find(c => c.id === def.id);
         const name = char ? char.name : def.id;
@@ -2350,6 +2442,7 @@ export class Game {
    * @param {boolean} [toasts=true] false when the screen already lists them (end of run)
    */
   _announceAchievements(list, toasts = true) {
+    if (toasts) this._checkCosmetics(true);
     if (!list || list.length === 0) return;
     if (toasts) {
       for (const def of list) {
@@ -2428,6 +2521,12 @@ export class Game {
 
     this.danger.update(dt, this);
     this._updateAudioMood();
+
+    // Surprises, boss tricks, phrase chain timeout and the clip recorder run on game time
+    this._updateEvents(scaled);
+    this._pollBossGimmicks();
+    if (this.phrases.tick(scaled)) this.uiManager.meta.renderPhraseChain([]);
+    if (this.highlight) this.highlight.tick(scaled);
     return scaled;
   }
 
@@ -2466,6 +2565,7 @@ export class Game {
       this.uiManager.meta.setCountdown(0);
       this.inputHandler.setEnabled(true);
       if (this.audioSystem && typeof this.audioSystem.resumeBGM === 'function') this.audioSystem.resumeBGM();
+      if (this.highlight) this.highlight.resume();
       return false;
     }
     this.uiManager.meta.setCountdown(Math.ceil(this.resumeCountdown / COUNTDOWN_STEP));
@@ -2487,6 +2587,7 @@ export class Game {
     const snap = this.runSave.load();
     if (!snap) return false;
     this.challenge = null;
+    this.bossRush = false;
     this._pendingRestore = snap;
     this.waveSystem.setMode('ENDLESS');
     this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
@@ -2527,6 +2628,7 @@ export class Game {
    * @param {string} [key] 'YYYY-MM-DD', defaults to today (UTC)
    */
   startDaily(key = dateKey()) {
+    this.bossRush = false;
     this.challenge = getDailyChallenge(key);
     this.waveSystem.setMode('ENDLESS');
     this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
@@ -2564,6 +2666,7 @@ export class Game {
 
   /** Leave a run or Practice Mode for the main menu */
   quitToMenu() {
+    if (this.highlight) this.highlight.discard();
     if (this.audioSystem && typeof this.audioSystem.stopBGM === 'function') this.audioSystem.stopBGM();
     this.stateMachine.changeState(GAME_STATES.MENU);
   }
@@ -2604,6 +2707,298 @@ export class Game {
     this.uiManager.meta.applyAssistBadge();
     this.onGestureRecognized({ gesture, score: 1, candidate: gesture, reason: null, synthetic: true }, []);
     return true;
+  }
+
+  // =========================================================================
+  // SURPRISES: GOLDEN GHOST, METEOR SHOWER, BLOOD MOON, BOSS TRICKS
+  // =========================================================================
+
+  /** Whether the current wave may hold surprises (not the tutorial level, not a boss-only level, not Boss Rush) */
+  _eventsAllowed() {
+    const ws = this.waveSystem;
+    if (this.bossRush || this.isTutorialActive) return false;
+    if (ws.gameMode === 'STORY') {
+      return ws.currentLevelIndex >= 2 && ws.currentLevelIndex < 5 && !!ws.levelData && ws.totalEnemiesInWave > 0;
+    }
+    return ws.currentWave >= 2;
+  }
+
+  /** Runes the ghosts of the current level (or daily twist) can carry */
+  _runePool() {
+    const ws = this.waveSystem;
+    if (ws.modifier && ws.modifier.runes) return ws.modifier.runes;
+    if (ws.levelData && ws.levelData.allowedRunes) return ws.levelData.allowedRunes;
+    return ws.currentWave >= 2
+      ? ['horizontal', 'vertical', 'caret', 'v_shape', 'lightning']
+      : ['horizontal', 'vertical', 'caret', 'v_shape'];
+  }
+
+  _updateEvents(dt) {
+    const ws = this.waveSystem;
+    const mod = ws.modifier;
+    const active = !ws.isIntermission && !ws.isBossSpawned && ws.enemiesSpawnedInWave < ws.totalEnemiesInWave;
+    const fired = this.events.update(dt, {
+      active,
+      hp: this.player.hp,
+      maxHp: this.player.maxHp,
+      pool: this._runePool(),
+      noHearts: !!(mod && (mod.noHearts || mod.runes))
+    });
+    for (const ev of fired) this._announceEvent(ev);
+    ws.eventSpeedScale = this.events.speedScale;
+
+    // HUD pill for a running score boost: touch the DOM only when the shown second changes
+    const left = this.events.scoreTimer > 0 ? Math.ceil(this.events.scoreTimer) : 0;
+    if (left !== this._boostShown) {
+      this._boostShown = left;
+      this.uiManager.meta.setBoost(this.events.scoreMult, left);
+    }
+  }
+
+  _announceEvent(ev) {
+    const color = ev.kind === 'GOLDEN' ? '#fde047' : (ev.kind === 'HEART_FEST' ? '#f472b6' : '#fb923c');
+    this.particleSystem.emitFloatingText(ev.text, this.width / 2, this.height * 0.2, color, 24);
+    this.triggerShake(ev.kind === 'BLOOD_MOON' ? 9 : 5, 0.35);
+    if (this.audioSystem) {
+      if (ev.kind === 'GOLDEN' || ev.kind === 'HEART_FEST') this.audioSystem.playSpell('heart');
+      else if (typeof this.audioSystem.soundBlast === 'function') this.audioSystem.soundBlast();
+    }
+    if (this.hapticSystem) this.hapticSystem.pulse(16);
+    for (const spawn of ev.spawns) this.waveSystem.queueSpawn(spawn);
+  }
+
+  /** Boss tricks are raised by the Enemy; the game turns them into banners, sounds and spawns */
+  _pollBossGimmicks() {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e.isBoss && e.gimmickEvent) {
+        const kind = e.gimmickEvent;
+        e.gimmickEvent = null;
+        this._onBossGimmick(e, kind);
+      }
+    }
+  }
+
+  _onBossGimmick(boss, kind) {
+    const ps = this.particleSystem;
+    const x = this.width / 2;
+    const y = this.height * 0.2;
+    if (kind === 'HIDE') {
+      ps.emitFloatingText('📚 SÁCH CHE MẤT ẤN KÝ! Hãy nhớ lấy!', x, y, '#7dd3fc', 22);
+    } else if (kind === 'SWIRL') {
+      ps.emitFloatingText('🍲 SÚP XOÁY! Thứ tự ấn ký bị đảo ngược!', x, y, '#fb923c', 22);
+      if (this.audioSystem && typeof this.audioSystem.soundBlast === 'function') this.audioSystem.soundBlast();
+    } else if (kind === 'METEORS') {
+      ps.emitFloatingText('🔭 THIÊN THẠCH RƠI! Hạ chúng thật nhanh!', x, y, '#c084fc', 22);
+      this.waveSystem.queueSpawn(this.events.makeMeteorSquad(this._runePool(), 3));
+    } else if (kind === 'SPRINT') {
+      ps.emitFloatingText('🏀 CHẠY NƯỚC RÚT! Vẽ nhanh lên!', x, y, '#34d399', 22);
+      this.triggerShake(8, 0.3);
+    } else if (kind === 'FLICKER') {
+      ps.emitFloatingText('👑 BÓNG TỐI CHẬP CHỜN — ấn ký lúc hiện lúc ẩn!', x, y, '#f43f5e', 22);
+      this.triggerShake(10, 0.5);
+    }
+    if (this.hapticSystem) this.hapticSystem.pulse(22);
+  }
+
+  /** The golden ghost was purified: a big bonus and a short double-score window */
+  _onGoldenCaught(enemy) {
+    this.progress.addStat('goldenCaught');
+    this.events.boostScore(2, 10);
+    this.particleSystem.emitFloatingText('🌟 U LINH VÀNG! ĐIỂM x2 TRONG 10 GIÂY!', this.width / 2, this.height * 0.26, '#fde047', 26);
+    this.particleSystem.emitHitBurst(enemy.x, enemy.y, '#fde047', 36);
+    this.comboTimer = this.comboDecayTime;
+    if (this.player.heal(1)) {
+      this.progress.addStat('heals');
+      this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 22);
+      this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+    }
+    if (this.audioSystem) this.audioSystem.playWaveComplete();
+    if (this.hapticSystem) this.hapticSystem.pulse(24);
+  }
+
+  /** The golden ghost slipped away (called by the Enemy) */
+  _onGoldenEscaped(enemy) {
+    if (this.particleSystem) {
+      this.particleSystem.emitFloatingText('💨 U Linh Vàng đã trốn mất…', this.width / 2, this.height * 0.26, '#94a3b8', 20);
+    }
+  }
+
+  // =========================================================================
+  // SPELL PHRASES
+  // =========================================================================
+
+  /** A stroke landed on a ghost: extend the chain, and cast the phrase if it just completed */
+  _trackPhrase(gesture) {
+    if (!this.phrases) return;
+    const phrase = this.phrases.push(gesture);
+    this.uiManager.meta.renderPhraseChain(this.phrases.chain, phrase);
+    if (phrase) this._castPhrase(phrase);
+  }
+
+  _breakPhraseChain() {
+    if (this.phrases && this.phrases.breakChain()) this.uiManager.meta.renderPhraseChain([]);
+  }
+
+  _castPhrase(phrase) {
+    const rec = this.progress.recordPhrase(phrase.id);
+    this.particleSystem.emitFloatingText(`${phrase.icon} ${phrase.name.toUpperCase()}!`, this.width / 2, this.height * 0.32, '#fde047', 30);
+    this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#fde047', 30);
+    if (this.audioSystem) this.audioSystem.playSpell('heart');
+    if (this.hapticSystem) this.hapticSystem.pulse(24);
+
+    switch (phrase.effect) {
+      case 'dispel':
+        this._dispelAll();
+        break;
+      case 'freeze':
+        this.triggerFreezeAll(3.5);
+        break;
+      case 'heal':
+        if (this.player.heal(1)) {
+          this.progress.addStat('heals');
+          this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
+          this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
+        } else {
+          const pts = this._addScore(400);
+          this.particleSystem.emitFloatingText(`+${pts}`, this.player.x, this.player.y - 60, '#fde047', 22);
+        }
+        break;
+      case 'aegis':
+        this.player.invulnerableTimer = Math.max(this.player.invulnerableTimer, 3.5);
+        this.player.isInvulnerable = true;
+        this.particleSystem.emitFloatingText('🛡️ BẤT TỬ 3,5 GIÂY', this.player.x, this.player.y - 60, '#38bdf8', 22);
+        break;
+      case 'gale':
+        this.triggerPushbackAll(280);
+        break;
+      case 'golden':
+        this.events.boostScore(2, 10);
+        this.particleSystem.emitFloatingText('🌅 ĐIỂM x2 TRONG 10 GIÂY', this.player.x, this.player.y - 60, '#fde047', 22);
+        break;
+      default:
+        break;
+    }
+
+    if (rec.isNew) {
+      this.uiManager.meta.showToast(
+        `<span class="toast-icon">📖</span><span class="toast-body"><b>Công thức mới trong Sổ Phép!</b><br>${phrase.icon} ${phrase.name} — ${phrase.desc}</span>`,
+        'unlock'
+      );
+    }
+    this.progress.save();
+    this._announceAchievements(evaluateAchievements(this.progress));
+  }
+
+  /** Blade Storm: strip the front rune off every ghost that no stroke is already about to hit */
+  _dispelAll() {
+    const targeted = new Set();
+    for (let i = 0; i < this.projectiles.length; i++) {
+      if (this.projectiles[i].targetEnemy) targeted.add(this.projectiles[i].targetEnemy);
+    }
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e.isDead || e.isBoss || e.isHeartGhost || e.isFreezeGhost || e.isBlastGhost || targeted.has(e)) continue;
+      const rune = e.symbolQueue[0];
+      if (!PHRASE_RUNES.includes(rune)) continue;
+      const res = e.takeHit(rune);
+      if (!res.matched) continue;
+      this.particleSystem.emitHitBurst(e.x, e.y, RUNES[rune].color, 14);
+      if (res.destroyed) this._phraseKill(e, rune);
+    }
+    this.lightningFlashTimer = 0.18;
+    this.triggerShake(10, 0.35);
+  }
+
+  _phraseKill(enemy, rune) {
+    this.metrics.enemiesDefeated++;
+    this.audioSystem.playEnemyDeath();
+    this.particleSystem.emitMonsterDeathExplosion(enemy.x, enemy.y, enemy.type, 24);
+    const reward = this._addScore(enemy.scoreValue * this.comboMultiplier);
+    this.particleSystem.emitFloatingText(`+${reward}`, enemy.x, enemy.y - 20, '#fde047', 20);
+    this._onEnemyDefeated(enemy, rune, false);
+  }
+
+  // =========================================================================
+  // BOSS RUSH, COSMETICS & BEST-MOMENT CLIP
+  // =========================================================================
+
+  /** Boss Rush: the five bosses back to back (no minion phase), with an upgrade between bosses */
+  startBossRush() {
+    this.challenge = null;
+    this.bossRush = true;
+    this.waveSystem.setMode('STORY');
+    this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+  }
+
+  /** Put the equipped ink colour and hat into effect (falls back to the defaults if they are not unlocked) */
+  _applyCosmetics() {
+    const p = this.progress;
+    if (!p) return;
+    const trailDef = getCosmetic('trail', p.getEquipped('trail'));
+    const hatDef = getCosmetic('hat', p.getEquipped('hat'));
+    const trail = trailDef && isCosmeticUnlocked(trailDef, p) ? trailDef : getTrail(DEFAULT_TRAIL);
+    const hat = hatDef && isCosmeticUnlocked(hatDef, p) ? hatDef.id : DEFAULT_HAT;
+    if (this.inputHandler) this.inputHandler.setTrailStyle(trail);
+    if (this.player) this.player.hat = hat;
+  }
+
+  /**
+   * Equip a cosmetic.
+   * @param {'trail'|'hat'} kind
+   * @param {string} id
+   * @returns {boolean} false if it does not exist or is still locked
+   */
+  setCosmetic(kind, id) {
+    const def = getCosmetic(kind, id);
+    if (!def || !isCosmeticUnlocked(def, this.progress)) return false;
+    this.progress.equipCosmetic(kind, id);
+    this.progress.save();
+    this._applyCosmetics();
+    return true;
+  }
+
+  /**
+   * Tell the player about cosmetics that just became available.
+   * @param {boolean} toast false at the end of a run (the summary lists them instead)
+   * @returns {Array} the newly unlocked cosmetics
+   */
+  _checkCosmetics(toast = true) {
+    if (!this.progress) return [];
+    const fresh = evaluateCosmetics(this.progress);
+    if (fresh.length > 0 && this.uiManager && this.uiManager.meta) this.uiManager.meta.markWardrobeNew();
+    if (toast && fresh.length > 0 && this.uiManager && this.uiManager.meta) {
+      for (const c of fresh) {
+        this.uiManager.meta.showToast(
+          `<span class="toast-icon">${c.icon}</span><span class="toast-body"><b>Phần thưởng mới!</b><br>${c.kind === 'hat' ? 'Mũ' : 'Vệt mực'}: ${c.name}</span>`,
+          'unlock'
+        );
+      }
+    }
+    return fresh;
+  }
+
+  /** Recording the arena costs CPU: only when switched on, and not on weak devices */
+  _highlightAllowed() {
+    if (!this.settings.get('highlight') || !this.quality) return false;
+    const tier = this.quality.tier;
+    if (tier === 'low') return false;
+    return !this.isMobile || tier === 'high';
+  }
+
+  _beginHighlight() {
+    if (!this.highlight) return;
+    this.highlight.discard();
+    if (this._highlightAllowed()) this.highlight.begin();
+  }
+
+  /** End of a run: finish recording and hand the best moment to the end screen */
+  _collectHighlight() {
+    if (!this.highlight || !this.highlight.supported) return;
+    this.highlight.end().then((clip) => {
+      this.clipResult = clip;
+      if (this.uiManager && this.uiManager.meta) this.uiManager.meta.setClip(clip);
+    }).catch(() => { /* no clip is fine */ });
   }
 
   _calculateComboMultiplier(count) {

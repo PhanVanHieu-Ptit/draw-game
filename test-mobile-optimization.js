@@ -51,7 +51,7 @@ class FakeCtx2D {
   get shadowBlur() { return this._nativeBlur; }
   set shadowBlur(v) { this._nativeBlur = v; this.blurWrites.push(v); }
   save() {} restore() {} translate() {} rotate() {} scale() {} beginPath() {}
-  arc() {} fill() {} stroke() {} fillText() {} quadraticCurveTo() {} clearRect() {} fillRect() {}
+  arc() {} fill() {} stroke() {} fillText() {} strokeText() {} quadraticCurveTo() {} clearRect() {} fillRect() {}
   drawImage() { this.calls.push('drawImage'); }
   setTransform() {}
   moveTo(x, y) { this.moveTos.push([x, y]); }

@@ -80,7 +80,7 @@ export class DangerIndicator {
 
     for (let i = 0; i < enemies.length && out.length < MAX_ARROWS; i++) {
       const e = enemies[i];
-      if (e.isDead || e.isHeartGhost || e.isFrozen) continue;
+      if (e.isDead || e.isHeartGhost || e.isGolden || e.isFrozen) continue;
 
       const r = (e.radius || 24) * 0.6;
       const outside = e.x < -r || e.x > w + r || e.y < -r || e.y > h + r;

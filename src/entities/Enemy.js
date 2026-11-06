@@ -8,6 +8,200 @@ import { Entity } from './Entity.js';
 import { RUNES, ENEMY_TYPES } from '../core/Constants.js';
 import { applyBorderPattern, resetBorderPattern, drawRunePattern } from './RunePatterns.js';
 
+/**
+ * Each boss has one signature trick that fires while it is advancing on Momo (never during a retreat):
+ *  - hide:    the runes above its head turn into "?" for a moment, so the player must remember them
+ *  - swirl:   the order of the remaining runes is reversed
+ *  - meteors: it calls down a volley of fast single-rune ghosts (the game spawns them)
+ *  - sprint:  a short burst of speed, announced as it starts
+ *  - flicker: on its LAST life the runes are only readable for a short while in every cycle
+ * The enemy only raises a `gimmickEvent`; Game turns it into banners, sounds and spawns.
+ */
+export const BOSS_GIMMICKS = {
+  BOSS_LIBRARIAN: { kind: 'hide', firstDelay: 5.5, interval: 8, duration: 2.4, name: 'Sách Che Chữ' },
+  BOSS_CHEF: { kind: 'swirl', firstDelay: 6, interval: 9, name: 'Súp Xoáy' },
+  BOSS_PLANETARIUM: { kind: 'meteors', firstDelay: 7, interval: 12, name: 'Mưa Thiên Thạch' },
+  BOSS_COACH: { kind: 'sprint', firstDelay: 6, interval: 9.5, duration: 2.2, speed: 2.1, name: 'Chạy Nước Rút' },
+  BOSS_MASTER: { kind: 'flicker', visible: 1.5, hidden: 2.3, name: 'Bóng Tối Chập Chờn' }
+};
+
+const HIDDEN_RUNE = { symbol: '?', color: '#94a3b8', glow: '#64748b' };
+
+// ---------------------------------------------------------------------------------------------
+// Glow sprites
+//
+// ctx.shadowBlur is by far the costliest thing this file does: every blurred fill/stroke makes the
+// browser rasterise the shape into a temporary layer and blur it. A ghost used to trigger ~15 of
+// those per frame (its own glow, which then "leaked" into every later stroke: eyes, brows, mouth,
+// fangs, accessories, rune badge...), so 20 ghosts on screen meant ~300 blur passes per frame.
+//
+// The glow of a given shape + colour never changes, so it is rendered once into a small offscreen
+// sprite and blitted with drawImage (one textured quad). Bosses are few and keep the original look.
+// If no offscreen canvas can be created (non-browser environments) the callers fall back to shadowBlur.
+// ---------------------------------------------------------------------------------------------
+
+/** key -> { canvas, ox, oy } sprite, or null when it could not be built (remembered: never retried) */
+const glowSprites = new Map();
+/** Mirrors the render-quality tier (QualityManager.glowScale): 0 = no glow at all */
+let glowScale = 1;
+/**
+ * Canvas DPR. ctx.shadowBlur is measured in DEVICE pixels, so on a retina canvas the old glow was
+ * blur/2 CSS pixels wide. Sprites are drawn in CSS pixels, so their blur is divided by the DPR to look the same.
+ */
+let pixelRatio = 1;
+
+/** Effective sprite blur radius (CSS px) for a requested shadowBlur value */
+function spriteBlur(blur) {
+  return (blur * glowScale) / pixelRatio;
+}
+
+function makeSprite(w, h) {
+  w = Math.max(1, Math.ceil(w));
+  h = Math.max(1, Math.ceil(h));
+  let canvas = null;
+  if (typeof document !== 'undefined' && document && typeof document.createElement === 'function') {
+    canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+  } else if (typeof OffscreenCanvas === 'function') {
+    canvas = new OffscreenCanvas(w, h);
+  }
+  const g = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+  return g ? { canvas, g } : null;
+}
+
+function cachedSprite(key, build) {
+  let sprite = glowSprites.get(key);
+  if (sprite === undefined) {
+    try {
+      sprite = build() || null;
+    } catch (e) {
+      sprite = null;
+    }
+    glowSprites.set(key, sprite);
+  }
+  return sprite;
+}
+
+/** '#rrggbb' -> 'rgba(r,g,b,a)'; null for anything else */
+function hexToRgba(hex, a) {
+  if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return null;
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/** Glow of the ghost silhouette (body shape with a neutral skirt). Sprite origin = the ghost's origin. */
+function buildBodyGlow(r, color, blur) {
+  const pad = Math.ceil(blur * 1.3) + 2;
+  const ox = r + pad;
+  const oy = r * 1.2 + pad;
+  const sp = makeSprite(ox * 2, oy + r * 0.88 + 4 + pad);
+  if (!sp) return null;
+  const g = sp.g;
+  // Draw the shape far off-canvas and offset only its shadow back in: the sprite holds the halo, not the shape.
+  const off = ox * 2 + blur * 3 + 50;
+  g.shadowColor = color;
+  g.shadowBlur = blur;
+  g.shadowOffsetX = off;
+  g.fillStyle = '#000000';
+  g.translate(ox - off, oy);
+  g.beginPath();
+  g.arc(0, -r * 0.2, r, Math.PI, 0, false);
+  g.lineTo(r, r * 0.8);
+  g.quadraticCurveTo(r * 0.55, r * 0.65, r * 0.15, r * 0.88);
+  g.quadraticCurveTo(-r * 0.2, r * 0.88, -r * 0.55, r * 0.65);
+  g.lineTo(-r, r * 0.8);
+  g.closePath();
+  g.fill();
+  return { canvas: sp.canvas, ox, oy };
+}
+
+/**
+ * Blit the cached halo behind a ghost body (in the ghost's local, already-transformed space).
+ * @returns {boolean} true when the glow is handled (drawn, or switched off by the quality tier);
+ *                    false when the caller must fall back to ctx.shadowBlur
+ */
+function drawBodyGlow(ctx, r, color, blur) {
+  if (glowScale <= 0) return true;
+  if (typeof ctx.drawImage !== 'function') return false;
+  const sprite = cachedSprite(`body|${r}|${color}|${blur}`, () => buildBodyGlow(r, color, spriteBlur(blur)));
+  if (!sprite) return false;
+  ctx.drawImage(sprite.canvas, -sprite.ox, -sprite.oy);
+  return true;
+}
+
+/** Soft round halo of one colour, used for the small glowing eyes. */
+function buildGlowDisc(color) {
+  const size = 64;
+  if (!hexToRgba(color, 1)) return null;
+  const sp = makeSprite(size, size);
+  if (!sp) return null;
+  const grad = sp.g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  // Gaussian-like falloff, like a blurred shadow: bright core, fast fade, almost no tail
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    grad.addColorStop(t, hexToRgba(color, +Math.exp(-((t * 2.4) ** 2) / 2).toFixed(3)));
+  }
+  sp.g.fillStyle = grad;
+  sp.g.fillRect(0, 0, size, size);
+  return { canvas: sp.canvas, ox: size / 2, oy: size / 2 };
+}
+
+/**
+ * Glow hugging a small eye of radii rx/ry. @returns {boolean} same contract as drawBodyGlow
+ * (the eye is drawn right after, at the ctx origin).
+ */
+function drawEyeGlow(ctx, rx, ry, color, blur) {
+  return drawGlowDisc(ctx, 0, 0, Math.max(rx, ry) + (blur * 0.9) / pixelRatio, color, 0.6);
+}
+
+/** @returns {boolean} same contract as drawBodyGlow */
+function drawGlowDisc(ctx, x, y, radius, color, alpha) {
+  if (glowScale <= 0) return true;
+  if (typeof ctx.drawImage !== 'function') return false;
+  const sprite = cachedSprite(`disc|${color}`, () => buildGlowDisc(color));
+  if (!sprite) return false;
+  const prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * alpha * Math.min(1, glowScale);
+  ctx.drawImage(sprite.canvas, x - radius, y - radius, radius * 2, radius * 2);
+  ctx.globalAlpha = prev;
+  return true;
+}
+
+/** Glow of a rune badge (rounded rectangle). Sprite origin = the badge centre. */
+function buildBadgeGlow(w, h, color, blur) {
+  const pad = Math.ceil(blur * 1.3) + 2;
+  const ox = w / 2 + pad;
+  const oy = h / 2 + pad;
+  const sp = makeSprite(ox * 2, oy * 2);
+  if (!sp) return null;
+  const g = sp.g;
+  const off = ox * 2 + blur * 3 + 50;
+  g.shadowColor = color;
+  g.shadowBlur = blur;
+  g.shadowOffsetX = off;
+  g.fillStyle = '#000000';
+  g.translate(ox - off, oy);
+  g.beginPath();
+  if (typeof g.roundRect === 'function') g.roundRect(-w / 2, -h / 2, w, h, 6);
+  else g.rect(-w / 2, -h / 2, w, h);
+  g.fill();
+  return { canvas: sp.canvas, ox, oy };
+}
+
+/** @returns {boolean} same contract as drawBodyGlow */
+function drawBadgeGlow(ctx, w, h, color, blur, alpha) {
+  if (glowScale <= 0) return true;
+  if (typeof ctx.drawImage !== 'function') return false;
+  const sprite = cachedSprite(`badge|${w}|${h}|${color}|${blur}`, () => buildBadgeGlow(w, h, color, spriteBlur(blur)));
+  if (!sprite) return false;
+  const prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * alpha;
+  ctx.drawImage(sprite.canvas, -sprite.ox, -sprite.oy);
+  ctx.globalAlpha = prev;
+  return true;
+}
+
 export class Enemy extends Entity {
   /**
    * @param {Object} [config]
@@ -47,6 +241,23 @@ export class Enemy extends Entity {
     this.minionRetreatVy = 0;
     this.levelIndex = 1;
     this.levelId = 'library';
+
+    // Golden ghost (rare visitor that drifts across the arena and escapes if not purified in time)
+    this.isGolden = false;
+    this.goldenLife = 0;
+    this.goldenDirX = 0;
+    this.goldenDirY = 0;
+    this.escaped = false;
+    this.escapeReported = false;
+
+    // Boss signature trick state (see BOSS_GIMMICKS)
+    this.gimmick = null;
+    this.gimmickTimer = 0;
+    this.gimmickEvent = null;
+    this.symbolsHidden = false;
+    this.hideTimer = 0;
+    this.sprintTimer = 0;
+    this._flickerStarted = false;
 
     if (config.type || config.isHeartGhost || config.isFreezeGhost || config.isBlastGhost || config.symbolQueue) {
       this.init(config);
@@ -140,9 +351,48 @@ export class Enemy extends Entity {
       this.glowColor = '#10b981';
     }
 
+    // Golden ghost: heads across the arena (not at Momo) and flees when its time is up
+    this.isGolden = Boolean(config.isGolden);
+    this.escaped = false;
+    this.escapeReported = false;
+    if (this.isGolden) {
+      this.baseColor = '#fde68a';
+      this.glowColor = '#f59e0b';
+      this.scoreValue = 1200;
+      this.goldenLife = 8.5;
+      // Aim past the far side of the arena, bent sideways so the path does not run over Momo
+      const cw = config.canvasWidth || 800;
+      const ch = config.canvasHeight || 600;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const bend = Math.min(cw, ch) * 0.3 * side;
+      let tx = cw - this.x;
+      let ty = ch - this.y;
+      let dx = tx - this.x;
+      let dy = ty - this.y;
+      const len = Math.hypot(dx, dy) || 1;
+      tx += (-dy / len) * bend;
+      ty += (dx / len) * bend;
+      dx = tx - this.x;
+      dy = ty - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.goldenDirX = dx / d;
+      this.goldenDirY = dy / d;
+    }
+
+    // Boss signature trick
+    this.gimmick = null;
+    this.gimmickTimer = 0;
+    this.gimmickEvent = null;
+    this.symbolsHidden = false;
+    this.hideTimer = 0;
+    this.sprintTimer = 0;
+    this._flickerStarted = false;
+
     // Multi-phase Boss tracking
     this.bossPhases = [];
     if (this.isBoss) {
+      this.gimmick = BOSS_GIMMICKS[this.type] || null;
+      this.gimmickTimer = this.gimmick && this.gimmick.firstDelay ? this.gimmick.firstDelay : 0;
       if (config.bossPhases && Array.isArray(config.bossPhases) && config.bossPhases.length > 0) {
         this.bossPhases = config.bossPhases.map(p => [...p]);
       } else if (this.symbolQueue.length > 0) {
@@ -246,6 +496,17 @@ export class Enemy extends Entity {
     this.minionRetreatVy = 0;
     this.levelIndex = 1;
     this.levelId = 'library';
+    this.isGolden = false;
+    this.goldenLife = 0;
+    this.escaped = false;
+    this.escapeReported = false;
+    this.gimmick = null;
+    this.gimmickTimer = 0;
+    this.gimmickEvent = null;
+    this.symbolsHidden = false;
+    this.hideTimer = 0;
+    this.sprintTimer = 0;
+    this._flickerStarted = false;
   }
 
   /**
@@ -314,6 +575,7 @@ export class Enemy extends Entity {
    * @returns {boolean}
    */
   collidesWith(other) {
+    if (this.isGolden) return false; // harmless: it only wants to get away
     if (this.isRetreating || this.isMinionRetreating) return false;
     if (this.isFinalBoss) {
       // The colossal Boss occupies ~46% screen width with huge shadow wings
@@ -534,6 +796,9 @@ export class Enemy extends Entity {
    * @param {boolean} isPhaseCleared 
    */
   startBossRetreat(isPhaseCleared = false) {
+    this.symbolsHidden = false;
+    this.hideTimer = 0;
+    this.sprintTimer = 0;
     this.isRetreating = true;
     this.phaseClearedOnRetreat = Boolean(isPhaseCleared);
     this.retreatTimer = 1.35;
@@ -696,6 +961,12 @@ export class Enemy extends Entity {
       this.thawTimer -= dt;
     }
 
+    if (this.isBoss) this._updateGimmick(dt);
+    if (this.isGolden) {
+      this._updateGolden(dt);
+      return;
+    }
+
     // Heart ghost stays stationary in one place with a 14s lifetime before expiring
     if (this.isHeartGhost || this.symbolQueue.includes('heart')) {
       if (this.heartLifetime > 0) {
@@ -750,12 +1021,118 @@ export class Enemy extends Entity {
       this.isCloseDanger = isCloseDanger;
       const surgeMult = 1.0;
 
-      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult * thawMult;
+      const sprintMult = this.sprintTimer > 0 && this.gimmick ? this.gimmick.speed : 1.0;
+      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult * thawMult * sprintMult;
       const wave = Math.sin(this.time * this.oscillationFrequency + this.phase) * (currentSpeed * this.oscillationAmplitude);
 
       this.x += (nx * currentSpeed + px * wave) * dt;
       this.y += (ny * currentSpeed + py * wave) * dt;
     }
+  }
+
+  /**
+   * Golden ghost: glide along its heading with a gentle weave; when its time runs out it bolts for the edge.
+   * It never touches Momo (see collidesWith) and leaves without a trace if it gets away.
+   * @param {number} dt
+   */
+  _updateGolden(dt) {
+    const fleeing = this.goldenLife <= 0;
+    if (!fleeing) this.goldenLife -= dt;
+    const boost = fleeing ? 2.4 : 1.0;
+    const weave = Math.sin(this.time * 3.2 + this.phase) * this.speed * 0.45;
+    const px = -this.goldenDirY;
+    const py = this.goldenDirX;
+    const slow = this.slowTimer > 0 ? this.slowFactor : 1.0;
+    this.x += (this.goldenDirX * this.speed * boost * slow + px * weave) * dt;
+    this.y += (this.goldenDirY * this.speed * boost * slow + py * weave) * dt;
+
+    const m = 140;
+    if (this.x < -m || this.x > this.canvasWidth + m || this.y < -m || this.y > this.canvasHeight + m) {
+      this.escaped = true;
+      this.isDead = true;
+      if (typeof Enemy.onGoldenEscape === 'function') Enemy.onGoldenEscape(this);
+    }
+  }
+
+  /**
+   * Advance a boss's signature trick (see BOSS_GIMMICKS). Only raises `gimmickEvent`; Game reacts to it.
+   * @param {number} dt
+   */
+  _updateGimmick(dt) {
+    const g = this.gimmick;
+    if (!g) return;
+    if (this.sprintTimer > 0) this.sprintTimer = Math.max(0, this.sprintTimer - dt);
+
+    if (g.kind === 'flicker') {
+      // Only on the last life: the runes are readable for `visible` seconds out of every cycle
+      if (this.bossLives > 1) {
+        this.symbolsHidden = false;
+        return;
+      }
+      if (!this._flickerStarted) {
+        this._flickerStarted = true;
+        this.gimmickTimer = 0;
+        this.gimmickEvent = 'FLICKER';
+      }
+      this.gimmickTimer += dt;
+      this.symbolsHidden = (this.gimmickTimer % (g.visible + g.hidden)) > g.visible;
+      return;
+    }
+
+    if (this.symbolsHidden) {
+      this.hideTimer -= dt;
+      if (this.hideTimer <= 0) this.symbolsHidden = false;
+    }
+
+    this.gimmickTimer -= dt;
+    if (this.gimmickTimer > 0) return;
+    this.gimmickTimer = g.interval;
+
+    if (g.kind === 'hide') {
+      this.symbolsHidden = true;
+      this.hideTimer = g.duration;
+      this.gimmickEvent = 'HIDE';
+    } else if (g.kind === 'swirl') {
+      if (this.symbolQueue.length > 1) {
+        this.symbolQueue.reverse();
+        this.hitTimer = 0.3;
+        this.gimmickEvent = 'SWIRL';
+      }
+    } else if (g.kind === 'meteors') {
+      this.gimmickEvent = 'METEORS';
+    } else if (g.kind === 'sprint') {
+      this.sprintTimer = g.duration;
+      this.gimmickEvent = 'SPRINT';
+    }
+  }
+
+  /** Shimmering halo and orbiting sparkles around the golden ghost */
+  _renderGoldenAura(ctx) {
+    const r = this.radius;
+    const t = this.time;
+    ctx.save();
+    // Fade in and out while it is about to escape
+    if (this.goldenLife < 2.5) {
+      ctx.globalAlpha = 0.45 + 0.4 * Math.abs(Math.sin(t * 10));
+    }
+    const pulse = 0.85 + 0.15 * Math.sin(t * 5);
+    const grad = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 2.4 * pulse);
+    grad.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
+    grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 2.4 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 4; i++) {
+      const a = t * 2.2 + (i * Math.PI) / 2;
+      ctx.fillText('✦', Math.cos(a) * r * 1.7, Math.sin(a) * r * 1.4);
+    }
+    ctx.restore();
   }
 
   /**
@@ -805,6 +1182,8 @@ export class Enemy extends Entity {
       ctx.restore();
     }
 
+    if (this.isGolden) this._renderGoldenAura(ctx);
+
     // 2. Ghost Body
     ctx.save();
     ctx.rotate(sway);
@@ -815,50 +1194,62 @@ export class Enemy extends Entity {
     if (this.isFinalBoss) {
       this._renderFinalBossBody(ctx, r, animTime, isHit, isScared);
     } else {
+      const isAnyBoss = Boolean(this.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
+      // Minions are the ones that show up in numbers: their glow comes from a cached sprite and no
+      // shadow stays active for the strokes that follow. Bosses are few and keep the original shadowBlur look.
+      const lite = !isAnyBoss;
+
+      let glowColor;
+      let glowBlur;
       if (isHit) {
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 24;
+        glowColor = '#ffffff';
+        glowBlur = 24;
       } else if (isHeart) {
         ctx.fillStyle = '#fce7f3';
-        ctx.shadowColor = '#f43f5e';
-        ctx.shadowBlur = 20;
+        glowColor = '#f43f5e';
+        glowBlur = 20;
       } else if (this.type === 'BOSS_LIBRARIAN') {
         const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
         bgGrad.addColorStop(0, '#7dd3fc');
         bgGrad.addColorStop(0.5, '#38bdf8');
         bgGrad.addColorStop(1, '#0284c7');
         ctx.fillStyle = bgGrad;
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 22;
+        glowColor = '#38bdf8';
+        glowBlur = 22;
       } else if (this.type === 'BOSS_CHEF') {
         const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
         bgGrad.addColorStop(0, '#fed7aa');
         bgGrad.addColorStop(0.45, '#fb923c');
         bgGrad.addColorStop(1, '#ea580c');
         ctx.fillStyle = bgGrad;
-        ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 22;
+        glowColor = '#f97316';
+        glowBlur = 22;
       } else if (this.type === 'BOSS_PLANETARIUM') {
         const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
         bgGrad.addColorStop(0, '#e9d5ff');
         bgGrad.addColorStop(0.5, '#c084fc');
         bgGrad.addColorStop(1, '#7e22ce');
         ctx.fillStyle = bgGrad;
-        ctx.shadowColor = '#c084fc';
-        ctx.shadowBlur = 24;
+        glowColor = '#c084fc';
+        glowBlur = 24;
       } else if (this.type === 'BOSS_COACH') {
         const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
         bgGrad.addColorStop(0, '#a7f3d0');
         bgGrad.addColorStop(0.45, '#34d399');
         bgGrad.addColorStop(1, '#059669');
         ctx.fillStyle = bgGrad;
-        ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = 22;
+        glowColor = '#10b981';
+        glowBlur = 22;
       } else {
         ctx.fillStyle = this.baseColor;
-        ctx.shadowColor = this.glowColor;
-        ctx.shadowBlur = 16;
+        glowColor = this.glowColor;
+        glowBlur = 16;
+      }
+
+      if (!(lite && drawBodyGlow(ctx, r, glowColor, glowBlur))) {
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = glowBlur;
       }
 
       // Ghost body shape with multi-harmonic flowing wavy bottom
@@ -876,6 +1267,8 @@ export class Enemy extends Entity {
 
       ctx.closePath();
       ctx.fill();
+      // Only the body glows. Without this, the body's blur would also be applied to every stroke below.
+      if (lite) ctx.shadowBlur = 0;
 
       // Danger surge aura when closing in fast to Momo
       if (this.isCloseDanger && !isHeart) {
@@ -946,8 +1339,11 @@ export class Enemy extends Entity {
         ctx.fillStyle = 'rgba(186, 230, 253, 0.38)';
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#0284c7';
-        ctx.shadowBlur = 12;
+        // Freeze-all puts an ice block on EVERY ghost at once: no blur for minions
+        if (!lite) {
+          ctx.shadowColor = '#0284c7';
+          ctx.shadowBlur = 12;
+        }
 
         const ir = r * 1.35;
         ctx.beginPath();
@@ -974,10 +1370,9 @@ export class Enemy extends Entity {
       }
 
       // 3. Archetype & Story Boss Accessories
-      const isAnyBoss = Boolean(this.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
-
       if (this.type === 'ARMORED') {
         // Hắc Giáp Tướng Quân: Heavy horned dark knight helm & spiked shoulder guards
+        // (no extra shadowBlur: its body sprite already carries the purple glow)
         ctx.strokeStyle = '#4c1d95';
         ctx.lineWidth = 3.5;
         ctx.beginPath();
@@ -985,8 +1380,6 @@ export class Enemy extends Entity {
         ctx.stroke();
 
         ctx.fillStyle = '#6d28d9';
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 10;
 
         // Left Spiked Pauldron
         ctx.beginPath();
@@ -1015,10 +1408,7 @@ export class Enemy extends Entity {
 
         // Visor glowing eye slit
         ctx.fillStyle = '#a855f7';
-        ctx.shadowColor = '#c084fc';
-        ctx.shadowBlur = 8;
         ctx.fillRect(-r * 0.55, -r * 0.50, r * 1.1, 3);
-        ctx.shadowBlur = 0;
       } else if (this.type === 'BOSS_LIBRARIAN') {
         // =========================================================================
         // 1. MADAME LIBRARIA: BÓNG MA THỦ THƯ (THE KEEPER OF LOST PAGES)
@@ -1547,11 +1937,8 @@ export class Enemy extends Entity {
           ctx.fillStyle = '#fef08a';
           ctx.strokeStyle = '#3b82f6';
           ctx.lineWidth = 1;
-          ctx.shadowColor = '#60a5fa';
-          ctx.shadowBlur = 4;
           ctx.fillRect(px - 4, py - 6, 8, 12);
           ctx.strokeRect(px - 4, py - 6, 8, 12);
-          ctx.shadowBlur = 0;
         } else if (this.levelIndex === 2 || this.levelId === 'cafeteria') {
           // Level 2: Cafeteria & Kitchen Wisps - tiny apprentice toque or simmering soup ember
           ctx.fillStyle = '#ffffff';
@@ -1619,6 +2006,8 @@ export class Enemy extends Entity {
 
     const isHeart = this.isHeartGhost || (this.symbolQueue && this.symbolQueue.includes('heart'));
     const isAnyBoss = Boolean(this.isBoss || this.type === 'BOSS' || (typeof this.type === 'string' && this.type.startsWith('BOSS_')));
+    // Minions: glow from cached sprites. Bosses (one at a time) keep real shadowBlur.
+    const lite = !isAnyBoss;
 
     const dx = this.targetPlayerPos.x - this.x;
     const dy = this.targetPlayerPos.y - this.y;
@@ -1746,8 +2135,7 @@ export class Enemy extends Entity {
 
     // Glowing spectral sclera
     ctx.fillStyle = scleraColor;
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = glowBlur;
+    this._beginEyeGlow(ctx, lite, glowColor, glowBlur, eyeRadiusX, eyeRadiusY);
     ctx.beginPath();
     ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1818,8 +2206,7 @@ export class Enemy extends Entity {
 
     // Glowing spectral sclera
     ctx.fillStyle = scleraColor;
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = glowBlur;
+    this._beginEyeGlow(ctx, lite, glowColor, glowBlur, eyeRadiusX, eyeRadiusY);
     ctx.beginPath();
     ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -2027,8 +2414,10 @@ export class Enemy extends Entity {
       // Distress cartoon ectoplasm/sweat drop beside temple
       const dropY = -r * 0.38 + Math.sin(this.time * 12) * 2.5;
       ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#0284c7';
-      ctx.shadowBlur = 6;
+      if (!lite) {
+        ctx.shadowColor = '#0284c7';
+        ctx.shadowBlur = 6;
+      }
       ctx.beginPath();
       ctx.moveTo(r * 0.72, dropY - 5);
       ctx.quadraticCurveTo(r * 0.82, dropY, r * 0.72, dropY + 4);
@@ -2038,6 +2427,16 @@ export class Enemy extends Entity {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Glow behind a spectral eye: a cached halo sprite for minions, real shadowBlur for bosses
+   * (or when no sprite can be built). Leaves the caller to fill the eye shape right after.
+   */
+  _beginEyeGlow(ctx, lite, color, blur, rx, ry) {
+    if (lite && drawEyeGlow(ctx, rx, ry, color, blur)) return;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
   }
 
   /**
@@ -2462,7 +2861,7 @@ export class Enemy extends Entity {
 
     for (let i = 0; i < this.symbolQueue.length; i++) {
       const runeId = this.symbolQueue[i];
-      const rune = RUNES[runeId] || { symbol: '?', color: '#ffffff', glow: '#ffffff' };
+      const rune = this.symbolsHidden ? HIDDEN_RUNE : (RUNES[runeId] || { symbol: '?', color: '#ffffff', glow: '#ffffff' });
       const isActive = i === 0;
       const x = startX + i * (badgeWidth + spacing);
 
@@ -2476,8 +2875,11 @@ export class Enemy extends Entity {
 
       if (isActive) {
         const pulse = (Math.sin(this.time * 8) + 1) * 0.5;
-        ctx.shadowColor = rune.glow;
-        ctx.shadowBlur = 10 + pulse * 6;
+        // One blit of a cached halo (pulsing via alpha) instead of blurring the badge's fill, border AND glyph
+        if (!drawBadgeGlow(ctx, badgeWidth, badgeHeight, rune.glow, 11, 0.85 + pulse * 0.15)) {
+          ctx.shadowColor = rune.glow;
+          ctx.shadowBlur = 10 + pulse * 6;
+        }
         ctx.fillStyle = 'rgba(15, 12, 34, 0.92)';
         ctx.strokeStyle = rune.color;
         ctx.lineWidth = 2;
@@ -2495,13 +2897,13 @@ export class Enemy extends Entity {
         ctx.rect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight);
       }
       ctx.fill();
-      if (Enemy.colorBlind) {
+      if (Enemy.colorBlind && !this.symbolsHidden) {
         // Colour-blind mode: tell runes apart by texture (border dash + hatch), not only by colour
         applyBorderPattern(ctx, runeId);
         ctx.lineWidth = Math.max(ctx.lineWidth, 2);
       }
       ctx.stroke();
-      if (Enemy.colorBlind) {
+      if (Enemy.colorBlind && !this.symbolsHidden) {
         resetBorderPattern(ctx);
         // Last: the hatch starts its own path, so it must not come between fill() and the border stroke()
         drawRunePattern(ctx, runeId, badgeWidth, badgeHeight, rune.color);
@@ -2522,3 +2924,60 @@ export class Enemy extends Entity {
 
 /** Colour-blind rune textures on/off (set from Settings by Game) */
 Enemy.colorBlind = false;
+
+/** Called when a golden ghost gets away (set by Game, to announce it) */
+Enemy.onGoldenEscape = null;
+
+/**
+ * Follow the render-quality tier: 1 = full glow, 0 = none. Cached glow sprites are rebuilt at the new strength.
+ * @param {number} scale QualityManager.glowScale
+ */
+Enemy.setGlowScale = function setGlowScale(scale) {
+  const next = Number.isFinite(scale) ? Math.max(0, scale) : 1;
+  if (next === glowScale) return false;
+  glowScale = next;
+  glowSprites.clear();
+  return true;
+};
+
+/**
+ * Tell the glow sprites the canvas DPR (see `pixelRatio`). Rebuilds the cached sprites when it changes.
+ * @param {number} dpr
+ */
+Enemy.setPixelRatio = function setPixelRatio(dpr) {
+  const next = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+  if (next === pixelRatio) return false;
+  pixelRatio = next;
+  glowSprites.clear();
+  return true;
+};
+
+/**
+ * Build every glow sprite up front so the first wave of ghosts does not pay for it mid-fight.
+ * Safe to call anywhere: it quietly does nothing when no offscreen canvas exists.
+ */
+Enemy.prewarmGlow = function prewarmGlow() {
+  try {
+    if (glowScale <= 0) return;
+    const probe = { drawImage() {}, globalAlpha: 1 };
+    const radii = new Set();
+    const colors = new Set(['#ffffff', '#f43f5e']);
+    for (const t of Object.values(ENEMY_TYPES)) {
+      if (t.isBoss || (typeof t.type === 'string' && t.type.startsWith('BOSS'))) continue;
+      radii.add(t.radius);
+      colors.add(t.glowColor);
+      drawBodyGlow(probe, t.radius, t.glowColor, 16);
+      drawGlowDisc(probe, 0, 0, 1, t.glowColor, 1);
+    }
+    for (const r of radii) {
+      drawBodyGlow(probe, r, '#ffffff', 24);
+      drawBodyGlow(probe, r, '#f43f5e', 20);
+    }
+    for (const rune of Object.values(RUNES)) {
+      if (rune && rune.glow) drawBadgeGlow(probe, 24, 24, rune.glow, 11, 1);
+    }
+    for (const eyeGlow of ['#22d3ee', '#ef4444', '#a855f7']) drawGlowDisc(probe, 0, 0, 1, eyeGlow, 1);
+  } catch (e) {
+    /* purely an optimisation */
+  }
+};

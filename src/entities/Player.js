@@ -10,6 +10,7 @@
 import { Entity } from './Entity.js';
 import { PLAYER_CONFIG } from '../core/Constants.js';
 import { MOMO_SPRITES } from './momoSprites.js';
+import { drawHat } from './Hats.js';
 
 export class Player extends Entity {
   constructor(canvasWidth, canvasHeight) {
@@ -25,6 +26,10 @@ export class Player extends Entity {
 
     this.invulnerableTimer = 0;
     this.isInvulnerable = false;
+
+    // Cosmetic hat (id from core/Cosmetics.js) and where the head is, so the hat sits on it for every frame
+    this.hat = 'none';
+    this._headAnchor = { x: -2, y: -38, w: 44 };
 
     // Animation & timing states
     this.time = 0;
@@ -422,6 +427,7 @@ export class Player extends Entity {
     // 4. Danger zone check
     let hasEnemyInDanger = false;
     for (const enemy of enemies) {
+      if (enemy.isGolden) continue; // harmless visitor
       if (this.distanceTo(enemy) < this.dangerRadius) {
         hasEnemyInDanger = true;
         break;
@@ -481,6 +487,14 @@ export class Player extends Entity {
       this._renderVectorMomo(ctx);
     }
 
+    // 3b. Cosmetic hat (no glow, whatever the hurt flash left on the context)
+    if (this.hat && this.hat !== 'none') {
+      ctx.save();
+      ctx.shadowBlur = 0;
+      drawHat(ctx, this.hat, this._headAnchor, this.time);
+      ctx.restore();
+    }
+
     // 4. Interactive Magic Stardust & Wand Flare when drawing or casting
     this._renderMagicWandEffects(ctx);
 
@@ -521,6 +535,13 @@ export class Player extends Entity {
     const destW = frame.w * scale;
     const destH = frame.h * scale;
 
+    // Head sits in the upper-left part of the frame (measured on the idle frames)
+    this._headAnchor = {
+      x: -destW / 2 + offX * scale + frame.w * 0.37 * scale,
+      y: -destH / 2 - 14 + offY * scale + frame.h * 0.05 * scale,
+      w: Math.max(30, frame.w * 0.62 * scale)
+    };
+
     ctx.save();
     // Authentic Google Doodle frame positioning with per-animation offsets
     ctx.drawImage(
@@ -544,6 +565,7 @@ export class Player extends Entity {
    * @private
    */
   _renderVectorMomo(ctx) {
+    this._headAnchor = { x: -2, y: -38, w: 44 };
     ctx.save();
 
     // 1. Long sleek black tail with graceful sinusoidal wag

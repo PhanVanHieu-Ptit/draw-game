@@ -500,5 +500,43 @@ graph LR
 - **Slow-motion khi cận kề nguy hiểm:** Khi quái bọc thép chỉ còn cách Player 40px, thời gian làm chậm nhẹ 20% trong 0.3s để người chơi có khoảnh khắc "Hero Save" tung nét vẽ quyết định.
 
 ---
+
+## 8. HỆ THỐNG GẮN KẾT NGƯỜI CHƠI (ENGAGEMENT LAYER)
+
+Các cơ chế bổ sung nhằm tạo bất ngờ trong trận, chiều sâu khi làm chủ gesture và lý do quay lại. Chúng không đổi luật cốt lõi ở §1–§4.
+
+### 8.1. Bất ngờ giữa wave (`EventSystem`)
+Mỗi wave (Endless từ wave 2, Story từ màn 2 đến màn 4) có tối đa 2 bất ngờ, lên lịch lúc bắt đầu wave và chỉ chạy khi quái đang được spawn (không chạy lúc đánh trùm / nghỉ giữa màn). Trong Daily Challenge lịch này dùng cùng seed nên mọi người gặp cùng bất ngờ.
+
+| Bất ngờ | Hiệu ứng |
+|:---|:---|
+| 🌟 **U Linh Vàng** | 2–3 ấn ký, lướt ngang sân, **bỏ trốn sau ~8,5s**. Không gây sát thương và không giữ wave mở. Hạ được: điểm lớn (1200), x2 điểm 10s, hồi 1 tim. |
+| 🌠 **Mưa Sao Băng** | Bầy 5 quái nhanh, 1 ấn ký mỗi con; x2 điểm 12s. |
+| 🌕 **Trăng Máu** | Quái sinh ra nhanh hơn 25% trong 14s, đổi lại x2 điểm; màn hình ngả đỏ. |
+| 💖 **Lễ Hội U Linh Tim** | 1–2 quái tim (chỉ khi Momo đang mất máu; đầy máu thì thành Mưa Sao Băng). |
+
+### 8.2. Câu Thần Chú (Spell Phrases, `core/Spells.js`)
+Vẽ **3 nét liên tiếp theo đúng thứ tự**, mỗi nét phải trúng quái, cách nhau tối đa **2,6s**; vẽ trượt làm đứt chuỗi. Mỗi câu hồi lại sau 7s. Công thức bị ẩn trong **Sổ Phép** cho đến khi khám phá lần đầu (chỉ có gợi ý dạng câu đố).
+
+| Câu | Nét | Hiệu ứng |
+|:---|:---|:---|
+| Bão Kiếm | — \| ⚡ | Bóc ấn ký đầu của mọi quái (trừ trùm / quái đã bị nét vừa vẽ nhắm tới) |
+| Dư Âm Băng Giá | ∧ ∨ — | Đóng băng toàn bộ 3,5s |
+| Phước Lành Trăng Khuyết | ∨ ∧ \| | Hồi 1 tim (đầy tim: +400 điểm) |
+| Khiên Hộ Mệnh | \| — ∨ | Bất tử 3,5s |
+| Khúc Hát Cuồng Phong | ⚡ ∧ ∨ | Đẩy lùi mọi quái |
+| Giờ Vàng | — ∧ ⚡ | x2 điểm 10s |
+
+### 8.3. Boss Rush và cơ chế riêng của từng trùm
+- **Boss Rush**: 5 trùm liên tiếp, **không có quân lính lẻ** trước trùm, vẫn chọn nâng cấp giữa các trùm. Có bảng kỷ lục riêng (điểm, trùm xa nhất, thời gian clear nhanh nhất), không tính vào kỷ lục Cốt Truyện, không mở khóa đồng hành.
+- Mỗi trùm có một chiêu đặc trưng: **Thủ Thư** che ấn ký thành "?" (2,4s mỗi 8s); **Đầu Bếp** đảo ngược thứ tự ấn ký (mỗi 9s); **Giáo sư Stella** gọi 3 thiên thạch (mỗi 12s); **HLV Striker** chạy nước rút ×2,1 trong 2,2s (mỗi 9,5s); **Lord Umbra** ở mạng cuối chỉ cho thấy ấn ký 1,5s trong mỗi chu kỳ 3,8s.
+
+### 8.4. Tủ Đồ (cosmetic) và phần thưởng chuỗi ngày
+Vệt mực và mũ cho Momo, **chỉ để làm đẹp**. Mở khóa bằng thành tựu hoặc chuỗi ngày chơi Thử Thách Hằng Ngày (mốc **3 / 7 / 14 ngày**; tính theo chuỗi tốt nhất nên đứt chuỗi không mất phần thưởng). Quyền sở hữu được suy ra từ `ProgressStore`, chỉ lưu thêm món đang dùng và những món đã báo cho người chơi.
+
+### 8.5. Khoảnh khắc đỉnh cao (`HighlightRecorder`)
+Ghi canvas theo từng đoạn 10s (`captureStream` + `MediaRecorder`) kèm âm thanh game (nhạc nền, hiệu ứng, tiếng Momo — lấy từ `SoundSystem.getRecordingTrack()`, im lặng nếu đang tắt tiếng), chỉ giữ đoạn có combo cao nhất; cuối ván có nút xem / chia sẻ / tải. Khi xem clip, nhạc nền tạm dừng. Có thể tắt trong Cài Đặt; tự tắt ở mức đồ họa thấp và trên điện thoại cấu hình không cao. Trình duyệt không hỗ trợ thì bỏ qua âm thầm.
+
+---
 **Tài liệu được phê duyệt bởi:** Lead Game Designer  
 **Trạng thái bàn giao:** Sẵn sàng cho Team Frontend (Pixi.js / Phaser / Raw HTML5 Canvas) và Game Artist triển khai Prototype Slice 1.

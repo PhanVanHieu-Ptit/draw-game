@@ -600,27 +600,39 @@ html, body {
 
 /* ==========================================================================
    LEVEL TRANSITION BANNER (READY... SET... DRAW!)
+   A thin outlined strip near the top of the arena (not a card in the middle): ghosts travel through the
+   centre of the screen and must stay visible while the stage starts.
    ========================================================================== */
 .level-transition-banner {
+  --ltb-accent: rgba(167, 139, 250, 0.75);
+  --ltb-bg: rgba(12, 9, 28, 0.6);
+  --ltb-outline: #0a0618;
   position: absolute;
-  top: 40%;
+  top: max(17%, calc(var(--sat) + 128px));
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
+  transform: translate(-50%, -50%) scale(0.92);
+  width: min(94%, 520px);
+  /* "CẤP ĐỘ 1  THƯ VIỆN" on one line, the prompt below it; a long title drops to its own line on narrow screens */
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: baseline;
+  column-gap: 10px;
   text-align: center;
   pointer-events: none;
   z-index: 45;
   opacity: 0;
-  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: rgba(12, 9, 28, 0.88);
-  border: 1px solid rgba(167, 139, 250, 0.45);
-  padding: 24px 52px;
-  border-radius: 28px;
-  backdrop-filter: blur(24px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 50px rgba(168, 85, 247, 0.4);
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 6px 28px 8px;
+  /* Hairline in the accent colour under a strip that fades out sideways: no hard card edges */
+  background:
+    linear-gradient(90deg, transparent 0%, var(--ltb-accent) 50%, transparent 100%) bottom / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 0%, var(--ltb-bg) 16%, var(--ltb-bg) 84%, transparent 100%);
+  /* Outlined lettering stays readable over a ghost or the stage backdrop */
+  text-shadow:
+    -1px -1px 0 var(--ltb-outline), 1px -1px 0 var(--ltb-outline),
+    -1px 1px 0 var(--ltb-outline), 1px 1px 0 var(--ltb-outline),
+    0 0 8px var(--ltb-outline);
 }
 
 .level-transition-banner.show {
@@ -629,33 +641,29 @@ html, body {
 }
 
 .ltb-level-number {
-  font-size: 1rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   color: var(--accent-pink);
   text-transform: uppercase;
-  margin-bottom: 4px;
 }
 
 .ltb-level-title {
-  font-size: 2.6rem;
+  font-size: 1.15rem;
   font-weight: 900;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, #c084fc 50%, #fbbf24 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+  color: #ffffff;
 }
 
+/* The English subtitle is dropped from the in-game strip (it still shows on the menus) */
 .ltb-level-en {
-  font-size: 1rem;
-  color: var(--text-dim);
-  font-style: italic;
-  margin-bottom: 16px;
+  display: none;
 }
 
 .ltb-prompt {
-  font-size: 2.1rem;
+  flex-basis: 100%;
+  margin-top: 1px;
+  font-size: 1.2rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -664,60 +672,66 @@ html, body {
 /* Phase 1: Chuẩn bị sẵn sàng (Ready) */
 .level-transition-banner.phase-ready .ltb-prompt {
   color: #fbbf24;
-  text-shadow: 0 0 24px rgba(251, 191, 36, 0.85);
+  text-shadow:
+    -1px -1px 0 var(--ltb-outline), 1px -1px 0 var(--ltb-outline),
+    -1px 1px 0 var(--ltb-outline), 1px 1px 0 var(--ltb-outline),
+    0 0 14px rgba(251, 191, 36, 0.7);
   animation: pulseReady 0.8s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Phase 2: Vẽ! (Draw!) */
 .level-transition-banner.phase-draw {
-  border-color: rgba(244, 63, 94, 0.8);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.85), 0 0 60px rgba(244, 63, 94, 0.6);
+  --ltb-accent: rgba(244, 63, 94, 0.9);
 }
 
 .level-transition-banner.phase-draw .ltb-prompt {
-  font-size: 3.2rem;
+  font-size: 1.7rem;
   color: #ffffff;
-  background: linear-gradient(135deg, #fff1f2 0%, #f43f5e 50%, #f97316 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 35px rgba(244, 63, 94, 0.95);
+  text-shadow:
+    -1px -1px 0 var(--ltb-outline), 1px -1px 0 var(--ltb-outline),
+    -1px 1px 0 var(--ltb-outline), 1px 1px 0 var(--ltb-outline),
+    0 0 16px rgba(244, 63, 94, 0.95);
   animation: slamDraw 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* Phase 3: Stage Clear */
 .level-transition-banner.phase-clear {
-  border-color: rgba(52, 211, 153, 0.8);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.85), 0 0 60px rgba(52, 211, 153, 0.5);
+  --ltb-accent: rgba(52, 211, 153, 0.9);
 }
 
 .level-transition-banner.phase-clear .ltb-prompt {
   color: #34d399;
-  text-shadow: 0 0 25px rgba(52, 211, 153, 0.9);
+  text-shadow:
+    -1px -1px 0 var(--ltb-outline), 1px -1px 0 var(--ltb-outline),
+    -1px 1px 0 var(--ltb-outline), 1px 1px 0 var(--ltb-outline),
+    0 0 14px rgba(52, 211, 153, 0.8);
   animation: pulseReady 0.7s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Phase 4: Boss Warning - Ominous Blood Crimson & Shadow Violet */
 .level-transition-banner.phase-boss-warning {
-  border-color: rgba(244, 63, 94, 0.95);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.95), 0 0 75px rgba(244, 63, 94, 0.85);
-  background: radial-gradient(circle at center, rgba(39, 13, 26, 0.95) 0%, rgba(15, 6, 12, 0.98) 100%);
+  --ltb-accent: rgba(244, 63, 94, 0.95);
+  --ltb-bg: rgba(39, 13, 26, 0.72);
 }
 
 .level-transition-banner.phase-boss-warning .ltb-prompt {
   color: #f43f5e;
-  text-shadow: 0 0 35px rgba(244, 63, 94, 0.95);
+  text-shadow:
+    -1px -1px 0 var(--ltb-outline), 1px -1px 0 var(--ltb-outline),
+    -1px 1px 0 var(--ltb-outline), 1px 1px 0 var(--ltb-outline),
+    0 0 14px rgba(244, 63, 94, 0.9);
   animation: pulseReady 0.45s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes slamDraw {
-  0% { transform: scale(0.65); opacity: 0.2; }
-  60% { transform: scale(1.22); opacity: 1; }
+  0% { transform: scale(0.7); opacity: 0.2; }
+  60% { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes pulseReady {
-  from { transform: scale(0.96); opacity: 0.88; }
-  to { transform: scale(1.06); opacity: 1; }
+  from { transform: scale(0.97); opacity: 0.9; }
+  to { transform: scale(1.04); opacity: 1; }
 }
 
 .level-sub-badge {
@@ -1460,6 +1474,13 @@ html, body {
   padding: 28px 36px;
 }
 
+/* The card is capped at the viewport height and scrolls when the run recap is long.
+   Its children must keep their natural size: as shrinkable flex items the cutscene canvas
+   was squeezed down to 2px and the action buttons into narrow, wrapped pills. */
+.victory-card > * {
+  flex-shrink: 0;
+}
+
 .victory-trophy-badge {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   color: #0f172a;
@@ -1480,8 +1501,54 @@ html, body {
 }
 
 .victory-canvas-wrap {
-  height: 190px;
+  height: clamp(120px, 22dvh, 190px);
   margin: 12px 0 16px 0;
+}
+
+/* Action buttons wrap onto extra rows instead of being squeezed into narrow, multi-line pills */
+.victory-card .button-group {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.victory-card .btn-primary,
+.victory-card .btn-gold,
+.victory-card .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: center;
+}
+
+/* Desktop / tablet: "Replay" on its own row, the other actions share the next one, and the
+   whole bar stays pinned to the bottom of the (scrolling) card so it is always reachable.
+   Phones keep their own compact stacked / single-row layouts from the rules further down. */
+@media (min-width: 641px) and (min-height: 521px) {
+  .victory-card .button-group {
+    flex-direction: row;
+    position: sticky;
+    bottom: -28px;
+    z-index: 2;
+    padding: 18px 0 28px;
+    margin-top: 0;
+    /* Opaque footer (the card itself is translucent) so the recap scrolling underneath never bleeds through */
+    background: linear-gradient(to bottom, rgba(13, 10, 27, 0) 0, #0d0a1b 18px);
+  }
+
+  .victory-card .btn-primary,
+  .victory-card .btn-gold,
+  .victory-card .btn-secondary {
+    flex: 1 1 calc(50% - 7px);
+    padding: 12px 18px;
+    font-size: 1rem;
+  }
+
+  .victory-card #btn-vic-replay-story {
+    flex-basis: 100%;
+  }
 }
 
 /* ==========================================================================
@@ -2219,34 +2286,37 @@ html, body {
     font-size: 0.78rem;
   }
 
-  /* Transition Banner */
+  /* Transition Banner (below the companion badge, which sits under the HUD row on small screens) */
   .level-transition-banner {
-    width: 90%;
-    max-width: 320px;
-    padding: 16px 20px;
-    border-radius: 20px;
+    top: max(17%, calc(var(--sat) + 132px));
+    width: 96%;
+    max-width: 380px;
+    padding: 5px 18px 7px;
+    column-gap: 8px;
   }
 
   .ltb-level-number {
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
   }
 
   .ltb-level-title {
-    font-size: 1.5rem;
-  }
-
-  .ltb-level-en {
-    font-size: 0.78rem;
-    margin-bottom: 10px;
+    font-size: 0.95rem;
   }
 
   .ltb-prompt {
-    font-size: 1.35rem;
+    font-size: 1rem;
   }
 
   .level-transition-banner.phase-draw .ltb-prompt {
-    font-size: 2.1rem;
+    font-size: 1.4rem;
+  }
+
+  /* The boss / stage-clear lines are long: keep them on one line so the strip stays thin */
+  .level-transition-banner.phase-boss-warning .ltb-prompt,
+  .level-transition-banner.phase-clear .ltb-prompt {
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
   }
 
   /* Tutorial Overlay */
@@ -2635,6 +2705,7 @@ html, body {
   }
 
   .button-group .btn-primary,
+  .button-group .btn-gold,
   .button-group .btn-secondary {
     width: auto;
     padding: 8px 18px;
@@ -2923,7 +2994,6 @@ html, body {
   .icon-btn,
   .gesture-pill,
   .modal-overlay,
-  .level-transition-banner,
   .dialogue-toast,
   .hud-companion-badge,
   .codex-char-card {
@@ -2951,10 +3021,6 @@ html, body {
     max-height: calc(100dvh - 76px - var(--sat) - var(--sab));
     overflow-y: auto;
     overscroll-behavior: contain;
-  }
-
-  .level-transition-banner {
-    background: rgba(12, 9, 28, 0.94);
   }
 
   /* box-shadow animation repaints every frame; the pill still reads fine without it */
@@ -3094,6 +3160,11 @@ html, body {
   /* Sits below the score row instead of on top of the hearts */
   .hud-companion-badge {
     top: calc(var(--sat) + 108px);
+  }
+
+  /* ...and the stage banner goes under that badge */
+  .level-transition-banner {
+    top: max(17%, calc(var(--sat) + 176px));
   }
 
   .menu-card > .menu-action-buttons {
@@ -4035,3 +4106,118 @@ html, body {
   .practice-meter { height: 18px; }
   .practice-title { font-size: 0.9rem; }
 }
+
+
+/* ============================================================================
+   Surprises, Spell Phrases, Boss Rush, cosmetics and the best-moment clip
+   ========================================================================== */
+
+/* Spell phrase chain: the strokes landed so far */
+.phrase-chain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  background: rgba(15, 12, 30, 0.82);
+  border: 1px solid rgba(253, 224, 71, 0.45);
+  color: #fde68a;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.phrase-chain .pc-slot { min-width: 1.1em; text-align: center; }
+.phrase-chain .pc-slot.empty { opacity: 0.35; }
+.phrase-chain .pc-done { color: #fde047; text-shadow: 0 0 10px rgba(253, 224, 71, 0.8); }
+
+/* Running score boost (golden ghost, meteor shower, blood moon, Golden Hour) */
+.boost-pill {
+  position: absolute;
+  top: calc(var(--sat) + 112px);
+  right: 20px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(253, 224, 71, 0.95), rgba(245, 158, 11, 0.95));
+  color: #1a0b02;
+  font-weight: 800;
+  font-size: 0.85rem;
+  box-shadow: 0 0 16px rgba(253, 224, 71, 0.5);
+  pointer-events: none;
+  animation: boostPulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes boostPulse { from { transform: scale(1); } to { transform: scale(1.07); } }
+
+.meta-tile-hot { border-color: rgba(244, 63, 94, 0.5); background: rgba(244, 63, 94, 0.1); }
+.meta-tile-hot:hover { background: rgba(244, 63, 94, 0.22); border-color: rgba(251, 113, 133, 0.8); }
+
+/* Spellbook entries reuse the companion card; undiscovered ones are muted */
+.spell-recipe { display: inline-flex; gap: 6px; margin: 3px 0; font-weight: 800; font-size: 1.05rem; color: #fde68a; }
+.spell-recipe span {
+  min-width: 30px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(253, 224, 71, 0.3);
+}
+.spell-icon { font-size: 2rem; line-height: 1; }
+
+/* Wardrobe */
+.wardrobe-heading { margin: 14px 0 6px; font-size: 0.95rem; color: #e2e8f0; text-align: left; }
+.wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; width: 100%; }
+.wardrobe-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  font-family: inherit;
+  color: #e2e8f0;
+  background: rgba(22, 16, 44, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: center;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+}
+.wardrobe-item:hover { background: rgba(30, 22, 60, 0.9); transform: translateY(-2px); }
+.wardrobe-item.active { border-color: #fbbf24; box-shadow: 0 0 14px rgba(251, 191, 36, 0.35); }
+.wardrobe-item.locked { opacity: 0.6; cursor: default; filter: grayscale(0.6); }
+.wardrobe-item.locked:hover { transform: none; }
+.wardrobe-item .wi-icon { font-size: 1.7rem; line-height: 1.1; }
+.wardrobe-item .wi-name { font-size: 0.78rem; font-weight: 800; }
+.wardrobe-item .wi-hint { font-size: 0.66rem; color: var(--text-dim); line-height: 1.3; }
+.wardrobe-item .wi-swatch { width: 70%; height: 6px; border-radius: 9999px; margin-top: 2px; }
+
+/* Daily streak rewards */
+.streak-rewards { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+.streak-reward {
+  flex: 1 1 90px;
+  padding: 8px 6px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+}
+.streak-reward b { display: block; font-size: 0.85rem; color: #e2e8f0; }
+.streak-reward.done { border-style: solid; border-color: rgba(16, 185, 129, 0.6); background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
+
+/* Best-moment clip */
+.clip-card { max-width: 560px; }
+.clip-video { width: 100%; max-height: 52vh; border-radius: 14px; background: #000; margin: 6px 0 10px; }
+
+/* Boss Rush line in the end-of-run recap */
+.rs-rush { margin: 6px 0; font-size: 0.86rem; color: #fda4af; text-align: center; }
+.rs-rush b { color: #fff; }
+.rs-cos { margin: 6px 0; font-size: 0.86rem; color: #fde68a; text-align: center; }
+
+@media (max-width: 520px) {
+  .boost-pill { right: 10px; top: calc(var(--sat) + 104px); font-size: 0.78rem; }
+  .phrase-chain { font-size: 0.9rem; padding: 4px 10px; }
+}
+.spell-item { cursor: default; }
+.spell-item:hover { transform: none; background: rgba(22, 16, 44, 0.72); }

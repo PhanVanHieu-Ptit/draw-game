@@ -18,6 +18,8 @@ import { UPGRADES } from '../core/Upgrades.js';
 import { MODES, DIFFICULTIES } from '../core/ProgressStore.js';
 import { COMPANIONS, COMPANION_ORDER, isCompanionUnlocked } from '../core/Companions.js';
 import { PRACTICE_ORDER } from '../systems/PracticeSession.js';
+import { SPELL_PHRASES, PHRASE_WINDOW } from '../core/Spells.js';
+import { TRAILS, HATS, STREAK_MILESTONES, isCosmeticUnlocked } from '../core/Cosmetics.js';
 import { dateKey, shiftDateKey, parseDailyChallengeParams, getDailyChallenge } from '../core/Challenge.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
 
@@ -58,6 +60,11 @@ export class MetaUI {
     this._lastRun = null; // summary of the last finished run, used for "new record" badges
     this._padBuilt = false;
     this._countdownShown = 0;
+    this._clip = null;
+    this._clipUrl = null;
+    this._clipPausedBGM = false; // we paused the music while the clip plays, so we give it back on close
+    this._wardrobeNew = false;
+    this._chainTimer = null;
 
     // A shared daily-challenge link (?daily=...&score=...&from=...)
     this.friendChallenge = null;
@@ -138,6 +145,14 @@ export class MetaUI {
     this._on('btn-open-records', 'click', () => { this._tap(); this.openRecords(); });
     this._on('btn-open-daily', 'click', () => { this._tap(); this.openDaily(); });
     this._on('btn-open-companions', 'click', () => { this._tap(); this.openCompanions(); });
+    this._on('btn-open-spellbook', 'click', () => { this._tap(); this.openSpellbook(); });
+    this._on('btn-open-wardrobe', 'click', () => { this._tap(); this.openWardrobe(); });
+    this._on('btn-start-rush', 'click', () => {
+      g.audioSystem.init();
+      g.audioSystem.playStart();
+      if (typeof g.audioSystem.playCatMeow === 'function') setTimeout(() => g.audioSystem.playCatMeow('cheerful'), 180);
+      g.startBossRush();
+    });
     this._on('btn-open-achievements', 'click', () => { this._tap(); this.ui.openCodex('achievements'); });
     this._on('btn-open-practice', 'click', () => { g.audioSystem.init(); this._tap(); g.startPractice(); });
     this._on('btn-resume-endless', 'click', () => {
@@ -155,6 +170,32 @@ export class MetaUI {
     this._on('btn-close-records', 'click', () => this.closeRecords());
     this._on('btn-close-daily', 'click', () => this.closeDaily());
     this._on('btn-close-companions', 'click', () => this.closeCompanions());
+    this._on('btn-close-spellbook', 'click', () => this._close('spellbook-screen'));
+    this._on('btn-close-wardrobe', 'click', () => this._close('wardrobe-screen'));
+
+    // Wardrobe: equip a trail or a hat
+    const wardrobe = this.$('wardrobe-screen');
+    if (wardrobe && wardrobe.addEventListener) {
+      wardrobe.addEventListener('click', (e) => {
+        const item = this._closestAttr(e.target, 'data-cosmetic');
+        if (!item) return;
+        const kind = item.getAttribute('data-kind');
+        const id = item.getAttribute('data-cosmetic');
+        if (g.setCosmetic(kind, id)) {
+          this._tap();
+          this.renderWardrobe();
+        } else {
+          this.showToast('🔒 Phần thưởng này chưa mở khóa', 'info');
+        }
+      });
+    }
+
+    // Best-moment clip
+    this._on('btn-go-clip', 'click', () => this.openClip());
+    this._on('btn-vic-clip', 'click', () => this.openClip());
+    this._on('btn-close-clip', 'click', () => this.closeClip());
+    this._on('btn-clip-share', 'click', () => this.shareClip());
+    this._on('btn-clip-download', 'click', () => this.downloadClip());
 
     // Settings (event delegation: one listener per event type)
     const settingsRoot = this.$('settings-screen');
@@ -261,9 +302,10 @@ export class MetaUI {
 
   /** Close the top-most overlay. @returns {boolean} true if something was closed */
   closeTopOverlay() {
-    for (const id of ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen']) {
+    for (const id of ['clip-modal', 'settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'wardrobe-screen']) {
       if (this._isOpen(id)) {
-        this._close(id);
+        if (id === 'clip-modal') this.closeClip();
+        else this._close(id);
         return true;
       }
     }
@@ -276,7 +318,8 @@ export class MetaUI {
 
   /** @returns {boolean} whether any meta overlay (not the upgrade picker) is open */
   hasOpenOverlay() {
-    return ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen'].some(id => this._isOpen(id));
+    return ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'wardrobe-screen', 'clip-modal']
+      .some(id => this._isOpen(id));
   }
 
   // ------------------------------------------------------------------ settings
@@ -389,7 +432,7 @@ export class MetaUI {
       for (const diff of DIFFICULTIES) {
         const rec = p.getRecord(mode, diff);
         const info = DIFFICULTY_LEVELS[diff];
-        const fresh = last && last.mode === mode && last.difficulty === diff && !last.assisted;
+        const fresh = last && !last.bossRush && last.mode === mode && last.difficulty === diff && !last.assisted;
         const pill = (flag) => (fresh && flag ? '<span class="new-pill">KỶ LỤC MỚI</span>' : '');
         const level = rec.level > 0 ? (isStory ? `Màn ${rec.level}/5` : `Đợt ${rec.level}`) : '—';
         html += `
@@ -407,6 +450,17 @@ export class MetaUI {
       html += '</section>';
     }
 
+    const rush = p.getRush();
+    html += `<section class="records-mode"><h3 class="records-mode-title">💀 Boss Rush</h3>
+      <div class="records-row${rush.plays ? '' : ' empty'}">
+        <div class="records-cells">
+          <div class="records-cell"><span class="records-label">Điểm cao</span><span class="records-val">${rush.plays ? fmt(rush.score) : '—'}</span></div>
+          <div class="records-cell"><span class="records-label">Trùm xa nhất</span><span class="records-val">${rush.level > 0 ? `${rush.level}/5` : '—'}</span></div>
+          <div class="records-cell"><span class="records-label">Clear nhanh nhất</span><span class="records-val">${rush.seconds > 0 ? this._clock(rush.seconds) : '—'}</span></div>
+          <div class="records-cell"><span class="records-label">Lần clear</span><span class="records-val">${rush.clears}</span></div>
+        </div>
+      </div></section>`;
+
     const st = p.data.stats;
     html += `<section class="records-mode"><h3 class="records-mode-title">📊 Thống kê</h3>
       <div class="records-lifetime">
@@ -419,6 +473,12 @@ export class MetaUI {
     </section>`;
 
     this._html('records-body', html);
+  }
+
+  /** 125 -> '2:05' */
+  _clock(totalSeconds) {
+    const s = Math.max(0, Math.round(totalSeconds));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
   // ------------------------------------------------------------------ menu summary
@@ -445,6 +505,13 @@ export class MetaUI {
     const today = p.getDaily(key);
     const streak = p.dailyStreak(key);
     this._text('daily-menu-badge', today ? (streak > 1 ? `🔥${streak}` : '✓') : 'MỚI');
+
+    // Spellbook progress, Boss Rush clear mark and the "new in wardrobe" flag
+    this._text('spellbook-menu-badge', `${p.discoveredPhraseCount()}/${SPELL_PHRASES.length}`);
+    const rush = p.getRush();
+    this._text('rush-menu-badge', rush.clears > 0 ? '✓' : '');
+    this._hidden('rush-menu-badge', rush.clears === 0);
+    this._hidden('wardrobe-menu-badge', !this._wardrobeNew);
   }
 
   // ------------------------------------------------------------------ daily challenge
@@ -482,6 +549,15 @@ export class MetaUI {
     this._html('daily-stats', `
       <div class="stat-box"><span class="stat-label">Điểm tốt nhất hôm nay</span><span class="stat-value">${today ? fmt(today.score) : '—'}</span></div>
       <div class="stat-box"><span class="stat-label">Chuỗi ngày chơi</span><span class="stat-value">${streak > 0 ? streak + ' 🔥' : '—'}</span></div>`);
+
+    // Rewards for a long streak (the best streak counts, so a broken one does not take them away)
+    const best = Math.max(streak, p.data.stats.bestDailyStreak);
+    const rewards = STREAK_MILESTONES.map((days) => {
+      const prizes = [...TRAILS, ...HATS].filter(c => c.unlock && c.unlock.streak === days);
+      const done = best >= days;
+      return `<div class="streak-reward${done ? ' done' : ''}"><b>${done ? '✓ ' : ''}${days} ngày</b>${prizes.map(c => `${c.icon} ${c.name}`).join('<br>')}</div>`;
+    }).join('');
+    this._html('daily-rewards', rewards);
 
     // History of the last 7 days
     let hist = '';
@@ -567,6 +643,216 @@ export class MetaUI {
         </button>`;
     }).join('');
     this._html('companion-grid', html);
+  }
+
+  // ------------------------------------------------------------------ spellbook
+
+  openSpellbook() {
+    this.renderSpellbook();
+    this._open('spellbook-screen');
+  }
+
+  renderSpellbook() {
+    const p = this.game.progress;
+    const html = SPELL_PHRASES.map((ph) => {
+      const known = p.isPhraseDiscovered(ph.id);
+      const recipe = known
+        ? ph.runes.map(r => `<span>${RUNES[r].symbol}</span>`).join('')
+        : '<span>?</span><span>?</span><span>?</span>';
+      return `
+        <div class="companion-item spell-item${known ? '' : ' locked'}" style="--card-accent:#fde047">
+          <div class="companion-portrait"><span class="spell-icon">${known ? ph.icon : '❓'}</span></div>
+          <div class="companion-info">
+            <div class="companion-item-name">${known ? ph.name : '???'}</div>
+            <div class="spell-recipe">${recipe}</div>
+            <div class="companion-desc">${known ? '✨ ' + ph.desc : '💡 ' + ph.hint}</div>
+          </div>
+          <span class="companion-state">${known ? `×${p.getPhraseCount(ph.id)}` : ''}</span>
+        </div>`;
+    }).join('');
+    this._html('spellbook-grid', html);
+    this._text('spellbook-sub', `Đã khám phá ${p.discoveredPhraseCount()}/${SPELL_PHRASES.length}. Vẽ đúng 3 nét liên tiếp theo thứ tự — mỗi nét phải trúng u linh và cách nhau dưới ${String(PHRASE_WINDOW).replace('.', ',')} giây. Vẽ trượt sẽ làm đứt chuỗi.`);
+  }
+
+  // ------------------------------------------------------------------ wardrobe
+
+  /** Flag the menu tile: something new was unlocked since the wardrobe was last opened */
+  markWardrobeNew() {
+    this._wardrobeNew = true;
+    this._hidden('wardrobe-menu-badge', false);
+  }
+
+  openWardrobe() {
+    this._wardrobeNew = false;
+    this._hidden('wardrobe-menu-badge', true);
+    this.renderWardrobe();
+    this._open('wardrobe-screen');
+  }
+
+  renderWardrobe() {
+    const p = this.game.progress;
+    const card = (kind, def) => {
+      const unlocked = isCosmeticUnlocked(def, p);
+      const active = unlocked && p.getEquipped(kind) === def.id;
+      let swatch = '';
+      if (kind === 'trail') {
+        const bg = def.rainbow
+          ? 'linear-gradient(90deg,#f43f5e,#fbbf24,#34d399,#38bdf8,#c084fc)'
+          : `linear-gradient(90deg,${def.colors.glow},${def.colors.active},${def.colors.mid})`;
+        swatch = `<span class="wi-swatch" style="background:${bg}"></span>`;
+      }
+      const note = active ? '✔ Đang dùng' : (unlocked ? 'Chọn' : def.hint);
+      return `
+        <button type="button" class="wardrobe-item${unlocked ? '' : ' locked'}${active ? ' active' : ''}" data-kind="${kind}" data-cosmetic="${def.id}">
+          <span class="wi-icon">${unlocked ? def.icon : '🔒'}</span>
+          <span class="wi-name">${unlocked ? def.name : '???'}</span>
+          ${swatch}
+          <span class="wi-hint">${note}</span>
+        </button>`;
+    };
+    this._html('wardrobe-trails', TRAILS.map(t => card('trail', t)).join(''));
+    this._html('wardrobe-hats', HATS.map(h => card('hat', h)).join(''));
+  }
+
+  // ------------------------------------------------------------------ in-run widgets: phrase chain, score boost
+
+  /**
+   * Show the strokes of the Spell Phrase in progress (empty list hides it); `phrase` flashes its name when cast.
+   * @param {string[]} runes
+   * @param {Object|null} [phrase]
+   */
+  renderPhraseChain(runes, phrase = null) {
+    const el = this.$('phrase-chain');
+    if (!el || !el.classList) return;
+    clearTimeout(this._chainTimer);
+    if (phrase) {
+      el.classList.remove('hidden');
+      el.innerHTML = `<span class="pc-done">${phrase.icon} ${phrase.name}</span>`;
+      this._chainTimer = setTimeout(() => el.classList.add('hidden'), 1400);
+      return;
+    }
+    if (!runes || runes.length === 0) {
+      el.classList.add('hidden');
+      el.innerHTML = '';
+      return;
+    }
+    let html = '✦ ';
+    for (let i = 0; i < 3; i++) {
+      const r = runes[i];
+      html += r && RUNES[r] ? `<span class="pc-slot">${RUNES[r].symbol}</span>` : '<span class="pc-slot empty">·</span>';
+    }
+    el.classList.remove('hidden');
+    el.innerHTML = html;
+  }
+
+  /** @param {number} mult score multiplier in effect @param {number} seconds whole seconds left (0 = none) */
+  setBoost(mult, seconds) {
+    const el = this.$('boost-pill');
+    if (!el || !el.classList) return;
+    if (!(seconds > 0)) {
+      el.classList.add('hidden');
+      return;
+    }
+    el.textContent = `✨ ĐIỂM x${mult} • ${seconds}s`;
+    el.classList.remove('hidden');
+  }
+
+  // ------------------------------------------------------------------ best-moment clip
+
+  /** @param {{blob: Blob, mimeType: string, ext: string, peak: number, seconds: number}|null} clip */
+  setClip(clip) {
+    this._clip = clip || null;
+    this._revokeClipUrl();
+    this._hidden('btn-go-clip', !clip);
+    this._hidden('btn-vic-clip', !clip);
+  }
+
+  _revokeClipUrl() {
+    if (this._clipUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+      try { URL.revokeObjectURL(this._clipUrl); } catch (e) { /* ignore */ }
+    }
+    this._clipUrl = null;
+  }
+
+  openClip() {
+    const clip = this._clip;
+    const video = this.$('clip-video');
+    if (!clip || !video || typeof URL === 'undefined' || !URL.createObjectURL) return;
+    this._revokeClipUrl();
+    this._clipUrl = URL.createObjectURL(clip.blob);
+    video.src = this._clipUrl;
+    this._text('clip-title', `COMBO x${clip.peak} • ${clip.seconds}s`);
+    this._open('clip-modal');
+    this._quietGameAudio();
+    if (video.play) {
+      const played = video.play();
+      if (played && played.catch) played.catch(() => { /* autoplay blocked: the controls are there */ });
+    }
+  }
+
+  closeClip() {
+    const video = this.$('clip-video');
+    if (video && video.pause) video.pause();
+    this._close('clip-modal');
+    this._restoreGameAudio();
+  }
+
+  /** The clip has its own sound: hush the music and any fanfare still ringing so they do not talk over it */
+  _quietGameAudio() {
+    const audio = this.game && this.game.audioSystem;
+    if (!audio) return;
+    if (typeof audio.stopOneShots === 'function') audio.stopOneShots();
+    if (this._clipPausedBGM || typeof audio.pauseBGM !== 'function') return;
+    if (audio.isBGMPlaying && !audio.isBGMPaused) {
+      audio.pauseBGM();
+      this._clipPausedBGM = true;
+    }
+  }
+
+  _restoreGameAudio() {
+    if (!this._clipPausedBGM) return;
+    this._clipPausedBGM = false;
+    const audio = this.game && this.game.audioSystem;
+    if (audio && typeof audio.resumeBGM === 'function') audio.resumeBGM();
+  }
+
+  _clipFileName() {
+    const c = this._clip;
+    return `arcane-paws-combo-x${c ? c.peak : 0}.${c ? c.ext : 'webm'}`;
+  }
+
+  downloadClip() {
+    const clip = this._clip;
+    if (!clip || typeof document === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) return;
+    const url = URL.createObjectURL(clip.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this._clipFileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  /** Share the clip file with the system share sheet; falls back to a download where that is not possible */
+  async shareClip() {
+    const clip = this._clip;
+    if (!clip) return;
+    try {
+      const file = new File([clip.blob], this._clipFileName(), { type: clip.mimeType });
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Arcane Paws',
+          text: `Combo x${clip.peak} trong Arcane Paws! Bạn có vượt được không?`
+        });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // the player closed the share sheet
+    }
+    this.downloadClip();
+    this.showToast('📥 Thiết bị không chia sẻ trực tiếp được — đã tải clip về máy.', 'info');
   }
 
   // ------------------------------------------------------------------ codex extras (collection + achievements)
@@ -882,17 +1168,19 @@ export class MetaUI {
    * @param {Object} s the object returned by Game.getRunSummary()
    */
   renderRunSummary(containerId, s) {
-    const unit = s.mode === 'STORY' ? 'Màn' : 'Đợt';
+    const unit = s.bossRush ? 'Trùm' : (s.mode === 'STORY' ? 'Màn' : 'Đợt');
     const pill = (flag) => (flag ? '<span class="new-pill">KỶ LỤC MỚI</span>' : '');
     const tracked = !s.assisted;
 
-    let html = `<div class="rs-modeline">${s.mode === 'STORY' ? '📖 Cốt Truyện' : (s.daily ? '📅 Thử Thách Ngày' : '⚡ Vô Tận')} • ${DIFFICULTY_LEVELS[s.difficulty] ? DIFFICULTY_LEVELS[s.difficulty].badge : ''}</div>`;
+    const modeName = s.bossRush ? '💀 Boss Rush' : (s.mode === 'STORY' ? '📖 Cốt Truyện' : (s.daily ? '📅 Thử Thách Ngày' : '⚡ Vô Tận'));
+    let html = `<div class="rs-modeline">${modeName} • ${DIFFICULTY_LEVELS[s.difficulty] ? DIFFICULTY_LEVELS[s.difficulty].badge : ''}</div>`;
 
     if (tracked) {
       // A daily run is compared with that day's best, not with the regular records
       const dRec = s.daily && s.daily.record;
-      const bestLevel = s.daily ? (dRec ? dRec.wave : s.level) : (s.record ? s.record.level : s.level);
-      const bestCombo = s.daily ? (dRec ? dRec.combo : s.maxCombo) : (s.record ? s.record.combo : s.maxCombo);
+      const rRec = s.rush && s.rush.record;
+      const bestLevel = s.bossRush ? (rRec ? rRec.level : s.level) : (s.daily ? (dRec ? dRec.wave : s.level) : (s.record ? s.record.level : s.level));
+      const bestCombo = s.bossRush ? s.maxCombo : (s.daily ? (dRec ? dRec.combo : s.maxCombo) : (s.record ? s.record.combo : s.maxCombo));
       const bestWord = s.daily ? 'Tốt nhất hôm nay' : 'Kỷ lục';
       html += `<div class="rs-grid">
         <div class="rs-item"><span class="rs-label">Điểm</span><span class="rs-val">${fmt(s.score)}${pill(s.isNewHighScore)}</span><span class="rs-sub">${bestWord}: ${fmt(s.highScore)}</span></div>
@@ -904,6 +1192,11 @@ export class MetaUI {
       }
     } else {
       html += `<div class="rs-assisted">♿ Lượt chơi có bật trợ năng — kết quả không được ghi vào bảng điểm.</div>`;
+    }
+
+    if (s.bossRush && s.rush) {
+      const r = s.rush;
+      html += `<div class="rs-rush">💀 Boss Rush: ${s.victory ? 'đã hạ cả <b>5</b> trùm' : `đến trùm <b>${s.level}/5</b>`} trong <b>${this._clock(r.seconds)}</b>${r.isNewTime ? ' <span class="new-pill">NHANH NHẤT</span>' : ''}${r.record && r.record.seconds > 0 ? ` • Nhanh nhất: ${this._clock(r.record.seconds)}` : ''}</div>`;
     }
 
     if (s.daily) {
@@ -930,6 +1223,9 @@ export class MetaUI {
 
     if (s.achievements && s.achievements.length) {
       html += `<div class="rs-ach"><b>🏅 Thành tựu mới:</b> ${s.achievements.map(a => `${a.icon} ${a.name}`).join(' • ')}</div>`;
+    }
+    if (s.cosmetics && s.cosmetics.length) {
+      html += `<div class="rs-cos"><b>🎨 Phần thưởng mới trong Tủ Đồ:</b> ${s.cosmetics.map(c => `${c.icon} ${c.name}`).join(' • ')}</div>`;
     }
     if (s.unlockedCompanions && s.unlockedCompanions.length) {
       html += `<div class="rs-ach"><b>🐾 Mở khóa đồng hành:</b> ${s.unlockedCompanions.join(' • ')}</div>`;

@@ -196,6 +196,57 @@ try {
 }
 
 // -------------------------------------------------------------------------
+// 6. FINAL LEVEL: "stage complete" banner must announce the victory, not a next area
+// -------------------------------------------------------------------------
+console.log('\n--- 6. Testing Final Level Detection & Stage-Complete Banner ---');
+
+{
+  const ws = new WaveSystem();
+  ws.setMode('STORY');
+  const finalByLevel = [1, 2, 3, 4, 5].map((n) => { ws.initLevel(n); return ws.isFinalLevel; });
+  assert(
+    finalByLevel.join() === 'false,false,false,false,true',
+    'Only Story Level 5 is the final level (clearing it ends the campaign)'
+  );
+
+  ws.setMode('ENDLESS');
+  ws.initLevel(5);
+  assert(ws.isFinalLevel === false, 'Endless waves are never "final" (there is always a next wave)');
+
+  // Level 5 cleared -> Victory is triggered once the intermission runs out
+  ws.setMode('STORY');
+  ws.initLevel(5);
+  let victories = 0;
+  ws.onGameVictory = () => { victories++; };
+  ws.notifyBossDefeated();
+  ws.update(5, 5, 0, 0);
+  assert(victories === 1, 'Clearing Story Level 5 fires onGameVictory');
+}
+
+{
+  const { UIManager } = await import('./src/ui/UIManager.js');
+  const el = () => ({ className: '', textContent: '' });
+  const makeCtx = () => ({
+    levelTransitionBanner: el(), ltbNumber: el(), ltbTitle: el(), ltbEn: el(), ltbPrompt: el(),
+    _ltbTimeout: null, _ltbDrawTimeout: null,
+    hideDialogue() {} // banners clear the dialogue toast first
+  });
+  const lvl = { name: 'Sân Thượng Lâu Đài' };
+
+  const normal = makeCtx();
+  UIManager.prototype.showLevelComplete.call(normal, 2, lvl, false);
+  assert(/KHU VỰC MỚI/.test(normal.ltbPrompt.textContent), 'A regular stage still says "prepare to enter a new area"');
+
+  const last = makeCtx();
+  UIManager.prototype.showLevelComplete.call(last, 5, lvl, true);
+  assert(!/KHU VỰC MỚI/.test(last.ltbPrompt.textContent), 'The final stage never announces a "new area"');
+  assert(/GIẢI CỨU/.test(last.ltbPrompt.textContent), 'The final stage banner announces the academy rescue');
+  assert(/ALL STAGES/.test(last.ltbEn.textContent), 'The final stage banner reads "ALL STAGES COMPLETED"');
+  clearTimeout(normal._ltbTimeout);
+  clearTimeout(last._ltbTimeout);
+}
+
+// -------------------------------------------------------------------------
 // SUMMARY
 // -------------------------------------------------------------------------
 console.log('\n========================================');

@@ -10,6 +10,7 @@
 
 import { ENEMY_TYPES, RUNES } from './Constants.js';
 import { COMPANION_ORDER, isCompanionUnlocked } from './Companions.js';
+import { SPELL_PHRASES } from './Spells.js';
 
 /**
  * @typedef {Object} AchievementDef
@@ -143,6 +144,39 @@ export const ACHIEVEMENTS = [
     id: 'rune_master', icon: '🎓', name: 'Bậc Thầy Cổ Ngữ',
     desc: 'Thành thạo cả 8 ấn ký trong Phòng Luyện Vẽ', target: Object.keys(RUNES).length,
     progress: s => s.masteredCount()
+  },
+
+  // --- Surprises, spell phrases & Boss Rush -------------------------------
+  {
+    id: 'golden_1', icon: '🌟', name: 'Ánh Vàng Thoáng Qua',
+    desc: 'Bắt được một U Linh Vàng trước khi nó trốn thoát', target: 1, progress: s => s.data.stats.goldenCaught
+  },
+  {
+    id: 'golden_10', icon: '💰', name: 'Thợ Săn Kho Báu',
+    desc: 'Bắt được 10 U Linh Vàng', target: 10, progress: s => s.data.stats.goldenCaught
+  },
+  {
+    id: 'phrase_first', icon: '📜', name: 'Lời Chú Đầu Tiên',
+    desc: 'Niệm thành công một Câu Thần Chú (3 nét liên tiếp theo đúng thứ tự)', target: 1,
+    progress: s => s.discoveredPhraseCount()
+  },
+  {
+    id: 'spellbook_all', icon: '📖', name: 'Cuốn Sách Đầy Chữ',
+    desc: 'Khám phá mọi Câu Thần Chú trong Sổ Phép', target: SPELL_PHRASES.length,
+    progress: s => s.discoveredPhraseCount()
+  },
+  {
+    id: 'phrase_30', icon: '🪄', name: 'Pháp Sư Niệm Chú',
+    desc: 'Niệm tổng cộng 30 Câu Thần Chú', target: 30, progress: s => s.data.stats.phrasesCast
+  },
+  {
+    id: 'rush_clear', icon: '💀', name: 'Kẻ Diệt Trùm',
+    desc: 'Vượt qua Boss Rush: hạ liên tiếp cả 5 trùm', target: 1, progress: s => s.data.stats.rushClears
+  },
+  {
+    id: 'rush_fast', icon: '⏱️', name: 'Tốc Chiến Tốc Thắng',
+    desc: 'Vượt qua Boss Rush trong chưa đầy 6 phút', target: 1,
+    progress: s => (s.data.rush.seconds > 0 && s.data.rush.seconds <= 360 ? 1 : 0)
   }
 ];
 
