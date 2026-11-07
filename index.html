@@ -337,6 +337,17 @@
 
         <!-- Meta features -->
         <div class="menu-meta-grid">
+          <button class="lore-strip" id="btn-open-lore" title="Nhật Ký Ký Ức: lần theo cái tên bị lãng quên">
+            <span class="lore-strip-icon">📔</span>
+            <span class="lore-strip-body">
+              <span class="lore-strip-top">
+                <span class="lore-strip-title">Nhật Ký Ký Ức</span>
+                <span class="lore-strip-name" id="lore-strip-name">_ _ _ _ _</span>
+              </span>
+              <span class="lore-strip-hint" id="lore-strip-hint"></span>
+            </span>
+            <span class="meta-tile-badge hidden" id="lore-menu-badge">MỚI</span>
+          </button>
           <button class="meta-tile" id="btn-open-daily">
             <span class="meta-tile-icon">📅</span>
             <span class="meta-tile-label">Thử Thách Ngày</span>
@@ -416,6 +427,7 @@
           <button class="story-chap-btn" data-act="chapter" data-chap="4">🏀 Màn 4</button>
           <button class="story-chap-btn" data-act="chapter" data-chap="5">🏰 Màn 5</button>
           <button class="story-chap-btn" data-act="victory" data-index="0">🏆 Hồi Kết</button>
+          <button class="story-chap-btn hidden" id="story-true-pill" data-act="trueEnding" data-index="0">🌠 Hồi Kết Thật</button>
         </div>
 
         <!-- Illustrated Story Scene Canvas -->
@@ -466,7 +478,7 @@
       <div class="glass-card victory-card">
         <div class="victory-trophy-badge">🏆 CHIẾN THẮNG HUY HOÀNG 🏆</div>
         <h1 class="game-title victory-title">GIẢI CỨU HỌC VIỆN!</h1>
-        <p class="game-subtitle">Chúa tể bóng ma đã bị tiêu diệt! Cuốn Sách Thần Chú Cổ Đại đã trở về an toàn với Momo!</p>
+        <p class="game-subtitle">Màn sương đã tan! Cổ Thư đã trở về an toàn với Momo, và vị hiệp sĩ cổ xưa cuối cùng cũng được giải thoát.</p>
 
         <div class="story-canvas-wrap victory-canvas-wrap">
           <canvas id="victoryCanvas" width="480" height="200"></canvas>
@@ -492,6 +504,15 @@
         </div>
 
         <div class="run-summary" id="vic-summary"></div>
+
+        <div class="vic-lore" id="vic-lore">
+          <div class="lore-name vic-lore-name" id="vic-lore-name"></div>
+          <p class="vic-lore-text" id="vic-lore-text"></p>
+          <div class="vic-lore-actions">
+            <button class="btn-subtle" id="btn-vic-lore"><span>📔 Nhật Ký Ký Ức</span></button>
+            <button class="btn-subtle" id="btn-vic-ending"><span>🎬 Xem lại hồi kết</span></button>
+          </div>
+        </div>
 
         <div class="button-group">
           <button class="btn-primary" id="btn-vic-replay-story">
@@ -673,6 +694,13 @@
           </section>
 
           <section class="settings-group">
+            <h3 class="settings-heading">🎭 Cốt truyện</h3>
+            <label class="setting-row"><span class="setting-label">Lời thoại nhân vật trong trận</span>
+              <input type="checkbox" class="switch" data-setting="storyLines"></label>
+            <p class="setting-note">Đối thoại giữa các màn, tiếng thì thầm của Cổ Thư và lời động viên của đồng hành. Tắt đi nếu bạn muốn chơi liền mạch; Mảnh Ký Ức vẫn được ghi vào Nhật Ký.</p>
+          </section>
+
+          <section class="settings-group">
             <h3 class="settings-heading">🎬 Khoảnh khắc đỉnh cao</h3>
             <label class="setting-row"><span class="setting-label">Ghi lại đoạn combo hay nhất để lưu / chia sẻ</span>
               <input type="checkbox" class="switch" data-setting="highlight"></label>
@@ -766,6 +794,26 @@
       </div>
     </div>
 
+    <!-- UI Overlay: MEMORY JOURNAL (the forgotten name) -->
+    <div id="lore-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card companion-card lore-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">📔 NHẬT KÝ KÝ ỨC</span>
+            <h2 class="game-title meta-title">CÁI TÊN BỊ LÃNG QUÊN</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-lore">ĐÓNG ✕</button>
+        </div>
+        <div class="lore-name" id="lore-name" aria-live="polite"></div>
+        <p class="game-subtitle companion-sub" id="lore-sub"></p>
+        <div class="companion-grid" id="lore-grid"></div>
+        <div class="lore-actions">
+          <button class="btn-secondary hidden" id="btn-lore-ending"><span>🎬 Xem lại Hồi Kết</span></button>
+          <button class="btn-gold hidden" id="btn-lore-true-ending"><span>🌠 Xem Hồi Kết Thật</span></button>
+        </div>
+      </div>
+    </div>
+
     <!-- UI Overlay: WARDROBE (ink trails and hats) -->
     <div id="wardrobe-screen" class="ui-screen modal-overlay meta-layer">
       <div class="glass-card meta-card companion-card">
@@ -808,6 +856,7 @@
         <span class="meta-badge">🎁 PHẦN THƯỞNG</span>
         <h2 class="game-title meta-title">CHỌN MỘT NÂNG CẤP</h2>
         <p class="game-subtitle" id="upgrade-subtitle">Chỉ có hiệu lực trong lượt chơi này.</p>
+        <div class="shard-card hidden" id="upgrade-shard"></div>
         <div class="upgrade-choices" id="upgrade-choices"></div>
         <div class="upgrade-owned" id="upgrade-owned"></div>
       </div>

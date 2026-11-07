@@ -5,6 +5,7 @@
  * - Slide 1: Sneaky ghost grabs the spellbook and flees through the window into the night.
  * - Slide 2: Momo raises the magic wand heroically, surrounded by glowing elemental runes.
  * - Victory: Momo joyfully recovers the spellbook as fireworks and hearts fill the sky.
+ * - True ending (3 slides): the name LUMEN is restored, Barnaby's stone shell cracks, a knight constellation returns.
  */
 
 export class StoryCanvasRenderer {
@@ -75,6 +76,245 @@ export class StoryCanvasRenderer {
     ctx.clearRect(0, 0, w, h);
     StoryCanvasRenderer._drawVictoryScene(ctx, w, h, time);
     ctx.restore();
+  }
+
+  /**
+   * Render a slide of the true ending
+   * @param {HTMLCanvasElement} canvas
+   * @param {number} slideIndex 0..2
+   * @param {number} time In seconds
+   */
+  static renderEnding(canvas, slideIndex, time = 0) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.save();
+    ctx.clearRect(0, 0, w, h);
+    switch (slideIndex) {
+      case 0:
+        StoryCanvasRenderer._drawEndingName(ctx, w, h, time);
+        break;
+      case 1:
+        StoryCanvasRenderer._drawEndingConfession(ctx, w, h, time);
+        break;
+      default:
+        StoryCanvasRenderer._drawEndingConstellation(ctx, w, h, time);
+        break;
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // TRUE ENDING 0: FIVE LETTERS LIGHT UP ON THE GRIMOIRE
+  // -------------------------------------------------------------------------
+  static _drawEndingName(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0b1030');
+    bg.addColorStop(1, '#1e1b4b');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Slow drifting fireflies
+    for (let i = 0; i < 16; i++) {
+      const fx = (i * 97 + Math.sin(t * 0.6 + i) * 18 + w) % w;
+      const fy = h * (0.12 + ((i * 53) % 70) / 100) + Math.cos(t * 0.8 + i * 2) * 8;
+      ctx.fillStyle = `rgba(254, 240, 138, ${0.25 + 0.25 * Math.sin(t * 2 + i)})`;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // The open Grimoire
+    const bx = w / 2;
+    const by = h * 0.74;
+    ctx.save();
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(bx - 96, by - 6, 192, 46);
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(bx - 90, by - 12, 88, 44);
+    ctx.fillRect(bx + 2, by - 12, 88, 44);
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx - 90, by - 12, 180, 44);
+    ctx.restore();
+
+    // L U M E N: one letter every ~1.1s, then the whole name glows; the cycle repeats
+    const letters = ['L', 'U', 'M', 'E', 'N'];
+    const cycle = t % 9;
+    const allLit = cycle > 6.2;
+    const gap = Math.min(64, w / 7.2);
+    for (let i = 0; i < letters.length; i++) {
+      const lit = Math.max(0, Math.min(1, cycle - i * 1.1));
+      const x = bx + (i - 2) * gap;
+      const y = h * 0.4 - lit * 12 * (allLit ? 0 : 1) + Math.sin(t * 2 + i) * 3;
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.75 * lit;
+      const glow = ctx.createRadialGradient(x, y, 2, x, y, 30);
+      glow.addColorStop(0, allLit ? '#fef08a' : '#bae6fd');
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(x, y, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = allLit ? '#fbbf24' : '#38bdf8';
+      ctx.shadowBlur = 14;
+      ctx.font = 'bold 30px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(letters[i], x, y);
+      ctx.restore();
+    }
+
+    // Momo watching from the corner
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.14, h * 0.82, 26, false, t);
+  }
+
+  // -------------------------------------------------------------------------
+  // TRUE ENDING 1: BARNABY'S STONE SHELL CRACKS
+  // -------------------------------------------------------------------------
+  static _drawEndingConfession(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#1e1b4b');
+    bg.addColorStop(1, '#312e81');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Moon behind the tower
+    const moon = ctx.createRadialGradient(w * 0.8, h * 0.22, 4, w * 0.8, h * 0.22, 46);
+    moon.addColorStop(0, '#fef9c3');
+    moon.addColorStop(1, 'transparent');
+    ctx.fillStyle = moon;
+    ctx.beginPath();
+    ctx.arc(w * 0.8, h * 0.22, 46, 0, Math.PI * 2);
+    ctx.fill();
+
+    // The owl statue: stone first, golden light leaking out as the cracks grow
+    const ox = w * 0.5;
+    const oy = h * 0.52;
+    const crack = Math.min(1, (t % 10) / 5);
+    ctx.save();
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.ellipse(ox, oy + 18, 46, 56, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(ox, oy - 30, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(ox - 26, oy - 52); ctx.lineTo(ox - 34, oy - 74); ctx.lineTo(ox - 10, oy - 58);
+    ctx.moveTo(ox + 26, oy - 52); ctx.lineTo(ox + 34, oy - 74); ctx.lineTo(ox + 10, oy - 58);
+    ctx.fill();
+    // Big owl eyes that slowly turn warm
+    ctx.fillStyle = crack > 0.6 ? '#fde68a' : '#475569';
+    ctx.beginPath();
+    ctx.arc(ox - 13, oy - 32, 9, 0, Math.PI * 2);
+    ctx.arc(ox + 13, oy - 32, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(ox - 13, oy - 32, 3.5, 0, Math.PI * 2);
+    ctx.arc(ox + 13, oy - 32, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Cracks
+    ctx.strokeStyle = `rgba(253, 224, 71, ${0.35 + 0.65 * crack})`;
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 10 * crack;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(ox - 4, oy - 4);
+    ctx.lineTo(ox + 6, oy + 12 * crack);
+    ctx.lineTo(ox - 8, oy + 30 * crack);
+    ctx.lineTo(ox + 4, oy + 52 * crack);
+    ctx.moveTo(ox + 6, oy + 12 * crack);
+    ctx.lineTo(ox + 26 * crack, oy + 20 * crack);
+    ctx.moveTo(ox - 8, oy + 30 * crack);
+    ctx.lineTo(ox - 28 * crack, oy + 40 * crack);
+    ctx.stroke();
+    ctx.restore();
+
+    // A tear
+    const tear = (t * 0.7) % 1;
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(ox - 20, oy - 22 + tear * 30, 2.4, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Momo hugging the old owl
+    StoryCanvasRenderer._drawCatHead(ctx, ox + 62, oy + 40 + Math.sin(t * 2) * 2, 28, false, t);
+  }
+
+  // -------------------------------------------------------------------------
+  // TRUE ENDING 2: THE KNIGHT'S CONSTELLATION RETURNS
+  // -------------------------------------------------------------------------
+  static _drawEndingConstellation(ctx, w, h, t) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#020617');
+    bg.addColorStop(0.7, '#1e1b4b');
+    bg.addColorStop(1, '#312e81');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Background stars
+    for (let i = 0; i < 40; i++) {
+      const sx = (i * 131) % w;
+      const sy = ((i * 71) % 100) / 100 * h * 0.8;
+      ctx.fillStyle = `rgba(226, 232, 240, ${0.2 + 0.3 * Math.abs(Math.sin(t * 1.5 + i))})`;
+      ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+
+    // A seated knight cat drawn in stars (unit square, y down), joined by lines that appear one by one
+    const stars = [
+      [0.40, 0.14], [0.46, 0.20], [0.52, 0.14], [0.43, 0.30], [0.50, 0.30], [0.46, 0.38],
+      [0.46, 0.52], [0.39, 0.66], [0.47, 0.80], [0.55, 0.66], [0.64, 0.46], [0.64, 0.82], [0.31, 0.58]
+    ];
+    const links = [[0, 1], [1, 2], [1, 3], [1, 4], [3, 5], [4, 5], [5, 6], [6, 7], [6, 9], [7, 8], [9, 8], [10, 11], [7, 12]];
+    const size = h * 0.9;
+    const pos = stars.map(([sx, sy]) => [w / 2 + (sx - 0.47) * size * 1.25, h * 0.05 + sy * size * 0.85]);
+    const progress = Math.min(1, (t % 12) / 6);
+    const shown = Math.floor(progress * links.length);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.75)';
+    ctx.shadowColor = '#fde047';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i < shown; i++) {
+      ctx.moveTo(pos[links[i][0]][0], pos[links[i][0]][1]);
+      ctx.lineTo(pos[links[i][1]][0], pos[links[i][1]][1]);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    const starsShown = Math.min(stars.length, Math.ceil(progress * stars.length) + 1);
+    for (let i = 0; i < starsShown; i++) {
+      const pulse = 3 + Math.sin(t * 3 + i) * 0.9;
+      ctx.fillStyle = '#fef9c3';
+      ctx.shadowColor = '#fde047';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(pos[i][0], pos[i][1], pulse, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // The name, spelled in light along the horizon
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, Math.max(0, progress * 1.4 - 0.3));
+    ctx.fillStyle = '#fde68a';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 16;
+    ctx.font = 'bold 26px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('L U M E N', w / 2, h * 0.9);
+    ctx.restore();
+
+    // The friends, small, looking up
+    StoryCanvasRenderer._drawCatHead(ctx, w * 0.2, h * 0.84, 18, false, t);
   }
 
   // -------------------------------------------------------------------------

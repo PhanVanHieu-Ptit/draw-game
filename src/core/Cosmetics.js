@@ -59,6 +59,11 @@ export const TRAILS = [
     colors: { glow: '#059669', active: '#34d399', mid: '#a7f3d0' }
   },
   {
+    id: 'lumen', icon: '🌠', name: 'Ánh Sao Lumen', unlock: { achievement: 'true_ending' },
+    hint: 'Xem Hồi Kết Thật của Cốt Truyện',
+    colors: { glow: '#38bdf8', active: '#fef08a', mid: '#ffffff' }
+  },
+  {
     id: 'rainbow', icon: '🌈', name: 'Cầu Vồng', unlock: { streak: 14 },
     hint: 'Chơi Thử Thách Hằng Ngày 14 ngày liên tiếp',
     colors: { glow: '#a855f7', active: '#e879f9', mid: '#f472b6' }, rainbow: true
@@ -91,6 +96,10 @@ export const HATS = [
   {
     id: 'horns', icon: '😈', name: 'Sừng Quỷ Nhỏ', unlock: { achievement: 'rush_clear' },
     hint: 'Vượt qua Boss Rush'
+  },
+  {
+    id: 'knight', icon: '🛡️', name: 'Mũ Hiệp Sĩ Lumen', unlock: { achievement: 'true_ending' },
+    hint: 'Xem Hồi Kết Thật của Cốt Truyện'
   }
 ];
 

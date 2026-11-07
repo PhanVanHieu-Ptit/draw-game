@@ -11,7 +11,7 @@
  * Everything touching the DOM is guarded: the node-based tests drive Game with a minimal fake document.
  */
 
-import { RUNES, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS } from '../core/Constants.js';
+import { RUNES, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, LEVEL_CONFIGS } from '../core/Constants.js';
 import { SENSITIVITY_LEVELS } from '../GestureEngine.js';
 import { ACHIEVEMENTS, BESTIARY, achievementProgress } from '../core/Achievements.js';
 import { UPGRADES } from '../core/Upgrades.js';
@@ -21,6 +21,7 @@ import { PRACTICE_ORDER } from '../systems/PracticeSession.js';
 import { SPELL_PHRASES, PHRASE_WINDOW } from '../core/Spells.js';
 import { TRAILS, HATS, STREAK_MILESTONES, isCosmeticUnlocked } from '../core/Cosmetics.js';
 import { dateKey, shiftDateKey, parseDailyChallengeParams, getDailyChallenge } from '../core/Challenge.js';
+import { MEMORY_SHARDS, loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
 
 const MAX_TOASTS = 3;
@@ -64,6 +65,7 @@ export class MetaUI {
     this._clipUrl = null;
     this._clipPausedBGM = false; // we paused the music while the clip plays, so we give it back on close
     this._wardrobeNew = false;
+    this._loreNew = false;
     this._chainTimer = null;
 
     // A shared daily-challenge link (?daily=...&score=...&from=...)
@@ -147,6 +149,11 @@ export class MetaUI {
     this._on('btn-open-companions', 'click', () => { this._tap(); this.openCompanions(); });
     this._on('btn-open-spellbook', 'click', () => { this._tap(); this.openSpellbook(); });
     this._on('btn-open-wardrobe', 'click', () => { this._tap(); this.openWardrobe(); });
+    this._on('btn-open-lore', 'click', () => { this._tap(); this.openLore(); });
+    this._on('btn-vic-lore', 'click', () => { this._tap(); this.openLore(); });
+    this._on('btn-vic-ending', 'click', () => this.ui.playEnding(['normal'], { replay: true }));
+    this._on('btn-lore-ending', 'click', () => this.ui.playEnding(['normal'], { replay: true }));
+    this._on('btn-lore-true-ending', 'click', () => this.ui.playEnding(['true'], { replay: true }));
     this._on('btn-start-rush', 'click', () => {
       g.audioSystem.init();
       g.audioSystem.playStart();
@@ -172,6 +179,7 @@ export class MetaUI {
     this._on('btn-close-companions', 'click', () => this.closeCompanions());
     this._on('btn-close-spellbook', 'click', () => this._close('spellbook-screen'));
     this._on('btn-close-wardrobe', 'click', () => this._close('wardrobe-screen'));
+    this._on('btn-close-lore', 'click', () => this._close('lore-screen'));
 
     // Wardrobe: equip a trail or a hat
     const wardrobe = this.$('wardrobe-screen');
@@ -302,7 +310,7 @@ export class MetaUI {
 
   /** Close the top-most overlay. @returns {boolean} true if something was closed */
   closeTopOverlay() {
-    for (const id of ['clip-modal', 'settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'wardrobe-screen']) {
+    for (const id of ['clip-modal', 'settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen']) {
       if (this._isOpen(id)) {
         if (id === 'clip-modal') this.closeClip();
         else this._close(id);
@@ -318,7 +326,7 @@ export class MetaUI {
 
   /** @returns {boolean} whether any meta overlay (not the upgrade picker) is open */
   hasOpenOverlay() {
-    return ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'wardrobe-screen', 'clip-modal']
+    return ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen', 'clip-modal']
       .some(id => this._isOpen(id));
   }
 
@@ -512,6 +520,11 @@ export class MetaUI {
     this._text('rush-menu-badge', rush.clears > 0 ? '✓' : '');
     this._hidden('rush-menu-badge', rush.clears === 0);
     this._hidden('wardrobe-menu-badge', !this._wardrobeNew);
+
+    // The mystery strip: the name found so far, and what to chase next
+    this._text('lore-strip-name', loreSummary(p).name);
+    this._text('lore-strip-hint', mysteryHint(p));
+    this._hidden('lore-menu-badge', !this._loreNew);
   }
 
   // ------------------------------------------------------------------ daily challenge
@@ -672,6 +685,109 @@ export class MetaUI {
     }).join('');
     this._html('spellbook-grid', html);
     this._text('spellbook-sub', `Đã khám phá ${p.discoveredPhraseCount()}/${SPELL_PHRASES.length}. Vẽ đúng 3 nét liên tiếp theo thứ tự — mỗi nét phải trúng u linh và cách nhau dưới ${String(PHRASE_WINDOW).replace('.', ',')} giây. Vẽ trượt sẽ làm đứt chuỗi.`);
+  }
+
+  // ------------------------------------------------------------------ memory journal
+
+  /** Something new was written in the journal since it was last opened */
+  markLoreNew() {
+    this._loreNew = true;
+    this._hidden('lore-menu-badge', false);
+  }
+
+  openLore() {
+    this._loreNew = false;
+    this._hidden('lore-menu-badge', true);
+    this.renderLore();
+    this._open('lore-screen');
+  }
+
+  /** The five letters of the forgotten name: a letter shows once its pledge is kept */
+  _lettersHtml() {
+    return loreLetters(this.game.progress)
+      .map(l => `<span class="lore-letter${l.known ? ' known' : ''}">${l.known ? l.letter : '?'}</span>`)
+      .join('');
+  }
+
+  renderLore() {
+    const p = this.game.progress;
+    const sum = loreSummary(p);
+    this._html('lore-name', this._lettersHtml());
+    this._text('lore-sub', sum.ready
+      ? `Cái tên đã được gọi lại: Lumen. Mảnh Ký Ức ${sum.shards}/${sum.total}, Lời Hứa ${sum.pledges}/${sum.total}.`
+      : `Mảnh Ký Ức ${sum.shards}/${sum.total} • Lời Hứa ${sum.pledges}/${sum.total}. Hạ trùm mỗi màn để lấy ký ức của họ; giữ trọn Lời Hứa của màn đó để thắp sáng một chữ cái. Đủ năm chữ sẽ mở Hồi Kết Thật.`);
+
+    const html = MEMORY_SHARDS.map((def) => {
+      const have = p.hasShard(def.level);
+      const kept = p.hasPledge(def.level);
+      if (!have) {
+        return `
+        <div class="companion-item spell-item locked" style="--card-accent:#64748b">
+          <div class="companion-portrait"><span class="spell-icon">❓</span></div>
+          <div class="companion-info">
+            <div class="companion-item-name">Màn ${def.level} · ???</div>
+            <div class="companion-desc">💡 Hạ ${def.keeper} trong Cốt Truyện để thu thập Mảnh Ký Ức này.</div>
+          </div>
+          <span class="companion-state">🔒</span>
+        </div>`;
+      }
+      const pledge = kept
+        ? `<div class="lore-pledge kept">✨ <b>${def.pledge.virtue} (${def.pledge.enVirtue})</b>: ${def.pledge.reveal}</div>`
+        : `<div class="lore-pledge">🧩 <b>Lời Hứa “${def.pledge.title}”</b>: ${def.pledge.riddle}<br><small>Nói rõ hơn: ${def.pledge.objective}</small></div>`;
+      return `
+        <div class="companion-item spell-item" style="--card-accent:${kept ? '#fde047' : '#c084fc'}">
+          <div class="companion-portrait"><span class="spell-icon">${def.icon}</span></div>
+          <div class="companion-info">
+            <div class="companion-item-name">Màn ${def.level} · ${def.title}</div>
+            <div class="companion-desc">${def.shard}</div>
+            ${pledge}
+          </div>
+          <span class="companion-state">${kept ? `✨ ${def.letter}` : '?'}</span>
+        </div>`;
+    }).join('');
+    this._html('lore-grid', html);
+
+    this._hidden('btn-lore-ending', !p.isEndingSeen('normal'));
+    this._hidden('btn-lore-true-ending', !sum.ready);
+  }
+
+  /** Memory shard card on the upgrade screen: the quiet moment right after a boss falls */
+  _renderShardCard(lore) {
+    const el = this.$('upgrade-shard');
+    if (!el) return;
+    const p = this.game.progress;
+    const def = lore && lore.def;
+    // Nothing new and the pledge is already kept: nothing to say
+    if (!def || (!lore.newShard && !lore.newPledge && p.hasPledge(def.level))) {
+      this._hidden('upgrade-shard', true);
+      return;
+    }
+    let html = `<div class="shard-head"><span class="shard-icon">${def.icon}</span>
+      <span class="shard-title">🔮 ${lore.newShard ? 'MẢNH KÝ ỨC MỚI' : 'KÝ ỨC'}: ${def.title}</span></div>`;
+    if (lore.newShard) {
+      // The boss's parting words flash by on the banner; here the player can actually read them
+      const cfg = LEVEL_CONFIGS[def.level - 1];
+      if (cfg && cfg.bossDefeatQuote) html += `<p class="shard-quote">“${cfg.bossDefeatQuote}” <span>— ${def.keeper}</span></p>`;
+      html += `<p class="shard-text">${def.shard}</p>`;
+    }
+    html += `<div class="lore-name shard-letters">${this._lettersHtml()}</div>`;
+    if (lore.newPledge) html += `<p class="shard-pledge kept">✨ ${def.pledge.reveal}</p>`;
+    else if (!p.hasPledge(def.level)) html += `<p class="shard-pledge">🧩 ${def.pledge.riddle}</p>`;
+    el.innerHTML = html;
+    this._hidden('upgrade-shard', false);
+  }
+
+  /** The "forgotten name" block on the Victory screen */
+  renderVictoryLore(summary) {
+    const p = this.game.progress;
+    const sum = loreSummary(p);
+    const isStory = !!summary && summary.mode === 'STORY' && !summary.bossRush && !summary.daily;
+    this._hidden('vic-lore', !isStory);
+    if (!isStory) return;
+    this._html('vic-lore-name', this._lettersHtml());
+    this._text('vic-lore-text', sum.ready
+      ? 'Cái tên đã được gọi lại: Lumen.'
+      : `Cái tên của hiệp sĩ vẫn còn lạc (${sum.pledges}/${sum.total} chữ cái). Giữ trọn Lời Hứa ở mỗi màn để tìm lại.`);
   }
 
   // ------------------------------------------------------------------ wardrobe
@@ -924,10 +1040,11 @@ export class MetaUI {
    * @param {Array<{id:string, icon:string, name:string, desc:string}>} choices
    * @param {(id: string) => boolean} onPick returns true if the pick was accepted
    */
-  showUpgradePicker(choices, onPick) {
+  showUpgradePicker(choices, onPick, lore = null) {
     const g = this.game;
     this._pickHandler = onPick;
     this._currentChoices = choices;
+    this._renderShardCard(lore);
 
     const html = choices.map((def, i) => {
       const owned = g.upgrades.count(def.id);

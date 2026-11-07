@@ -103,6 +103,22 @@ export const ACHIEVEMENTS = [
     progress: s => s.getRecord('STORY', 'INFERNO').wins
   },
   {
+    id: 'lore_shards', icon: '🔮', name: 'Người Giữ Ký Ức',
+    desc: 'Thu thập đủ 5 Mảnh Ký Ức từ các trùm (Nhật Ký Ký Ức)', target: 5, progress: s => s.shardCount()
+  },
+  {
+    id: 'pledge_first', icon: '✨', name: 'Lời Hứa Đầu Tiên',
+    desc: 'Giữ trọn một Lời Hứa trong Cốt Truyện để thắp sáng một chữ cái', target: 1, progress: s => s.pledgeCount()
+  },
+  {
+    id: 'pledge_all', icon: '🌙', name: 'Năm Chữ Cái',
+    desc: 'Giữ trọn cả 5 Lời Hứa', target: 5, progress: s => s.pledgeCount()
+  },
+  {
+    id: 'true_ending', icon: '🌠', name: 'Cái Tên Được Nhớ',
+    desc: 'Xem Hồi Kết Thật của Cốt Truyện', target: 1, progress: s => s.data.stats.trueEndings
+  },
+  {
     id: 'endless_10', icon: '♾️', name: 'Sống Sót Vô Tận',
     desc: 'Đến được Đợt 10 trong chế độ Vô Tận', target: 10, progress: s => s.data.stats.bestEndlessWave
   },
