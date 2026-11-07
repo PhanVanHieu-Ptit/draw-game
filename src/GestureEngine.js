@@ -367,6 +367,14 @@ export class GestureEngine {
    */
   constructor(options = {}) {
     this.minScore = options.minScore ?? 0.65;
+    this.thresholds = { caret: 0.78, v_shape: 0.78, circle: 0.78, ...options.thresholds };
+    this.minMargin = options.minMargin ?? 0.025;
+    this.maxInputPoints = options.maxInputPoints ?? 8192;
+    this.oneDThreshold = options.oneDThreshold ?? 0.25;
+    if (!Number.isInteger(options.pointCount ?? 32) || (options.pointCount ?? 32) < 8 || (options.pointCount ?? 32) > 256 ||
+        !Number.isFinite(options.boxSize ?? 100) || (options.boxSize ?? 100) <= 0) {
+      throw new RangeError('pointCount must be an integer from 8 to 256 and boxSize must be positive');
+    }
     this.minPathLength = options.minPathLength ?? 15;
     this.pointCount = options.pointCount ?? 32;
     this.boxSize = options.boxSize ?? 100;
@@ -376,6 +384,8 @@ export class GestureEngine {
 
     // Biên dịch sẵn toàn bộ template về 32 điểm chuẩn hóa 100x100
     this._compileTemplates(DEFAULT_RAW_TEMPLATES);
+    // Inward/outward spirals are not exact time reversals; compile both explicitly.
+    for (const stroke of DEFAULT_RAW_TEMPLATES.spiral) this.addTemplate('spiral', [...stroke].reverse());
   }
 
   /**
@@ -387,7 +397,7 @@ export class GestureEngine {
     for (const [name, strokeList] of Object.entries(rawTemplatesMap)) {
       for (const rawStroke of strokeList) {
         const resampled = resample(rawStroke, this.pointCount);
-        const normalized = normalizeBoundingBox(resampled, this.boxSize, 0.25);
+        const normalized = normalizeBoundingBox(resampled, this.boxSize, this.oneDThreshold);
         this.templates.push({
           name,
           points: normalized
@@ -404,7 +414,7 @@ export class GestureEngine {
   addTemplate(name, points) {
     if (!points || points.length < 2) return;
     const resampled = resample(points, this.pointCount);
-    const normalized = normalizeBoundingBox(resampled, this.boxSize, 0.25);
+    const normalized = normalizeBoundingBox(resampled, this.boxSize, this.oneDThreshold);
     this.templates.push({ name, points: normalized });
   }
 
@@ -433,6 +443,8 @@ export class GestureEngine {
    * @returns {string|null} 'tilted' | 'short' | 'off_center' | 'shallow' | 'no_zigzag' | 'bad_ratio' | 'open' | null
    */
   _checkGeometry(gesture, rawBox, normalizedPoints) {
+    // Geometry thresholds use a canonical 100-unit space, independent of boxSize.
+    normalizedPoints = normalizedPoints.map(p => ({x: p.x * 100 / this.boxSize, y: p.y * 100 / this.boxSize}));
     const { width, height } = rawBox;
     const aspect = width / Math.max(1e-5, height);
 
@@ -441,7 +453,7 @@ export class GestureEngine {
         // Nét ngang bắt buộc width phải vượt trội so với height
         if (aspect < 1.7) return 'tilted';
         // Điểm đầu và điểm cuối phải quét ngang rõ rệt
-        const dx = Math.abs(normalizedPoints[31].x - normalizedPoints[0].x);
+        const dx = Math.abs(normalizedPoints[normalizedPoints.length - 1].x - normalizedPoints[0].x);
         return dx >= 65 ? null : 'short';
       }
 
@@ -449,14 +461,14 @@ export class GestureEngine {
         // Nét dọc bắt buộc height phải vượt trội so với width
         if (aspect > 1 / 1.7) return 'tilted';
         // Điểm đầu và điểm cuối phải quét dọc rõ rệt
-        const dy = Math.abs(normalizedPoints[31].y - normalizedPoints[0].y);
+        const dy = Math.abs(normalizedPoints[normalizedPoints.length - 1].y - normalizedPoints[0].y);
         return dy >= 65 ? null : 'short';
       }
 
       case 'v_shape': {
         // Chữ V: Đi xuống rồi đi lên
         const startY = normalizedPoints[0].y;
-        const endY = normalizedPoints[31].y;
+        const endY = normalizedPoints[normalizedPoints.length - 1].y;
         // Đáy chữ V (cực đại y) phải nằm ở sâu bên dưới
         let maxY = -Infinity;
         let maxIndex = 0;
@@ -467,14 +479,14 @@ export class GestureEngine {
           }
         }
         // Đáy phải ở khoảng giữa [20% .. 80%] và sâu hơn điểm đầu/cuối ít nhất 35px
-        if (maxIndex < 6 || maxIndex > 26) return 'off_center';
+        if (maxIndex < normalizedPoints.length * 0.18 || maxIndex > normalizedPoints.length * 0.84) return 'off_center';
         return (maxY - startY >= 35) && (maxY - endY >= 35) ? null : 'shallow';
       }
 
       case 'caret': {
         // Chữ V ngược: Đi lên rồi đi xuống
         const startY = normalizedPoints[0].y;
-        const endY = normalizedPoints[31].y;
+        const endY = normalizedPoints[normalizedPoints.length - 1].y;
         // Đỉnh (cực tiểu y) phải nằm ở tít trên cao
         let minY = Infinity;
         let minIndex = 0;
@@ -485,7 +497,7 @@ export class GestureEngine {
           }
         }
         // Đỉnh phải ở khoảng giữa [20% .. 80%] và cao hơn điểm đầu/cuối ít nhất 35px
-        if (minIndex < 6 || minIndex > 26) return 'off_center';
+        if (minIndex < normalizedPoints.length * 0.18 || minIndex > normalizedPoints.length * 0.84) return 'off_center';
         return (startY - minY >= 35) && (endY - minY >= 35) ? null : 'shallow';
       }
 
@@ -522,7 +534,7 @@ export class GestureEngine {
         // Vòng tròn (Frost Nova): Tỷ lệ khung tương đối vuông vức (không phải nét 1D)
         if (aspect < 0.35 || aspect > 2.8) return 'bad_ratio';
         // Điểm đầu và cuối tương đối gần nhau (< 72px trong ô 100x100 cho phép vẽ nhanh 75%-85% vòng)
-        const closeDist = distance(normalizedPoints[0], normalizedPoints[31]);
+        const closeDist = distance(normalizedPoints[0], normalizedPoints[normalizedPoints.length - 1]);
         if (closeDist > 72) return 'open';
         // Chiều dài đường bao quanh đủ lớn để tạo thành đường cong khép góc
         const totalCurve = pathLength(normalizedPoints);
@@ -556,8 +568,14 @@ export class GestureEngine {
       return { status: 'no_input' };
     }
 
+    if (rawPoints.length > this.maxInputPoints) return { status: 'too_complex' };
+    if (rawPoints.some(p => !p || !Number.isFinite(p.x) || !Number.isFinite(p.y))) {
+      return { status: 'invalid_input' };
+    }
+
     // 2. Chống nhiễu khi click vô tình: tổng chiều dài nét vẽ < 15px
     const totalLen = pathLength(rawPoints);
+    if (!Number.isFinite(totalLen)) return { status: 'invalid_input' };
     if (totalLen < this.minPathLength) {
       return { status: 'too_short' };
     }
@@ -569,7 +587,7 @@ export class GestureEngine {
     const rawBox = getBoundingBox(rawPoints);
 
     // 5. Bounding Box Normalization về 100x100
-    const normalized = normalizeBoundingBox(resampled, this.boxSize, 0.25);
+    const normalized = normalizeBoundingBox(resampled, this.boxSize, this.oneDThreshold);
 
     // 6. Tính toán Template Matching (Thuật toán Dollar $1 với khoảng cách Euclidean)
     // Đường chéo tham chiếu của ô 100x100 là 100 * sqrt(2) ≈ 141.42
@@ -617,26 +635,38 @@ export class GestureEngine {
    * @returns {{ gesture: string | null, score: number, candidate: string | null, reason: string | null }}
    */
   recognize(rawPoints) {
-    const a = this._analyze(rawPoints);
+    return this._recognizeAnalysis(this._analyze(rawPoints));
+  }
+
+  _recognizeAnalysis(a) {
     if (a.status !== 'ok') {
-      return { gesture: null, score: 0, candidate: null, reason: a.status };
+      return { gesture: null, score: 0, confidence: 0, margin: 0, candidate: null, reason: a.status };
     }
 
     const { bestGesture, bestScore, rawBox, normalized } = a;
     const roundedBest = Number(Math.max(0, bestScore).toFixed(3));
+    const runnerUp = Math.max(0, ...Object.entries(a.perGesture)
+      .filter(([name]) => name !== bestGesture && !this._checkGeometry(name, rawBox, normalized))
+      .map(([, score]) => score));
+    const margin = Math.max(0, bestScore - runnerUp);
+    const details = { confidence: roundedBest, margin: Number(margin.toFixed(3)) };
 
     // 7. Xác thực hình học (Heuristic Validation Gate)
     const geometryFail = bestGesture ? this._checkGeometry(bestGesture, rawBox, normalized) : null;
     if (geometryFail) {
-      return { gesture: null, score: roundedBest, candidate: bestGesture, reason: geometryFail };
+      return { gesture: null, score: roundedBest, ...details, candidate: bestGesture, reason: geometryFail };
     }
 
     // 8. So sánh với ngưỡng chấp nhận (Threshold Filter)
-    if (bestScore < this.minScore) {
-      return { gesture: null, score: roundedBest, candidate: bestGesture, reason: 'low_score' };
+    if (bestScore < Math.max(this.minScore, this.thresholds[bestGesture] ?? 0)) {
+      return { gesture: null, score: roundedBest, ...details, candidate: bestGesture, reason: 'low_score' };
     }
 
+    if (margin < this.minMargin) {
+      return { gesture: null, score: roundedBest, ...details, candidate: bestGesture, reason: 'ambiguous' };
+    }
     return {
+      ...details,
       gesture: bestGesture,
       score: Number(bestScore.toFixed(3)),
       candidate: bestGesture,
@@ -660,7 +690,7 @@ export class GestureEngine {
     }
 
     const accuracy = Number((a.perGesture[target] || 0).toFixed(3));
-    const recognized = this.recognize(rawPoints);
+    const recognized = this._recognizeAnalysis(a);
     const passed = recognized.gesture === target;
 
     let reason = null;
@@ -668,7 +698,7 @@ export class GestureEngine {
       const geometryFail = this._checkGeometry(target, a.rawBox, a.normalized);
       if (geometryFail) reason = geometryFail;
       else if (recognized.gesture && recognized.gesture !== target) reason = 'confused';
-      else reason = 'low_score';
+      else reason = recognized.reason || 'low_score';
     }
 
     return { passed, accuracy, recognizedAs: recognized.gesture, reason };
@@ -708,6 +738,9 @@ export const GESTURE_TIPS = {
 };
 
 const MISS_HINTS = {
+  ambiguous: 'Nét giống nhiều ấn ký — vẽ rõ góc hoặc vòng xoắn hơn',
+  invalid_input: 'Nét bị gián đoạn — thử vẽ lại một nét liền',
+  too_complex: 'Nét quá dài — thử vẽ gọn hơn',
   too_short: 'Nét quá ngắn — kéo dài tay ra hơn',
   tilted: 'Nét bị nghiêng — giữ tay thẳng hơn',
   short: 'Nét chưa đủ dài — vẽ dài và dứt khoát hơn',

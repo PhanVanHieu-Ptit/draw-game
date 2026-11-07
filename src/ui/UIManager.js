@@ -619,6 +619,7 @@ export class UIManager {
 
       // Practice Mode: Esc leaves
       if (stateNow === GAME_STATES.PRACTICE) {
+        if (e.key.toLowerCase() === 'r') this.game.inputHandler.replayLastStroke();
         if (e.key === 'Escape') this.game.quitToMenu();
         return;
       }

@@ -41,6 +41,7 @@ export class InputHandler {
 
     this.currentPoints = [];
     this.lastPoint = null;
+    this.activePointerId = null;
     this.isDrawing = false;
     this.isEnabled = false;
     this._mapping = null; // cached client->logical mapping, valid for the duration of one stroke
@@ -102,7 +103,7 @@ export class InputHandler {
     return {
       x: (e.clientX - m.left) * m.scaleX,
       y: (e.clientY - m.top) * m.scaleY,
-      timestamp: performance.now()
+      timestamp: Number.isFinite(e.timeStamp) ? e.timeStamp : performance.now()
     };
   }
 
@@ -160,7 +161,8 @@ export class InputHandler {
 
   _bindEvents() {
     this.canvas.addEventListener('pointerdown', (e) => {
-      if (!this.isEnabled) return;
+      if (!this.isEnabled || this.isDrawing || e.isPrimary === false || (e.button !== undefined && e.button !== 0)) return;
+      this.activePointerId = e.pointerId;
       try {
         this.canvas.setPointerCapture(e.pointerId);
       } catch (err) {
@@ -188,9 +190,15 @@ export class InputHandler {
     });
 
     this.canvas.addEventListener('pointermove', (e) => {
-      if (!this.isEnabled || !this.isDrawing) return;
+      if (!this.isEnabled || !this.isDrawing || e.pointerId !== this.activePointerId) return;
       const pt = this._getCanvasPoint(e);
+      const samples = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+      for (const sample of samples) this.currentPoints.push(this._getCanvasPoint(sample));
       this.currentPoints.push(pt);
+      // Bound storage and render cost without truncating the end of a long stroke.
+      if (this.currentPoints.length > 2048) {
+        this.currentPoints = this.currentPoints.filter((_, i, points) => i % 2 === 0 || i === points.length - 1);
+      }
 
       if (this.soundSystem && typeof this.soundSystem.feedDrawCoord === 'function') {
         this.soundSystem.feedDrawCoord(pt.x, pt.y);
@@ -217,8 +225,10 @@ export class InputHandler {
     });
 
     const handlePointerUp = (e) => {
-      if (!this.isEnabled || !this.isDrawing) return;
+      if (!this.isEnabled || !this.isDrawing || e.pointerId !== this.activePointerId) return;
       this.isDrawing = false;
+      this.activePointerId = null;
+      if (e.type !== 'pointercancel' && e.type !== 'lostpointercapture') this.currentPoints.push(this._getCanvasPoint(e));
       this._mapping = null;
 
       try {
@@ -231,7 +241,13 @@ export class InputHandler {
         this.soundSystem.stopDraw();
       }
 
+      if (e.type === 'pointercancel' || e.type === 'lostpointercapture') {
+        this.currentPoints = [];
+        this.lastPoint = null;
+        return;
+      }
       const rawStroke = [...this.currentPoints];
+      this.lastStroke = rawStroke;
 
       // Final magic sparkles burst on pen release
       if (this.lastPoint && this.particleSystem) {
@@ -243,7 +259,7 @@ export class InputHandler {
       // NOT by how far the end is from the start: a closed shape (heart, circle) ends where it began,
       // and used to be swallowed as a "tap on Momo" whenever it was drawn around the cat.
       const isTap = rawStroke.length >= 1 && (
-        rawStroke.length <= 4 || strokeLength(rawStroke) < 25
+        strokeLength(rawStroke) < 25
       );
 
       if (isTap && typeof this.onTap === 'function') {
@@ -276,6 +292,7 @@ export class InputHandler {
 
     this.canvas.addEventListener('pointerup', handlePointerUp);
     this.canvas.addEventListener('pointercancel', handlePointerUp);
+    this.canvas.addEventListener('lostpointercapture', handlePointerUp);
   }
 
   /**
@@ -334,6 +351,13 @@ export class InputHandler {
     };
   }
 
+  /** Optional replay of the last captured stroke, using the existing guide renderer. */
+  replayLastStroke(color = '#ffffff') {
+    if (!this.lastStroke || this.lastStroke.length < 2) return false;
+    this.guide = { points: this.lastStroke, color, age: 0, life: GUIDE_LIFE, replay: true };
+    return true;
+  }
+
   /** Remove any visible guide overlay (e.g. when the state changes) */
   clearGuide() {
     this.guide = null;
@@ -377,7 +401,9 @@ export class InputHandler {
 
     ctx.beginPath();
     ctx.moveTo(g.points[0].x, g.points[0].y);
-    for (let i = 1; i < g.points.length; i++) {
+    const progress = Math.min(1, g.age / (g.life * 0.7));
+    const count = g.replay ? Math.max(1, Math.ceil(progress * g.points.length)) : g.points.length;
+    for (let i = 1; i < count; i++) {
       ctx.lineTo(g.points[i].x, g.points[i].y);
     }
     ctx.stroke();
@@ -529,6 +555,8 @@ export class InputHandler {
 
   clear() {
     this.currentPoints = [];
+    this.lastStroke = null;
+    this.activePointerId = null;
     this.lastPoint = null;
     this.fadingStrokes = [];
     this.guide = null;

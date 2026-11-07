@@ -257,6 +257,7 @@ export class MetaUI {
     }
 
     // Practice
+    this._on('btn-practice-replay', 'click', () => g.inputHandler.replayLastStroke());
     this._on('btn-practice-exit', 'click', () => g.quitToMenu());
     this._on('btn-practice-template', 'click', () => {
       g.practice.setShowTemplate(!g.practice.showTemplate);

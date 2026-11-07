@@ -1,0 +1,50 @@
+{
+  "samples": 294,
+  "correct": 294,
+  "perGesture": {
+    "horizontal": {
+      "correct": 36,
+      "total": 36
+    },
+    "vertical": {
+      "correct": 36,
+      "total": 36
+    },
+    "caret": {
+      "correct": 36,
+      "total": 36
+    },
+    "v_shape": {
+      "correct": 36,
+      "total": 36
+    },
+    "lightning": {
+      "correct": 36,
+      "total": 36
+    },
+    "heart": {
+      "correct": 36,
+      "total": 36
+    },
+    "circle": {
+      "correct": 36,
+      "total": 36
+    },
+    "spiral": {
+      "correct": 36,
+      "total": 36
+    },
+    "reject": {
+      "correct": 6,
+      "total": 6
+    }
+  },
+  "failures": [],
+  "latencyMs": {
+    "median": 0.09483399999999165,
+    "p95": 0.17574999999999363,
+    "p99": 0.24133400000002325,
+    "max": 0.4311670000000163
+  },
+  "runtime": "v22.22.3"
+}
