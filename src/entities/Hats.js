@@ -138,6 +138,34 @@ const HAT_DRAWERS = {
     ctx.restore();
   },
 
+  knight(ctx, t) {
+    ctx.save();
+    // Plume that sways a little
+    const sway = Math.sin(t * 3) * 2;
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.moveTo(0, -13);
+    ctx.quadraticCurveTo(8 + sway, -31, 21 + sway, -25);
+    ctx.quadraticCurveTo(11 + sway, -21, 6, -11);
+    ctx.closePath();
+    ctx.fill();
+    // Helm dome
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(-18, 4);
+    ctx.quadraticCurveTo(-18, -20, 0, -20);
+    ctx.quadraticCurveTo(18, -20, 18, 4);
+    ctx.closePath();
+    ctx.fill();
+    // Brow band and golden crest
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-18, -3, 36, 7);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-2, -20, 4, 17);
+    star(ctx, 0, 0.5, 3.8, '#fbbf24');
+    ctx.restore();
+  },
+
   horns(ctx) {
     ctx.save();
     ctx.fillStyle = '#dc2626';

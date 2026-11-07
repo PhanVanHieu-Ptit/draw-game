@@ -5,6 +5,7 @@
  */
 
 import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
+import { loreSummary } from '../core/Lore.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
 import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChallengeUrl } from './WizardCardRenderer.js';
@@ -87,8 +88,15 @@ export class UIManager {
     this.sdcBossName = document.getElementById('sdc-boss-name');
     this.sdcBossQuote = document.getElementById('sdc-boss-quote');
     this.btnStoryPlayLevel = document.getElementById('btn-story-play-level');
+    this.storyScreen = this.screens[GAME_STATES.STORY];
+    this.storyTruePill = document.getElementById('story-true-pill');
     this.isStoryPreviewMode = false;
-    this.currentStoryAct = 'intro'; // 'intro' | 'chapter' | 'victory'
+    // Endings (victory / true ending) can play as an overlay on top of the Victory screen or the journal
+    this._endingOverlay = false;
+    this._endingQueue = [];
+    this._endingReplay = false;
+    this._endingSlide = 0;
+    this.currentStoryAct = 'intro'; // 'intro' | 'chapter' | 'victory' | 'trueEnding'
     this.currentChapterIndex = 1;
     this.currentRenderSlideIndex = 0;
     this.currentStoryIndex = 0;
@@ -237,6 +245,16 @@ export class UIManager {
           const vicSlides = STORY_SLIDES.VICTORY;
           if (this.currentStoryIndex < vicSlides.length - 1) {
             this.showStoryVictorySlide(this.currentStoryIndex + 1);
+          } else if (this._endingOverlay) {
+            this._nextEnding();
+          } else {
+            this.game.stateMachine.changeState(GAME_STATES.MENU);
+          }
+        } else if (this.currentStoryAct === 'trueEnding') {
+          if (this.currentStoryIndex < STORY_SLIDES.TRUE_ENDING.length - 1) {
+            this.showStoryEndingSlide(this.currentStoryIndex + 1);
+          } else if (this._endingOverlay) {
+            this._nextEnding();
           } else {
             this.game.stateMachine.changeState(GAME_STATES.MENU);
           }
@@ -259,8 +277,14 @@ export class UIManager {
         } else if (this.currentStoryAct === 'victory') {
           if (this.currentStoryIndex > 0) {
             this.showStoryVictorySlide(this.currentStoryIndex - 1);
-          } else {
+          } else if (!this._endingOverlay) {
             this.showStoryChapter(5);
+          }
+        } else if (this.currentStoryAct === 'trueEnding') {
+          if (this.currentStoryIndex > 0) {
+            this.showStoryEndingSlide(this.currentStoryIndex - 1);
+          } else if (!this._endingOverlay) {
+            this.showStoryVictorySlide(STORY_SLIDES.VICTORY.length - 1);
           }
         }
       });
@@ -268,7 +292,9 @@ export class UIManager {
 
     if (this.btnSkipStory) {
       this.btnSkipStory.addEventListener('click', () => {
-        if (this.isStoryPreviewMode) {
+        if (this._endingOverlay) {
+          this.closeEnding();
+        } else if (this.isStoryPreviewMode) {
           this.game.stateMachine.changeState(GAME_STATES.MENU);
         } else {
           this.game.audioSystem.playStart();
@@ -294,6 +320,8 @@ export class UIManager {
             this.showStoryChapter(chapNum);
           } else if (act === 'victory') {
             this.showStoryVictorySlide(0);
+          } else if (act === 'trueEnding') {
+            this.showStoryEndingSlide(0);
           }
         });
       });
@@ -604,6 +632,13 @@ export class UIManager {
         return;
       }
 
+      // An ending playing over the Victory screen / journal: Enter goes on, Esc closes it
+      if (this._endingOverlay) {
+        if (e.key === 'Escape') this.closeEnding();
+        else if (e.key === 'Enter' && this.btnStoryNext) this.btnStoryNext.click();
+        return;
+      }
+
       // Upgrade picker: keys 1-3 choose a card
       if (this.meta.isUpgradeOpen()) {
         const idx = ['1', '2', '3'].indexOf(e.key);
@@ -675,6 +710,10 @@ export class UIManager {
       this._stopVictoryAnim();
     } else if (stateName === GAME_STATES.STORY) {
       this.isStoryPreviewMode = !!payload.previewOnly;
+      if (this.storyTruePill && this.storyTruePill.classList) {
+        if (loreSummary(this.game.progress).ready) this.storyTruePill.classList.remove('hidden');
+        else this.storyTruePill.classList.add('hidden');
+      }
       if (this.btnSkipStory) {
         this.btnSkipStory.textContent = this.isStoryPreviewMode ? 'Về Menu ✕' : 'Bỏ qua ➔';
       }
@@ -713,6 +752,7 @@ export class UIManager {
         this.meta.setLastRun(payload.summary);
         this.meta.renderRunSummary('vic-summary', payload.summary);
       }
+      this.meta.renderVictoryLore(payload.summary);
     } else if (stateName === GAME_STATES.GAMEOVER) {
       this._stopStoryAnim();
       this._stopVictoryAnim();
@@ -762,6 +802,7 @@ export class UIManager {
   }
 
   hideScreen(stateName) {
+    if (stateName === GAME_STATES.VICTORY) this.closeEnding();
     const target = this.screens[stateName];
     if (target) {
       target.classList.remove('active');
@@ -875,15 +916,112 @@ export class UIManager {
     if (this.btnStoryPlayLevel) this.btnStoryPlayLevel.classList.add('hidden');
 
     if (this.btnStoryNext) {
-      this.btnStoryNext.innerHTML = `<span>${index < slides.length - 1 ? 'Tiếp Tục ➜' : 'Về Menu 🏠'}</span>`;
+      const last = index >= slides.length - 1;
+      this.btnStoryNext.innerHTML = `<span>${last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜'}</span>`;
     }
     if (this.btnStoryPrev) {
-      this.btnStoryPrev.style.visibility = 'visible';
+      this.btnStoryPrev.style.visibility = this._endingOverlay && index === 0 ? 'hidden' : 'visible';
     }
+    this._setStoryDots(index);
 
     this._updateStoryPills('victory');
 
     StoryCanvasRenderer.renderVictory(this.storyCanvas, performance.now() / 1000);
+  }
+
+  /** The true ending: three slides, unlocked by keeping every pledge */
+  showStoryEndingSlide(index) {
+    const slides = STORY_SLIDES.TRUE_ENDING;
+    if (index < 0 || index >= slides.length) return;
+    this.currentStoryAct = 'trueEnding';
+    this.currentStoryIndex = index;
+    this.currentRenderSlideIndex = 'ending';
+    this._endingSlide = index;
+    const slide = slides[index];
+
+    if (this.storyStepBadge) this.storyStepBadge.textContent = `HỒI KẾT THẬT • ${index + 1}/${slides.length}`;
+    if (this.storySlideTitle) this.storySlideTitle.textContent = slide.title;
+    if (this.storySlideText) this.storySlideText.textContent = slide.text;
+    if (this.storySlideEn) this.storySlideEn.textContent = slide.enText;
+
+    if (this.storyDialogueCallout) this.storyDialogueCallout.classList.add('hidden');
+    if (this.btnStoryPlayLevel) this.btnStoryPlayLevel.classList.add('hidden');
+
+    if (this.btnStoryNext) {
+      const last = index >= slides.length - 1;
+      this.btnStoryNext.innerHTML = `<span>${last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜'}</span>`;
+    }
+    if (this.btnStoryPrev) {
+      this.btnStoryPrev.style.visibility = this._endingOverlay && index === 0 ? 'hidden' : 'visible';
+    }
+    this._setStoryDots(index);
+
+    this._updateStoryPills('trueEnding');
+
+    StoryCanvasRenderer.renderEnding(this.storyCanvas, index, performance.now() / 1000);
+  }
+
+  _setStoryDots(index) {
+    if (!this.storyDots) return;
+    this.storyDots.querySelectorAll('.story-dot').forEach((d, i) => {
+      if (i === index) d.classList.add('active');
+      else d.classList.remove('active');
+    });
+  }
+
+  // =========================================================================
+  // ENDINGS PLAYED OVER ANOTHER SCREEN
+  // =========================================================================
+
+  /** Label of the button on an ending's last slide: depends on what comes next */
+  _endingLastLabel(fallback) {
+    if (!this._endingOverlay) return fallback;
+    if (this._endingQueue.length > 0) return 'Tiếp Tục ➜';
+    return this._endingReplay ? 'Đóng ✕' : 'Xem Kết Quả 🏆';
+  }
+
+  /**
+   * Play one or more endings over whatever screen is showing: the Victory screen right after a win, or the
+   * journal / Victory screen when the player asks to see one again.
+   * @param {Array<'normal'|'true'>} queue played in order
+   * @param {{replay?: boolean}} [opts] replay: watching again, so it is not counted as seen
+   */
+  playEnding(queue, opts = {}) {
+    if (!this.storyScreen || !Array.isArray(queue) || queue.length === 0) return;
+    this._endingQueue = queue.slice();
+    this._endingReplay = !!opts.replay;
+    this._endingOverlay = true;
+    if (this.btnSkipStory) this.btnSkipStory.textContent = this._endingReplay ? 'Đóng ✕' : 'Bỏ qua ➔';
+    this.storyScreen.classList.add('active');
+    this.storyScreen.classList.add('ending-overlay');
+    this._startStoryAnim();
+    this._beginEnding(this._endingQueue.shift());
+  }
+
+  _beginEnding(kind) {
+    if (!this._endingReplay) this.game.markEndingSeen(kind);
+    if (kind === 'true') this.showStoryEndingSlide(0);
+    else this.showStoryVictorySlide(0);
+  }
+
+  _nextEnding() {
+    const next = this._endingQueue.shift();
+    if (next) this._beginEnding(next);
+    else this.closeEnding();
+  }
+
+  /** Remove the ending overlay (finished, skipped, or the screen under it is going away) */
+  closeEnding() {
+    if (!this._endingOverlay) return;
+    this._endingOverlay = false;
+    this._endingQueue = [];
+    this._endingReplay = false;
+    if (this.storyScreen) {
+      this.storyScreen.classList.remove('active');
+      this.storyScreen.classList.remove('ending-overlay');
+    }
+    this._stopStoryAnim();
+    if (this.btnSkipStory) this.btnSkipStory.textContent = this.isStoryPreviewMode ? 'Về Menu ✕' : 'Bỏ qua ➔';
   }
 
   _updateStoryPills(act, chapNum = 1) {
@@ -906,6 +1044,8 @@ export class UIManager {
       const time = performance.now() / 1000;
       if (this.currentRenderSlideIndex === 'victory') {
         StoryCanvasRenderer.renderVictory(this.storyCanvas, time);
+      } else if (this.currentRenderSlideIndex === 'ending') {
+        StoryCanvasRenderer.renderEnding(this.storyCanvas, this._endingSlide, time);
       } else {
         StoryCanvasRenderer.renderSlide(this.storyCanvas, this.currentRenderSlideIndex, time);
       }
