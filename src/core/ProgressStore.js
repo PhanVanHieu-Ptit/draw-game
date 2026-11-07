@@ -5,6 +5,7 @@
  *  - lifetime stats (kills, spells, play time, ...) that drive achievements
  *  - unlocked achievements, the bestiary (enemies met / defeated) and Practice Mode mastery
  *  - Story levels cleared (they unlock companions), the equipped companion and daily-challenge scores
+ *  - the story mystery: memory shards, kept pledges (the letters of the forgotten name) and endings seen
  *
  * Everything is kept in memory and written with save(). Callers save at meaningful moments (end of a
  * run, achievement unlocked, page hidden) rather than on every kill, so combat never waits on storage.
@@ -77,6 +78,7 @@ function emptyStats() {
     goldenCaught: 0,
     phrasesCast: 0,
     rushClears: 0,
+    trueEndings: 0,
     killsByRune: {}
   };
 }
@@ -85,6 +87,13 @@ function emptyRush() {
   // seconds = fastest clear (0 = never cleared), level = furthest boss reached
   return { score: 0, seconds: 0, level: 0, plays: 0, clears: 0 };
 }
+
+function emptyLore() {
+  // shards / pledges: story level (1..5) -> true; endings: 'normal' | 'true' -> true once shown
+  return { shards: {}, pledges: {}, endings: {} };
+}
+
+export const ENDING_KINDS = ['normal', 'true'];
 
 function freshData() {
   return {
@@ -100,7 +109,8 @@ function freshData() {
     daily: {},
     phrases: {},
     cosmetics: { trail: DEFAULT_TRAIL, hat: DEFAULT_HAT, seen: {} },
-    rush: emptyRush()
+    rush: emptyRush(),
+    lore: emptyLore()
   };
 }
 
@@ -238,6 +248,21 @@ export class ProgressStore {
       const r = emptyRush();
       for (const k of Object.keys(r)) r[k] = Math.round(nonNegative(parsed.rush[k]));
       d.rush = r;
+    }
+
+    if (parsed.lore && typeof parsed.lore === 'object') {
+      for (const field of ['shards', 'pledges']) {
+        const src = parsed.lore[field];
+        if (!src || typeof src !== 'object') continue;
+        for (let lvl = 1; lvl <= 5; lvl++) {
+          if (src[lvl]) d.lore[field][lvl] = true;
+        }
+      }
+      if (parsed.lore.endings && typeof parsed.lore.endings === 'object') {
+        for (const kind of ENDING_KINDS) {
+          if (parsed.lore.endings[kind]) d.lore.endings[kind] = true;
+        }
+      }
     }
 
     if (parsed.daily && typeof parsed.daily === 'object') {
@@ -464,6 +489,53 @@ export class ProgressStore {
   setCompanion(id) {
     if (!COMPANIONS[id]) return false;
     this.data.companion = id;
+    return true;
+  }
+
+  // ------------------------------------------------------------------ story mystery (see core/Lore.js)
+
+  /** @param {number} level Story level 1..5 whose boss was just purified @returns {boolean} true the first time */
+  unlockShard(level) {
+    const n = Math.round(Number(level));
+    if (!(n >= 1 && n <= 5) || this.data.lore.shards[n]) return false;
+    this.data.lore.shards[n] = true;
+    return true;
+  }
+
+  hasShard(level) {
+    return !!this.data.lore.shards[level];
+  }
+
+  shardCount() {
+    return Object.keys(this.data.lore.shards).length;
+  }
+
+  /** @param {number} level Story level 1..5 whose pledge was kept @returns {boolean} true the first time */
+  keepPledge(level) {
+    const n = Math.round(Number(level));
+    if (!(n >= 1 && n <= 5) || this.data.lore.pledges[n]) return false;
+    this.data.lore.pledges[n] = true;
+    return true;
+  }
+
+  hasPledge(level) {
+    return !!this.data.lore.pledges[level];
+  }
+
+  pledgeCount() {
+    return Object.keys(this.data.lore.pledges).length;
+  }
+
+  /** @param {'normal'|'true'} kind */
+  isEndingSeen(kind) {
+    return !!this.data.lore.endings[kind];
+  }
+
+  /** @returns {boolean} true the first time this ending is marked */
+  markEndingSeen(kind) {
+    if (!ENDING_KINDS.includes(kind) || this.data.lore.endings[kind]) return false;
+    this.data.lore.endings[kind] = true;
+    if (kind === 'true') this.data.stats.trueEndings += 1;
     return true;
   }
 

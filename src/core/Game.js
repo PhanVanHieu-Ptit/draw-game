@@ -17,6 +17,9 @@ import { getDailyChallenge, dateKey, buildDailyChallengeUrl } from './Challenge.
 import { RunSaveStore, buildEndlessSnapshot, MIN_SAVE_WAVE } from './RunSave.js';
 import { PhraseTracker, PHRASE_RUNES } from './Spells.js';
 import { evaluateCosmetics, getCosmetic, getTrail, isCosmeticUnlocked, DEFAULT_TRAIL, DEFAULT_HAT } from './Cosmetics.js';
+import { StoryDirector } from './StoryDirector.js';
+import { buildScene, buildBark } from './StoryScenes.js';
+import { shardForLevel, evaluatePledge, loreSummary } from './Lore.js';
 import { ObjectPool } from './ObjectPool.js';
 import { GestureEngine, getMissHint } from '../GestureEngine.js';
 import { Player } from '../entities/Player.js';
@@ -147,6 +150,11 @@ export class Game {
     this._stagesClearedThisRun = 0;
     this._newCompanions = [];
 
+    // In-run story: scenes between fights, companion reactions, and the per-level facts the pledges read
+    this.storyDirector = new StoryDirector((line) => this._showStoryLine(line));
+    this._pendingLore = null;
+    this._resetStoryTracking();
+
     // Saved Endless run, the active Daily Challenge (null = ordinary run) and accessibility flags
     this.runSave = new RunSaveStore();
     this.challenge = null;
@@ -267,21 +275,10 @@ export class Game {
         setTimeout(() => this.audioSystem.playCatMeow('cheerful'), 350);
       }
 
-      // Trigger companion story intro dialogue after transition
-      if (lvlData && lvlData.companion && lvlData.storyIntroQuote) {
-        setTimeout(() => {
-          if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
-            this.uiManager.showDialogue({
-              name: lvlData.companion.name,
-              role: lvlData.companion.role,
-              avatar: lvlData.companion.icon,
-              color: lvlData.companion.color,
-              text: lvlData.storyIntroQuote,
-              duration: 4500
-            });
-          }
-        }, 2200);
-      }
+      // The level's opening scene, once the stage banner has cleared
+      this._resetStoryTracking();
+      this.storyDirector.cancel();
+      this.storyDirector.schedule(2.2, this._scene(lvlNum, 'intro'));
     };
 
     this.waveSystem.onBossSpawn = (bossType, bossName) => {
@@ -301,25 +298,13 @@ export class Game {
         26
       );
 
-      // Trigger boss battle cry dialogue
-      const lvlData = this.waveSystem.levelData;
-      if (lvlData && lvlData.bossSpawnQuote) {
-        setTimeout(() => {
-          if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
-            this.uiManager.showDialogue({
-              name: lvlData.bossName || bossName,
-              role: 'U Linh Thống Lĩnh',
-              avatar: '👻⚡',
-              color: '#f43f5e',
-              text: lvlData.bossSpawnQuote,
-              duration: 4500
-            });
-          }
-        }, 600);
-      }
+      // The boss's battle cry (a scene already playing finishes first)
+      this.storyDirector.schedule(0.6, this._scene(this.waveSystem.currentLevelIndex, 'bossSpawn'));
     };
 
     this.waveSystem.onLevelComplete = (lvlNum, lvlData) => {
+      // The boss's memory shard (and a kept pledge) are earned the moment it falls
+      this._pendingLore = this._awardLore(lvlNum);
       this.triggerShake(10, 0.45);
       // The boss falls: a beat of slow motion to savour it
       this.triggerSlowMo(1.3, 0.28, true);
@@ -339,17 +324,9 @@ export class Game {
         setTimeout(() => this.audioSystem.playCatMeow('triumphant'), 400);
       }
 
-      // Trigger boss purification dialogue
-      if (lvlData && lvlData.bossDefeatQuote) {
-        this.uiManager.showDialogue({
-          name: lvlData.bossName,
-          role: '✨ Đã Được Thanh Tẩy',
-          avatar: '🌟',
-          color: '#34d399',
-          text: lvlData.bossDefeatQuote,
-          duration: 4800
-        });
-      }
+      // The purified boss's parting words (the memory itself is on the upgrade screen)
+      this.storyDirector.cancel();
+      this.storyDirector.play(this._scene(lvlNum, 'bossDefeat'));
     };
 
     this.waveSystem.onGameVictory = () => {
@@ -361,6 +338,10 @@ export class Game {
       this.uiManager.updateWave(waveNum);
       // A new level/wave: the flawless-clear baseline restarts and the combo shield recharges
       this._levelStartDamage = this.metrics ? this.metrics.damageTaken : 0;
+      this._levelStartCasts = this.metrics ? this.metrics.spellsCast : 0;
+      this._levelStartHits = this.metrics ? this.metrics.spellsHit : 0;
+      this._levelMaxCombo = this.comboCount || 0;
+      this._levelPhrases = 0;
       this.upgrades.refillShield();
       this.uiManager.meta.renderBuffs(this.upgrades);
       this._saveEndlessProgress(waveNum);
@@ -431,6 +412,9 @@ export class Game {
         break;
       case 'colorBlind':
         Enemy.colorBlind = !!value;
+        break;
+      case 'storyLines':
+        if (this.storyDirector) this.storyDirector.setEnabled(!!value);
         break;
       case 'assist':
         // Applies to ghosts that spawn from now on. Turning it on mid-run makes the run unranked for good.
@@ -966,6 +950,9 @@ export class Game {
     this.upgradePending = false;
     clearTimeout(this._upgradeTimer);
     this._levelStartDamage = 0;
+    this.storyDirector.cancel();
+    this._pendingLore = null;
+    this._resetStoryTracking();
     // Hearts: a daily twist can lower them; the equipped companion may add invulnerability time
     const dailyMaxHp = this.challenge && this.challenge.modifier.maxHp;
     this.player.maxHp = dailyMaxHp || PLAYER_CONFIG.MAX_HP;
@@ -2403,7 +2390,8 @@ export class Game {
     clearTimeout(this._upgradeTimer);
     this._upgradeTimer = setTimeout(() => {
       if (!this.upgradePending) return;
-      this.uiManager.meta.showUpgradePicker(choices, (id) => this.pickUpgrade(id));
+      this.uiManager.meta.showUpgradePicker(choices, (id) => this.pickUpgrade(id), this._pendingLore);
+      this._pendingLore = null;
     }, 1500);
   }
 
@@ -2525,6 +2513,7 @@ export class Game {
     // Surprises, boss tricks, phrase chain timeout and the clip recorder run on game time
     this._updateEvents(scaled);
     this._pollBossGimmicks();
+    this._pollStory(dt);
     if (this.phrases.tick(scaled)) this.uiManager.meta.renderPhraseChain([]);
     if (this.highlight) this.highlight.tick(scaled);
     return scaled;
@@ -2666,6 +2655,7 @@ export class Game {
 
   /** Leave a run or Practice Mode for the main menu */
   quitToMenu() {
+    this.storyDirector.cancel();
     if (this.highlight) this.highlight.discard();
     if (this.audioSystem && typeof this.audioSystem.stopBGM === 'function') this.audioSystem.stopBGM();
     this.stateMachine.changeState(GAME_STATES.MENU);
@@ -2801,6 +2791,173 @@ export class Game {
     if (this.hapticSystem) this.hapticSystem.pulse(22);
   }
 
+  // =========================================================================
+  // IN-RUN STORY (scenes, companion reactions, memory shards, pledges)
+  // =========================================================================
+
+  /** Forget what the current level has shown and counted so far */
+  _resetStoryTracking() {
+    this._midFired = false;
+    this._barkedCombo = false;
+    this._storyBoss = null;
+    this._storyBossLives = 0;
+    this._prevHp = this.player ? this.player.hp : 5;
+    this._levelStartCasts = 0;
+    this._levelStartHits = 0;
+    this._levelMaxCombo = 0;
+    this._levelPhrases = 0;
+  }
+
+  /** The lines of one beat of the current Story level (empty outside Story mode) */
+  _scene(level, beat) {
+    const ws = this.waveSystem;
+    if (ws.gameMode !== 'STORY' || !ws.levelData) return [];
+    // Boss Rush is five bosses back to back: only the battle cry and the parting words
+    if (this.bossRush) {
+      return beat === 'bossSpawn' || beat === 'bossDefeat' ? buildScene(level, beat, { replay: true }) : [];
+    }
+    // A level whose memory is already in the journal skips the extra lines
+    return buildScene(level, beat, { replay: this.progress.hasShard(level) });
+  }
+
+  _showStoryLine(line) {
+    if (!this.uiManager) return;
+    this.uiManager.showDialogue({
+      name: line.name,
+      role: line.role,
+      avatar: line.avatar,
+      characterId: line.characterId,
+      color: line.color,
+      text: line.text,
+      duration: line.ms
+    });
+  }
+
+  /** The companion Momo brought (Momo herself when none is unlocked/equipped) */
+  _activeCompanionId() {
+    const id = this.progress.getCompanion();
+    return isCompanionUnlocked(id, this.progress) ? id : DEFAULT_COMPANION;
+  }
+
+  /** Per-frame story logic: dialogue clock, mid-level beat, boss beats, companion reactions, pledge counters */
+  _pollStory(dt) {
+    const d = this.storyDirector;
+    d.update(dt);
+    if (this.comboCount > this._levelMaxCombo) this._levelMaxCombo = this.comboCount;
+
+    const ws = this.waveSystem;
+    const inStory = ws.gameMode === 'STORY' && !!ws.levelData && !this.bossRush;
+
+    // Half of the ordinary ghosts have appeared
+    if (inStory && !this._midFired && !ws.isBossSpawned && !ws.isIntermission &&
+        ws.totalEnemiesInWave > 0 && ws.enemiesSpawnedInWave >= Math.ceil(ws.totalEnemiesInWave / 2)) {
+      this._midFired = true;
+      d.play(this._scene(ws.currentLevelIndex, 'mid'));
+    }
+
+    // The boss loses a life
+    let boss = null;
+    for (let i = 0; i < this.enemies.length; i++) {
+      if (this.enemies[i].isBoss) { boss = this.enemies[i]; break; }
+    }
+    if (!boss) {
+      this._storyBoss = null;
+    } else if (this._storyBoss !== boss) {
+      this._storyBoss = boss;
+      this._storyBossLives = boss.bossLives;
+    } else if (boss.bossLives < this._storyBossLives) {
+      this._storyBossLives = boss.bossLives;
+      if (inStory) {
+        const max = boss.maxBossLives || 0;
+        if (boss.bossLives === max - 1) d.play(this._scene(ws.currentLevelIndex, 'bossHurtFirst'));
+        else if (boss.bossLives === 1 && max > 2) d.play(this._scene(ws.currentLevelIndex, 'bossHurtLast'));
+      }
+    }
+
+    // Reactions of whoever Momo brought along
+    if (!this.bossRush) {
+      if (!this._barkedCombo && this.comboCount >= 10) {
+        this._barkedCombo = true;
+        d.bark('combo', (n) => buildBark(this._activeCompanionId(), 'combo', n));
+      }
+      const hp = this.player.hp;
+      if (hp === 1 && this._prevHp > 1) {
+        d.bark('lowHp', (n) => buildBark(this._activeCompanionId(), 'lowHp', n));
+      }
+      this._prevHp = hp;
+    }
+  }
+
+  /** What this Story level counted for the pledges */
+  _levelFacts() {
+    const m = this.metrics;
+    return {
+      damage: m.damageTaken - this._levelStartDamage,
+      maxCombo: this._levelMaxCombo,
+      phrases: this._levelPhrases,
+      casts: m.spellsCast - this._levelStartCasts,
+      hits: m.spellsHit - this._levelStartHits,
+      hearts: this.player.hp
+    };
+  }
+
+  /**
+   * A Story boss fell: hand out its memory shard and, if the level was played the right way, its pledge.
+   * Boss Rush, Endless and Daily runs do not touch the mystery. Assisted runs earn the shard (the story is
+   * for everyone) but not the pledge (it is a challenge).
+   * @param {number} level
+   * @returns {{def: Object, newShard: boolean, newPledge: boolean}|null} what the upgrade screen should show
+   */
+  _awardLore(level) {
+    if (this.waveSystem.gameMode !== 'STORY' || this.bossRush || this.challenge) return null;
+    const def = shardForLevel(level);
+    if (!def) return null;
+    const p = this.progress;
+
+    const newShard = p.unlockShard(level);
+    let newPledge = false;
+    if (!this.isAssisted() && !p.hasPledge(level) && evaluatePledge(level, this._levelFacts())) {
+      newPledge = p.keepPledge(level);
+    }
+    if (newShard || newPledge) p.save();
+
+    if (newShard) {
+      this.uiManager.meta.showToast(
+        `<span class="toast-icon">🔮</span><span class="toast-body"><b>Mảnh Ký Ức mới!</b><br>${def.title} — xem trong Nhật Ký Ký Ức</span>`,
+        'unlock'
+      );
+      this.uiManager.meta.markLoreNew();
+    }
+    if (newPledge) {
+      this.particleSystem.emitFloatingText(`✨ LỜI HỨA TRỌN VẸN: CHỮ "${def.letter}" SÁNG LÊN!`, this.width / 2, this.height * 0.28, '#fde047', 26);
+      if (this.audioSystem) this.audioSystem.playSpell('heart');
+      if (this.hapticSystem) this.hapticSystem.pulse(24);
+      this.uiManager.meta.markLoreNew();
+    }
+    if (newShard || newPledge) this._announceAchievements(evaluateAchievements(p));
+    return { def, newShard, newPledge };
+  }
+
+  /**
+   * Endings to play after a Story victory, in order: the ordinary one the first time, the true one the first
+   * time every pledge is kept. Boss Rush and Daily victories are not the story's ending.
+   * @returns {Array<'normal'|'true'>}
+   */
+  pickEndings() {
+    if (this.waveSystem.gameMode !== 'STORY' || this.bossRush || this.challenge) return [];
+    const queue = [];
+    if (!this.progress.isEndingSeen('normal')) queue.push('normal');
+    if (loreSummary(this.progress).ready && !this.progress.isEndingSeen('true')) queue.push('true');
+    return queue;
+  }
+
+  /** An ending starts playing: remember it (and reward the true one) so a skip does not force a replay */
+  markEndingSeen(kind) {
+    if (!this.progress.markEndingSeen(kind)) return;
+    this.progress.save();
+    this._announceAchievements(evaluateAchievements(this.progress));
+  }
+
   /** The golden ghost was purified: a big bonus and a short double-score window */
   _onGoldenCaught(enemy) {
     this.progress.addStat('goldenCaught');
@@ -2841,6 +2998,7 @@ export class Game {
   }
 
   _castPhrase(phrase) {
+    this._levelPhrases = (this._levelPhrases || 0) + 1;
     const rec = this.progress.recordPhrase(phrase.id);
     this.particleSystem.emitFloatingText(`${phrase.icon} ${phrase.name.toUpperCase()}!`, this.width / 2, this.height * 0.32, '#fde047', 30);
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#fde047', 30);

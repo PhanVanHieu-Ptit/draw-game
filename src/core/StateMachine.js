@@ -98,6 +98,8 @@ export class PlayingState extends State {
     this.game.inputHandler.setEnabled(false);
     this.game.cancelResumeCountdown();
     if (nextState !== GAME_STATES.PAUSE) {
+      // Leaving the run for good (game over, victory, menu): whatever the characters were saying ends with it
+      if (this.game.storyDirector) this.game.storyDirector.cancel();
       this.game.uiManager.hideScreen(GAME_STATES.PLAYING);
       if (this.game.audioSystem && typeof this.game.audioSystem.stopBGM === 'function') {
         this.game.audioSystem.stopBGM();
@@ -251,6 +253,10 @@ export class VictoryState extends State {
       accuracy: summary.accuracy,
       summary
     });
+
+    // The ending cutscene plays over the result screen (first win, and the true ending once every pledge is kept)
+    const endings = this.game.pickEndings();
+    if (endings.length > 0) this.game.uiManager.playEnding(endings);
   }
 
   exit() {

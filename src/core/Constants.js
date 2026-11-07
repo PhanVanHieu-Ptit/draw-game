@@ -305,9 +305,9 @@ export const LEVEL_CONFIGS = [
       icon: '🦉',
       color: '#60a5fa'
     },
-    storyIntroQuote: 'Momo! Madame Libraria đang bị sương mù u linh làm mờ mắt. Hãy dùng nét vẽ [—] và [|] giải trừ tà khí!',
-    bossSpawnQuote: 'Ai dám gây náo loạn trong thánh địa tri thức của ta?! Hãy nếm mùi các kệ sách cuồng nộ!',
-    bossDefeatQuote: 'Kính của ta... đã trong sáng trở lại rồi. Cảm ơn Momo! Kẻ cướp Cổ Thư đang chạy xuống Nhà Bếp!'
+    storyIntroQuote: 'Momo, cẩn thận! Sương mù này nuốt chữ trên gáy sách, rồi nuốt cả ký ức người đọc. Dùng nét [—] và [|] giải trừ tà khí!',
+    bossSpawnQuote: 'Ai dám gây náo loạn trong thánh địa tri thức của ta?! Hai trăm năm không ai mở sách, thì kệ sách cũng chẳng cần chủ nữa!',
+    bossDefeatQuote: 'Kính của ta trong sáng trở lại rồi. Cảm ơn Momo! Kẻ cướp Cổ Thư vừa chạy xuống Nhà Bếp, mau đuổi theo!'
   },
   {
     level: 2,
@@ -339,9 +339,9 @@ export const LEVEL_CONFIGS = [
       icon: '🐱🥐',
       color: '#fb923c'
     },
-    storyIntroQuote: 'Momo ơi! Tớ đem bánh quy và nồi súp hồi máu [❤️] tiếp tế đây! Hãy cẩn thận các nét [∧] và [∨]!',
+    storyIntroQuote: 'Momo ơi! Tớ đem bánh quy và súp hồi máu [❤️] tới đây! Cẩn thận các nét [∧] và [∨] nhé!',
     bossSpawnQuote: 'Món súp lãng quên 100 năm của ta... không một kẻ phàm trần nào được phép chối từ!',
-    bossDefeatQuote: 'Mùi thơm này... hóa ra hương vị tuyệt nhất lại là sự yên bình của các cô cậu mèo. Lên Tháp Thiên Văn mau!'
+    bossDefeatQuote: 'Mùi thơm này... hóa ra món ngon nhất là có người ngồi ăn cùng. Lên Tháp Thiên Văn đi, hắn vừa chạy qua đó!'
   },
   {
     level: 3,
@@ -375,8 +375,8 @@ export const LEVEL_CONFIGS = [
       color: '#c084fc'
     },
     storyIntroQuote: 'Các chòm sao đang hỗn loạn! Hãy vẽ Ấn Ký Sét [⚡] để đập tan lớp giáp ma của các hành tinh lạc lối!',
-    bossSpawnQuote: 'Quỹ đạo vũ trụ đã an bài! Các ngươi không thể đảo ngược định mệnh của Đêm Trăng Máu!',
-    bossDefeatQuote: 'Ánh sao phương bắc đã chỉ lối... Kẻ thao túng đang mượn sức mạnh thể thao ở Nhà Đấu để gom năng lượng!'
+    bossSpawnQuote: 'Quỹ đạo vũ trụ đã an bài! Chẳng ai ngước nhìn trời nữa, vậy thì để trời rơi xuống đầu các ngươi!',
+    bossDefeatQuote: 'Ánh sao phương bắc đã chỉ lối. Kẻ thao túng đang mượn sức mạnh thể thao ở Nhà Đấu để gom năng lượng!'
   },
   {
     level: 4,
@@ -411,7 +411,7 @@ export const LEVEL_CONFIGS = [
     },
     storyIntroQuote: 'Xem ai nhanh hơn nào Momo! Lũ ma siêu tốc lượn lách ghê lắm, vung đũa thật dứt khoát vào nhé!',
     bossSpawnQuote: 'Tuýt! Không ai được bỏ qua bài tập kỷ luật thép! 100 vòng quanh sân đấu ma thuật ngay!',
-    bossDefeatQuote: 'Tuýt... Hết giờ! Phản xạ xuất sắc lắm, Momo! Cửa dẫn lên Sân Thượng Đỉnh Tháp đã mở, đi cứu lấy trường học!'
+    bossDefeatQuote: 'Tuýt! Hết giờ! Phản xạ xuất sắc, Momo! Cửa lên Sân Thượng đã mở. Hãy cứu lấy người đang đợi ở trên đó.'
   },
   {
     level: 5,
@@ -456,24 +456,24 @@ export const STORY_SLIDES = {
     {
       title: 'Cổ Thư Nhật Thực Trong Đêm Yên Tĩnh',
       enTitle: 'The Whispering Grimoire',
-      text: 'Tại Thư Viện Học Viện Mèo Arcane, Momo đang cùng bạn thân Oliver nghiên cứu Cổ Thư Nhật Thực — phong ấn bảo hộ sự bình yên suốt 100 năm.',
-      enText: 'In the quiet Arcane Paws library, wizard cat Momo and foodie pal Oliver study the Grimoire of Whispering Eclipse — an ancient century-old seal.',
+      text: 'Tại Thư Viện Học Viện Mèo Arcane, Momo đang cùng bạn thân Oliver nghiên cứu Cổ Thư Nhật Thực, phong ấn bảo hộ học viện suốt ba trăm năm. Cô bé thắc mắc mãi: ở trang cuối có một chỗ bị gạch xóa, như thể ai đó đã cố quên một cái tên.',
+      enText: 'In the quiet Arcane Paws library, wizard cat Momo and foodie pal Oliver study the Grimoire of Whispering Eclipse, the seal that has guarded the academy for 300 years. One name on the last page has been scratched out.',
       illustration: 'library_reading',
       actionPrompt: 'Tiếp Tục ➜'
     },
     {
       title: 'Phong Ấn Bị Phá Vỡ! Lời Nguyền Trăng Máu',
       enTitle: 'The Blood Moon Eclipse!',
-      text: 'Bất thình lình, Chúa Tể Bóng Ma xé toạc màn đêm, cướp lấy Cổ Thư! Làn khói u linh tràn ngập làm tha hóa các thầy cô và khuấy đảo toàn bộ 5 khu vực trường học.',
-      enText: 'Suddenly, a colossal phantom smashes through the stained glass, seizing the Grimoire! Dark spectral fog corrupts academy grounds and staff alike!',
+      text: 'Bất thình lình Trăng Máu lên, một bóng ma khổng lồ xé toạc ô kính màu và cướp lấy Cổ Thư! Làn sương u linh tràn khắp học viện, nuốt chữ trên gáy sách và nuốt cả ký ức của các thầy cô. Ai bị sương chạm vào đều nổi giận, vì cảm thấy mình đã bị lãng quên.',
+      enText: 'Suddenly the Blood Moon rises and a colossal phantom smashes through the stained glass, seizing the Grimoire! A fog of oblivion floods the academy, and everyone it touches rages because they feel forgotten.',
       illustration: 'ghost_theft',
       actionPrompt: 'Tiếp Tục ➜'
     },
     {
       title: 'Hội Mèo Xuất Kích: Cầm Đũa Phép Lên!',
       enTitle: 'Unite The Arcane Paws!',
-      text: 'Được Oliver, Luna, Nyx và Viện Trưởng Barnaby tiếp thêm dũng khí, Momo vung đũa phép thần kỳ, vẽ nên các ấn ký cổ ngữ để thanh tẩy học viện!',
-      enText: 'Empowered by Oliver, Luna, Nyx and Archmage Barnaby, Momo raises the Obsidian Wand to draw sacred runes and redeem the academy!',
+      text: 'Được Oliver, Luna, Nyx và Viện Trưởng Barnaby tiếp thêm dũng khí, Momo vung đũa phép thần kỳ, vẽ nên các ấn ký cổ ngữ. Mỗi nét vẽ không chỉ đánh tan u linh, mà còn là một lời nhắn: “Tớ vẫn nhớ cậu.”',
+      enText: 'Empowered by Oliver, Luna, Nyx and Archmage Barnaby, Momo raises the Obsidian Wand to draw sacred runes. Every stroke does more than banish a ghost: it says, "I still remember you."',
       illustration: 'cat_wand_ready',
       actionPrompt: 'VÀO TRẬN NGAY! ⚡'
     }
@@ -482,23 +482,48 @@ export const STORY_SLIDES = {
     {
       title: 'Linh Hồn Hiệp Sĩ Umbra Được Giải Thoát!',
       enTitle: 'Lord Umbra Redeemed!',
-      text: 'Đòn ma pháp thanh tẩy chan chứa tình bạn của Momo đã phá tan lời nguyền. Chúa Tể Bóng Ma hiện nguyên hình là Hộ Vệ Umbra cổ xưa, mỉm cười thanh thản.',
-      enText: 'Momo\'s brilliant light spell purifies the ancient knight spirit Lord Umbra, dissolving centuries of loneliness into shining golden butterflies.',
+      text: 'Đòn ma pháp thanh tẩy chan chứa tình bạn của Momo xé tan màn sương. Chúa Tể Bóng Ma gục xuống, hiện nguyên hình là Hộ Vệ Umbra cổ xưa: một hiệp sĩ mèo, kiếm run run trong tay, mắt rưng rưng như người vừa tỉnh sau cơn ác mộng ba trăm năm.',
+      enText: 'Momo\'s brilliant light spell tears the fog apart. The Dark Lord kneels and turns back into the ancient knight guardian Umbra, trembling and teary-eyed after a 300-year nightmare.',
       illustration: 'boss_defeated'
     },
     {
-      title: 'Cổ Thư Trở Về - Ranh Giới Hòa Giải!',
-      enTitle: 'The Sacred Grimoire Restored!',
-      text: 'Cổ Thư Nhật Thực nhẹ nhàng đáp xuống tay Momo. Ranh giới giữa thế giới u linh và thế giới loài mèo được gắn kết trong hòa bình vĩnh cửu.',
-      enText: 'The sacred Master Spellbook floats gently into Momo\'s paws. The spirit rift closes, ushering harmony between realms.',
+      title: 'Cổ Thư Trở Về, Nhưng Cái Tên Vẫn Còn Lạc',
+      enTitle: 'The Grimoire Returns, The Name Is Still Lost',
+      text: 'Cổ Thư Nhật Thực nhẹ nhàng đáp xuống tay Momo, phong ấn sáng lại. “Cảm ơn con,” hiệp sĩ thì thầm. “Nhưng Umbra chỉ là cái tên sương mù đặt cho ta. Tên thật của ta… ta cũng không nhớ nữa.” Trên bìa sách hiện ra năm ô trống, chờ được lấp đầy.',
+      enText: 'The Grimoire floats into Momo\'s paws and the seal glows again. "Umbra is only the name the fog gave me," the knight whispers. "I no longer remember my own." Five empty blanks appear on the cover.',
       illustration: 'book_recovered'
     },
     {
-      title: 'Bữa Tiệc Tưng Bừng Toàn Học Viện!',
-      enTitle: 'Grand Academy Celebration!',
-      text: 'Học viện rực rỡ pháo hoa! Momo, Oliver với đĩa bánh nướng, Luna bên quả cầu sao và Nyx cùng các thầy cô hân hoan ăn mừng chiến thắng huy hoàng!',
-      enText: 'Fireworks light the midnight sky! Momo, Oliver with pastry treats, Luna, Nyx, and the whole academy celebrate a legendary victory!',
+      title: 'Bữa Tiệc Tưng Bừng, Và Một Lời Hứa Nhỏ',
+      enTitle: 'A Grand Celebration, and a Small Promise',
+      text: 'Học viện rực rỡ pháo hoa! Oliver bưng đĩa bánh nướng, Luna chỉ lên bầu trời sao, Nyx cùng các thầy cô hân hoan ăn mừng. Chỉ Momo đứng lặng bên cửa sổ, nắm chặt đũa phép: “Nhất định tớ sẽ tìm ra cái tên ấy.” (Mở Nhật Ký Ký Ức để lần theo manh mối.)',
+      enText: 'Fireworks light the midnight sky! Oliver brings pastries, Luna points at the stars, Nyx and the teachers cheer. Only Momo stands quietly at the window: "I will find that name." (Open the Memory Journal for clues.)',
       illustration: 'happy_celebration'
+    }
+  ],
+  // Unlocked by keeping all five pledges (see core/Lore.js)
+  TRUE_ENDING: [
+    {
+      title: 'Năm Chữ Cái, Một Cái Tên',
+      enTitle: 'Five Letters, One Name',
+      text: 'Momo đặt năm mảnh sáng lên bìa Cổ Thư: L, U, M, E, N. Từng chữ bừng lên như đom đóm rồi ghép lại. “Lumen,” Momo gọi khẽ. “Ánh sáng.” Màn sương đã đặt cho ngài cái tên Umbra, “bóng tối”, để ngài tin rằng mình vốn là thứ đáng bị quên.',
+      enText: 'Momo places five glowing shards on the Grimoire: L, U, M, E, N. "Lumen," she whispers. "Light." The fog had named him Umbra, "shadow", so he would believe he deserved to be forgotten.',
+      illustration: 'name_restored'
+    },
+    {
+      title: 'Lời Thú Nhận Của Viện Trưởng Barnaby',
+      enTitle: 'Barnaby\'s Confession',
+      text: 'Tượng đá của Barnaby nứt ra, đôi mắt cú già ngân ngấn. “Ta là cậu học trò nhỏ của ngài ấy. Ta nhớ tên ngài suốt ba trăm năm, nhưng mỗi lần thốt ra, sương lại cắn đau, nên ta chọn im lặng.” Momo ôm lấy ông: “Nhớ là một việc, dám gọi là một việc khác. Hôm nay mình cùng gọi, thầy nhé.”',
+      enText: 'Barnaby\'s stone shell cracks. "I was his little apprentice. I remembered his name for 300 years, but the fog bit me whenever I spoke it, so I stayed silent." Momo hugs him: "Remembering is one thing, daring to say it is another. Let\'s say it together."',
+      illustration: 'barnaby_confession'
+    },
+    {
+      title: 'Chòm Sao Hiệp Sĩ Lumen',
+      enTitle: 'The Constellation of Knight Lumen',
+      text: 'Cả học viện cùng cất tiếng gọi “Lumen!”, và trên bầu trời, chòm sao bị tẩy mất ba trăm năm sáng lên: một chú mèo hiệp sĩ ngồi gác. Từ nay, mỗi kỳ Trăng Máu ai cũng gọi tên ngài. Nhưng ngoài kia, còn biết bao cái tên khác đang chờ được gọi…',
+      enText: 'The whole academy calls out "Lumen!" and the constellation erased for 300 years blazes back: a knight cat keeping watch. But out there, so many other names are still waiting to be called...',
+      illustration: 'constellation_lumen',
+      actionPrompt: 'Về Kết Quả ➜'
     }
   ]
 };
@@ -521,12 +546,12 @@ export const STORY_CHAPTERS = [
     bossName: 'Bóng Ma Thủ Thư (Madame Libraria)',
     bossIcon: '👻📚',
     runes: 'Ngang [—] và Dọc [|]',
-    text: 'Cổ Thư Nhật Thực vừa bị cướp mất! Sương mù tà khí bao trùm thư viện khiến Madame Libraria cuồng nộ điều khiển hàng ngàn kệ sách bay. Viện Trưởng Barnaby phân tách linh hồn chỉ dẫn Momo dùng 2 nét ma pháp cơ bản [—] và [|] để giải trừ u mê cho bà.',
-    enText: 'The Grimoire is stolen! Dark mist fills the library as Madame Libraria flings possessed book stacks. Archmage Barnaby instructs Momo to draw horizontal [—] and vertical [|] runes.',
+    text: 'Cổ Thư Nhật Thực vừa bị cướp mất! Sương mù bao trùm thư viện, khiến Madame Libraria, người thủ thư hai trăm năm chưa ai mở sách của bà, cuồng nộ điều khiển hàng ngàn kệ sách bay. Viện Trưởng Barnaby dạy Momo hai nét ma pháp cơ bản [—] và [|], rồi khẽ lảng đi khi Momo hỏi về cái tên bị gạch trong sách.',
+    enText: 'The Grimoire is stolen! Dark mist fills the library and Madame Libraria, whose books nobody has opened in 200 years, flings possessed book stacks. Barnaby teaches Momo the horizontal [—] and vertical [|] runes, and quietly changes the subject when she asks about the scratched-out name.',
     quotes: {
-      intro: 'Momo! Madame Libraria đang bị sương mù u linh làm mờ mắt. Hãy dùng nét vẽ [—] và [|] giải trừ tà khí!',
-      boss: 'Ai dám gây náo loạn trong thánh địa tri thức của ta?! Hãy nếm mùi các kệ sách cuồng nộ!',
-      defeat: 'Kính của ta... đã trong sáng trở lại rồi. Cảm ơn Momo! Kẻ cướp Cổ Thư đang chạy xuống Nhà Bếp!'
+      intro: LEVEL_CONFIGS[0].storyIntroQuote,
+      boss: LEVEL_CONFIGS[0].bossSpawnQuote,
+      defeat: LEVEL_CONFIGS[0].bossDefeatQuote
     }
   },
   {
@@ -546,12 +571,12 @@ export const STORY_CHAPTERS = [
     bossName: 'Bóng Ma Đầu Bếp (Chef Bouillon)',
     bossIcon: '👻🍲',
     runes: 'Caret [∧], V-Shape [∨] & Hồi Máu [❤️]',
-    text: 'Dưới hầm bếp, Bếp Trưởng Bouillon khuấy động ngọn lửa ma thuật, ép mọi người nếm món súp lãng quên. Đúng lúc Momo bị bao vây, chú mèo béo Oliver lăn xả tiếp tế súp hồi sinh lực [❤️]. Cùng nhau, họ vẽ ấn ký nhọn [∧] và [∨] dập tắt nồi súp ma.',
-    enText: 'Down in the kitchen, Chef Bouillon brews the Soup of Oblivion. Oliver rushes to the rescue with healing [❤️] treats as Momo casts sharp wedge runes to pacify the chef.',
+    text: 'Dưới hầm bếp, Bếp Trưởng Bouillon khuấy ngọn lửa ma thuật, ép mọi người nếm món súp lãng quên vì ông đã quá lâu không có ai ngồi ăn cùng. Oliver lăn xả tiếp tế súp hồi sinh lực [❤️]. Cùng nhau, họ vẽ ấn ký nhọn [∧] và [∨] dập tắt nồi súp ma, và Momo nhặt được một mảnh ký ức về ổ bánh cháy lúc nửa đêm.',
+    enText: 'Down in the kitchen, Chef Bouillon forces everyone to taste the Soup of Oblivion because nobody has eaten with him in ages. Oliver rushes in with healing [❤️] soup as Momo casts the wedge runes [∧] [∨], and finds a memory of a burnt loaf shared at midnight.',
     quotes: {
-      intro: 'Momo ơi! Tớ đem bánh quy và nồi súp hồi máu [❤️] tiếp tế đây! Hãy cẩn thận các nét [∧] và [∨]!',
-      boss: 'Món súp lãng quên 100 năm của ta... không một kẻ phàm trần nào được phép chối từ!',
-      defeat: 'Mùi thơm này... hóa ra hương vị tuyệt nhất lại là sự yên bình của các cô cậu mèo. Lên Tháp Thiên Văn mau!'
+      intro: LEVEL_CONFIGS[1].storyIntroQuote,
+      boss: LEVEL_CONFIGS[1].bossSpawnQuote,
+      defeat: LEVEL_CONFIGS[1].bossDefeatQuote
     }
   },
   {
@@ -571,12 +596,12 @@ export const STORY_CHAPTERS = [
     bossName: 'Bóng Ma Thiên Văn (Professor Stella)',
     bossIcon: '👻🪐',
     runes: 'Ấn Ký Sấm Sét [⚡]',
-    text: 'Giáo sư Stella bị các vòng xoay hành tinh giam cầm trong ảo ảnh tận thế, tạo ra các lớp giáp phòng thủ kiên cố. Cô mèo bạch miêu Luna giải mã hiện tượng Trăng Máu, truyền dạy cho Momo bí thuật Ấn Ký Sét [⚡] để đập tan quỹ đạo sao lạc lối.',
-    enText: 'Professor Stella is trapped in apocalyptic cosmic illusions, shielding herself with planetary spheres. Luna reveals the secrets of the Lightning Rune [⚡] to shatter the shields.',
+    text: 'Giáo sư Stella bị các vòng xoay hành tinh giam cầm trong ảo ảnh tận thế, vì suốt bao năm chẳng ai còn ngước nhìn bầu trời. Luna chỉ cho Momo một khoảng trống hình mèo trên bản đồ sao cổ, và truyền dạy Ấn Ký Sét [⚡] để đập tan quỹ đạo lạc lối.',
+    enText: 'Professor Stella is trapped in cosmic illusions because nobody looks up at the sky anymore. Luna shows Momo a cat-shaped gap on the old star chart and teaches her the Lightning Rune [⚡] to shatter the stray orbits.',
     quotes: {
-      intro: 'Các chòm sao đang hỗn loạn! Hãy vẽ Ấn Ký Sét [⚡] để đập tan lớp giáp ma của các hành tinh lạc lối!',
-      boss: 'Quỹ đạo vũ trụ đã an bài! Các ngươi không thể đảo ngược định mệnh của Đêm Trăng Máu!',
-      defeat: 'Ánh sao phương bắc đã chỉ lối... Kẻ thao túng đang mượn sức mạnh thể thao ở Nhà Đấu để gom năng lượng!'
+      intro: LEVEL_CONFIGS[2].storyIntroQuote,
+      boss: LEVEL_CONFIGS[2].bossSpawnQuote,
+      defeat: LEVEL_CONFIGS[2].bossDefeatQuote
     }
   },
   {
@@ -596,12 +621,12 @@ export const STORY_CHAPTERS = [
     bossName: 'Bóng Ma Huấn Luyện Viên (Coach Striker)',
     bossIcon: '👻🏀',
     runes: 'Phản Xạ Cực Nhanh & Ấn Ký Hỗn Hợp',
-    text: 'Sàn gỗ rực lửa bốc khói! Hàng loạt u linh siêu tốc lao vụt qua tầm mắt dưới tiếng còi thịnh nộ của Coach Striker. Nhờ sự lắt léo và chỉ điểm của Nyx Tam Thể, Momo vượt qua bài kiểm tra phản xạ đỉnh cao, đoạt chìa khóa dẫn lên sân thượng tháp cao.',
-    enText: 'The gym floor blazes as Speedster ghosts dart through the court under Coach Striker\'s fierce whistle. Guided by nimble rogue Nyx, Momo aces the agility trial.',
+    text: 'Sàn gỗ rực lửa bốc khói! Hàng loạt u linh siêu tốc lao vụt qua dưới tiếng còi thịnh nộ của Coach Striker, người thầy chỉ còn nhớ bước chân của một ai đó đã từng chạy chậm lại để chờ ông. Nhờ Nyx chỉ điểm, Momo vượt qua bài kiểm tra phản xạ và đoạt chìa khóa lên sân thượng.',
+    enText: 'The gym floor blazes as speedster ghosts dart past Coach Striker\'s fierce whistle. He only remembers the footsteps of someone who once ran slower to wait for him. Guided by Nyx, Momo aces the agility trial and takes the key to the rooftop.',
     quotes: {
-      intro: 'Xem ai nhanh hơn nào Momo! Lũ ma siêu tốc lượn lách ghê lắm, vung đũa thật dứt khoát vào nhé!',
-      boss: 'Tuýt! Không ai được bỏ qua bài tập kỷ luật thép! 100 vòng quanh sân đấu ma thuật ngay!',
-      defeat: 'Tuýt... Hết giờ! Phản xạ xuất sắc lắm, Momo! Cửa dẫn lên Sân Thượng Đỉnh Tháp đã mở, đi cứu lấy trường học!'
+      intro: LEVEL_CONFIGS[3].storyIntroQuote,
+      boss: LEVEL_CONFIGS[3].bossSpawnQuote,
+      defeat: LEVEL_CONFIGS[3].bossDefeatQuote
     }
   },
   {
@@ -621,12 +646,12 @@ export const STORY_CHAPTERS = [
     bossName: 'Chúa Tể Bóng Ma (Lord Umbra)',
     bossIcon: '👑👻',
     runes: 'Phối Hợp Toàn Bộ Ấn Ký Cổ Ngữ',
-    text: 'Dưới vầng Trăng Máu rực lửa trên đỉnh tháp chuông, Chúa Tể Umbra giáng đòn bão lốc cuồng nộ từ Cổ Thư. Sự thật hé lộ: Umbra chính là chú mèo hiệp sĩ bảo hộ cổ xưa bị lãng quên 300 năm. Bằng sự cảm thông và ánh sáng thuần khiết, Momo đã giải thoát cho ngài.',
-    enText: 'High upon the rooftop under the crimson moon, Lord Umbra unleashes the Grimoire. Revealed as the forgotten ancient feline knight, he is finally redeemed by Momo\'s compassion.',
+    text: 'Dưới Trăng Máu trên đỉnh tháp chuông, Chúa Tể Umbra giáng đòn bão lốc từ Cổ Thư. Sự thật hé lộ: ngài là chú mèo hiệp sĩ đã tự ràng mình vào phong ấn cách đây ba trăm năm rồi bị lãng quên, và “Umbra” chỉ là cái tên sương mù đặt cho ngài. Bằng sự cảm thông, Momo đã giải thoát cho ngài.',
+    enText: 'Under the Blood Moon on the bell tower, Lord Umbra unleashes the Grimoire. He is the knight cat who bound himself into the seal 300 years ago and was forgotten, and \'Umbra\' is just the name the fog gave him. Momo frees him with compassion.',
     quotes: {
-      intro: 'Oliver, Luna, Nyx và Viện Trưởng Barnaby cùng truyền sức mạnh! Đỉnh tháp trăng máu - trận chiến định mệnh!',
-      boss: '300 năm qua các ngươi đã lãng quên ta! Đêm nay, ranh giới hai cõi sẽ vĩnh viễn hòa làm một!',
-      defeat: 'Ánh sáng ấm áp này... Ta nhớ ra rồi... Ta từng là chú mèo hiệp sĩ bảo vệ ngôi trường này...'
+      intro: LEVEL_CONFIGS[4].storyIntroQuote,
+      boss: LEVEL_CONFIGS[4].bossSpawnQuote,
+      defeat: LEVEL_CONFIGS[4].bossDefeatQuote
     }
   }
 ];

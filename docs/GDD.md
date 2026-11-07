@@ -538,5 +538,47 @@ Vệt mực và mũ cho Momo, **chỉ để làm đẹp**. Mở khóa bằng th�
 Ghi canvas theo từng đoạn 10s (`captureStream` + `MediaRecorder`) kèm âm thanh game (nhạc nền, hiệu ứng, tiếng Momo — lấy từ `SoundSystem.getRecordingTrack()`, im lặng nếu đang tắt tiếng), chỉ giữ đoạn có combo cao nhất; cuối ván có nút xem / chia sẻ / tải. Khi xem clip, nhạc nền tạm dừng. Có thể tắt trong Cài Đặt; tự tắt ở mức đồ họa thấp và trên điện thoại cấu hình không cao. Trình duyệt không hỗ trợ thì bỏ qua âm thầm.
 
 ---
+
+## 9. CỐT TRUYỆN & BÍ ẨN "CÁI TÊN BỊ LÃNG QUÊN"
+
+Cốt truyện không còn là vài câu thoại rời rạc mà là một bí ẩn xuyên suốt 5 màn, có phần thưởng cho người chơi tò mò và lý do để chơi lại. Không đổi luật cốt lõi ở §1–§4.
+
+### 9.1. Mạch truyện
+Ba trăm năm trước, một hiệp sĩ mèo tự ràng mình vào **Cổ Thư Nhật Thực** để giữ chân **Màn Sương Quên Lãng**, và dặn cậu học trò nhỏ: "Hãy gọi tên ta mỗi kỳ Trăng Máu." Sương đã nuốt mất cái tên, đổi nó thành **Umbra** (bóng tối). Tên thật của ngài là **LUMEN** (ánh sáng). Mỗi trùm là một người bị bỏ quên mà sương đã lợi dụng: thủ thư không ai đọc sách, bếp trưởng không ai ngồi ăn cùng, giáo sư không ai ngước nhìn sao, huấn luyện viên không ai chờ nhịp chạy, và cuối cùng là chính ngài. **Barnaby** chính là cậu học trò nhỏ năm xưa; ông im lặng suốt ba trăm năm vì mỗi lần gọi tên, sương lại cắn đau. Manh mối về điều này được gieo dần từ màn 1 đến màn 5 và chỉ được tiết lộ ở Hồi Kết Thật.
+
+Sức mạnh của Momo là **nhớ**: mỗi nét vẽ là một lời nhắn "tớ vẫn nhớ cậu".
+
+### 9.2. Truyền tải trong trận (`core/StoryScenes.js`, `core/StoryDirector.js`)
+Mỗi màn có tối đa 6 "nhịp" thoại: mở màn, giữa màn (một nửa u linh đã xuất hiện), trùm xuất hiện, trùm mất mạng đầu tiên, trùm còn mạng cuối (chỉ màn 5), trùm được thanh tẩy. Momo và Cổ Thư (thì thầm) cũng lên tiếng. Các dòng đánh dấu `once` chỉ xuất hiện lần đầu (khi Mảnh Ký Ức của màn đó chưa có), nên chơi lại không bị lặp. Boss Rush chỉ giữ câu khai chiến và lời trăn trối của trùm.
+
+- **Phản ứng của đồng hành**: đồng hành đang dùng (Momo nếu chưa chọn ai) tự nói khi combo đạt 10 và khi chỉ còn một tim. Tối đa một lần mỗi 40 giây, không bao giờ nói đè lên cảnh đang diễn ra và im lặng 6 giây sau cảnh.
+- **Đồng hồ thoại chạy theo thời gian game**: tạm dừng thì thoại dừng; kết thúc ván thì hủy hết.
+- Cài Đặt › Cốt truyện › **Lời thoại nhân vật trong trận** để tắt hoàn toàn (Mảnh Ký Ức vẫn được ghi).
+
+### 9.3. Mảnh Ký Ức và Lời Hứa (`core/Lore.js`)
+- **Mảnh Ký Ức**: nhận miễn phí khi hạ trùm của màn lần đầu (chế độ Cốt Truyện). Hiện trên màn chọn nâng cấp, lúc game đang dừng để người chơi đọc, kèm lời trăn trối của trùm.
+- **Lời Hứa**: thử thách tùy chọn của mỗi màn. Giữ trọn sẽ thắp sáng một chữ cái của cái tên. Màn chơi có gợi ý dạng câu đố; điều kiện nói rõ hiện ra sau khi đã hạ trùm màn đó.
+
+| Màn | Chữ | Đức tính | Lời Hứa |
+|:---:|:---:|:---|:---|
+| 1 Thư Viện | **L** | Học (Learn) | Hạ trùm mà không bị trúng đòn nào trong màn |
+| 2 Nhà Bếp | **U** | Sẻ chia (Unite) | Đạt combo 12 trở lên trong màn |
+| 3 Lớp Học | **M** | Ngước nhìn (Marvel) | Niệm thành công một Câu Thần Chú trong màn |
+| 4 Nhà Thi Đấu | **E** | Kiên trì (Endure) | Giữ độ chính xác từ 80% trở lên trong màn (tối thiểu 10 nét) |
+| 5 Sân Thượng | **N** | Ghi nhớ (Never forget) | Hạ Lord Umbra khi còn từ 3 tim |
+
+Chỉ chế độ Cốt Truyện thường được tính. Boss Rush, Vô Tận và Thử Thách Ngày không đụng tới bí ẩn. Lượt chơi dùng trợ năng (giảm tốc / nút thay thế) vẫn nhận Mảnh Ký Ức (câu chuyện dành cho mọi người) nhưng không nhận Lời Hứa (vì đây là thử thách).
+
+### 9.4. Hai cái kết
+- **Hồi Kết** (3 slide): tự phát ngay sau khi hạ Lord Umbra, lần thắng đầu tiên, chồng lên màn Victory (có nút Bỏ qua). Umbra được giải thoát nhưng cái tên vẫn lạc, bìa Cổ Thư hiện **năm ô trống**.
+- **Hồi Kết Thật** (3 slide): mở khi giữ đủ 5 Lời Hứa (tích lũy qua nhiều lượt chơi). Năm chữ L-U-M-E-N ghép thành tên, Barnaby thú nhận, chòm sao hiệp sĩ Lumen sáng lại. Phát tự động ngay lần thắng khiến đủ 5 chữ; xem lại được từ Nhật Ký Ký Ức, màn Victory và thanh chương của "Xem Hoạt Cảnh".
+
+### 9.5. Điểm vào và phần thưởng
+- **Nhật Ký Ký Ức**: dải nổi bật đầu lưới tính năng ở menu, hiện cái tên đang tìm ("L _ M _ _") và một câu đố cho bước tiếp theo, nên người mới thấy bí ẩn ngay từ màn hình đầu. Màn Nhật Ký liệt kê 5 ký ức, Lời Hứa và các chữ cái.
+- Thành tựu: **Người Giữ Ký Ức** (5 mảnh), **Lời Hứa Đầu Tiên**, **Năm Chữ Cái** (5 lời hứa), **Cái Tên Được Nhớ** (xem Hồi Kết Thật).
+- Tủ Đồ: xem Hồi Kết Thật mở **Mũ Hiệp Sĩ Lumen** và vệt mực **Ánh Sao Lumen** (chỉ để làm đẹp).
+- Dữ liệu lưu trong `ProgressStore.data.lore` (`shards`, `pledges`, `endings`), tương thích ngược với bản lưu cũ.
+
+---
 **Tài liệu được phê duyệt bởi:** Lead Game Designer  
 **Trạng thái bàn giao:** Sẵn sàng cho Team Frontend (Pixi.js / Phaser / Raw HTML5 Canvas) và Game Artist triển khai Prototype Slice 1.

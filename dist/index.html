@@ -505,7 +505,7 @@
         <span>👻 <b>${$(o.kills)}</b> u linh</span>
         <span>🪄 <b>${$(o.spells)}</b> nét vẽ</span>
         <span>🎮 <b>${$(o.runs)}</b> lượt</span>
-        <span>⏱️ <b>${Bn(o.playSeconds)}</b></span>
+        <span>⏱️ <b>${cr(o.playSeconds)}</b></span>
       </div>
       ${e.legacyHighScore>0?`<p class="setting-note">Điểm cao cũ (trước khi tách theo chế độ & độ khó): <b>${$(e.legacyHighScore)}</b></p>`:``}
     </section>`,this._html(`records-body`,i)}_clock(e){let t=Math.max(0,Math.round(e));return`${Math.floor(t/60)}:${String(t%60).padStart(2,`0`)}`}updateMenu(){let e=this.game,t=e.progress,n=e.difficulty||`NORMAL`,i=t.getRecord(`STORY`,n).score,a=t.getRecord(`ENDLESS`,n).score;this._text(`menu-high-score`,$(i)),this._text(`menu-high-score-sub`,`Cốt Truyện • Vô Tận: ${$(a)} (${r[n].name})`);let o=e.runSave?e.runSave.load():null;o&&this._text(`resume-endless-label`,`▶ TIẾP TỤC VÔ TẬN — ĐỢT ${o.wave} • ${$(o.score)} ĐIỂM`),this._hidden(`btn-resume-endless`,!o);let s=A(),c=t.getDaily(s),l=t.dailyStreak(s);this._text(`daily-menu-badge`,c?l>1?`🔥${l}`:`✓`:`MỚI`),this._text(`spellbook-menu-badge`,`${t.discoveredPhraseCount()}/${j.length}`);let u=t.getRush();this._text(`rush-menu-badge`,u.clears>0?`✓`:``),this._hidden(`rush-menu-badge`,u.clears===0),this._hidden(`wardrobe-menu-badge`,!this._wardrobeNew)}_dailyKeyToPlay(){return A()}openDaily(){this.renderDaily(),this._open(`daily-screen`)}closeDaily(){this._close(`daily-screen`)}renderDaily(){let e=this.game.progress,t=A(),n=pe(t).modifier,r=e.getDaily(t);this._html(`daily-modifier`,`
@@ -548,7 +548,7 @@
             <div class="bestiary-desc">${r?n.desc:`Chưa từng chạm trán. Hãy tiếp tục chiến đấu để khám phá!`}</div>
             ${r?`<div class="bestiary-kills">Đã thanh tẩy: <b>${$(i)}</b></div>`:``}
           </div>
-        </div>`}return t}_achievementsHtml(){let e=this.game.progress,t=`<div class="collection-head">Đã đạt <b>${e.unlockedCount()}/${z.length}</b> thành tựu</div>`,n=[...z].sort((t,n)=>Number(e.isUnlocked(n.id))-Number(e.isUnlocked(t.id)));for(let r of n){let n=e.isUnlocked(r.id),[i,a]=Le(e,r),o=Math.max(0,Math.min(100,Math.round(i/a*100)));t+=`
+        </div>`}return t}_achievementsHtml(){let e=this.game.progress,t=`<div class="collection-head">Đã đạt <b>${e.unlockedCount()}/${R.length}</b> thành tựu</div>`,n=[...R].sort((t,n)=>Number(e.isUnlocked(n.id))-Number(e.isUnlocked(t.id)));for(let r of n){let n=e.isUnlocked(r.id),[i,a]=Be(e,r),o=Math.max(0,Math.min(100,Math.round(i/a*100)));t+=`
         <div class="ach-card${n?` done`:``}">
           <div class="ach-icon">${n?r.icon:`🔒`}</div>
           <div class="ach-info">
@@ -557,14 +557,14 @@
             <div class="ach-bar"><i style="width:${n?100:o}%"></i></div>
             <div class="ach-count">${n?`✔ Đã đạt`:`${$(i)} / ${$(a)}`}</div>
           </div>
-        </div>`}return t}showUpgradePicker(e,t){let n=this.game;this._pickHandler=t,this._currentChoices=e;let r=e.map((e,t)=>{let r=n.upgrades.count(e.id);return`
+        </div>`}return t}showUpgradePicker(e,t,n=null){let r=this.game;this._pickHandler=t,this._currentChoices=e,this._renderShardCard(n);let i=e.map((e,t)=>{let n=r.upgrades.count(e.id);return`
         <button type="button" class="upgrade-option" data-upgrade="${e.id}">
           <span class="upgrade-key">${t+1}</span>
           <span class="upgrade-icon">${e.icon}</span>
           <span class="upgrade-name">${e.name}</span>
           <span class="upgrade-desc">${e.desc}</span>
-          ${r?`<span class="upgrade-stack">Đang có x${r}</span>`:``}
-        </button>`}).join(``);this._html(`upgrade-choices`,r);let i=n.waveSystem;this._text(`upgrade-subtitle`,i.gameMode===`ENDLESS`?`Bạn đã vượt qua Đợt ${i.currentWave}! Chỉ có hiệu lực trong lượt chơi này.`:`Đã giải cứu Màn ${i.currentLevelIndex}! Chỉ có hiệu lực trong lượt chơi này.`);let a=Object.entries(n.upgrades.stacks).map(([e,t])=>`<span class="buff-chip" title="${this._upgradeTitle(e)}">${this._upgradeIcon(e)}<sub>x${t}</sub></span>`).join(``);this._html(`upgrade-owned`,a?`<span class="upgrade-owned-label">Đang có:</span>${a}`:``),this._open(`upgrade-screen`)}_upgradeIcon(e){return H[e]?H[e].icon:`✨`}_upgradeTitle(e){let t=H[e];return t?`${t.name}: ${t.desc}`:e}chooseUpgradeByIndex(e){let t=this._currentChoices&&this._currentChoices[e];return!t||!this.isUpgradeOpen()?!1:this.chooseUpgrade(t.id)}chooseUpgrade(e){if(!this._pickHandler)return!1;let t=this._pickHandler(e);return t&&this.hideUpgradePicker(),!!t}hideUpgradePicker(){this._pickHandler=null,this._currentChoices=null,this._close(`upgrade-screen`)}isUpgradeOpen(){return this._isOpen(`upgrade-screen`)}renderBuffs(e){let t=this.$(`buff-row`);if(!t)return;let n=this.game,r=[],i=n.progress?n.progress.getCompanion():null,a=i?D[i]:null;if(a){let e=s.find(e=>e.id===i);r.push(`<span class="buff-chip companion" title="${a.passive}: ${a.desc}">${e?e.icon.slice(0,2):`🐱`}</span>`)}e.shieldLimit>0&&r.push(`<span class="buff-chip shield${e.shieldCharges>0?``:` spent`}" title="Lá chắn combo: bỏ qua nét vẽ sai">🛡️<sub>${e.shieldCharges}/${e.shieldLimit}</sub></span>`);for(let[t,n]of Object.entries(e.stacks))t!==`combo_shield`&&r.push(`<span class="buff-chip" title="${this._upgradeTitle(t)}">${this._upgradeIcon(t)}${n>1?`<sub>x${n}</sub>`:``}</span>`);t.innerHTML=r.join(``)}showToast(e,t=`info`){let n=this.$(`toast-stack`);if(!n||typeof document>`u`||!document.createElement)return;let r=document.createElement(`div`);for(r.className=`toast toast-${t}`,r.innerHTML=e,n.appendChild(r);n.children&&n.children.length>Fn&&n.removeChild;)n.removeChild(n.children[0]);let i=setTimeout(()=>{r.remove&&r.remove()},In);this._toastTimers.push(i)}showAchievementToast(e){this.showToast(`<span class="toast-icon">${e.icon}</span><span class="toast-body"><b>Thành tựu mới!</b><br>${e.name}</span>`,`achievement`)}setCountdown(e){let t=this.$(`countdown-overlay`);t&&t.classList&&(e<=0?(t.classList.remove(`show`),this._countdownShown=0):e!==this._countdownShown&&(this._countdownShown=e,this._text(`countdown-num`,String(e)),t.classList.remove(`show`),t.offsetWidth!==void 0&&t.offsetWidth,t.classList.add(`show`)))}applyAltInput(){let e=!!this.game.settings.get(`altInput`),n=this.$(`rune-pad`);n&&!this._padBuilt&&(n.innerHTML=Ln.map((e,n)=>{let r=t[e];return`<button type="button" class="rune-pad-btn" data-cast="${e}" style="--rune-color:${r.color}" aria-label="${r.description}"><span class="rune-pad-key">${n+1}</span><span class="rune-pad-sym">${r.symbol}</span></button>`}).join(``),this._padBuilt=!0),this._hidden(`rune-pad`,!e)}applyAssistBadge(){this._hidden(`assist-badge`,!this.game.isAssisted())}renderPracticeRunes(){let e=this.game,n=cn.map(n=>{let r=t[n],i=e.practice.getMastery(n),a=[`practice-rune`];return e.practice.target===n&&a.push(`active`),i.mastered&&a.push(`mastered`),`<button type="button" class="${a.join(` `)}" data-rune="${n}" style="--rune-color:${r.color}" title="${r.name}">
+          ${n?`<span class="upgrade-stack">Đang có x${n}</span>`:``}
+        </button>`}).join(``);this._html(`upgrade-choices`,i);let a=r.waveSystem;this._text(`upgrade-subtitle`,a.gameMode===`ENDLESS`?`Bạn đã vượt qua Đợt ${a.currentWave}! Chỉ có hiệu lực trong lượt chơi này.`:`Đã giải cứu Màn ${a.currentLevelIndex}! Chỉ có hiệu lực trong lượt chơi này.`);let o=Object.entries(r.upgrades.stacks).map(([e,t])=>`<span class="buff-chip" title="${this._upgradeTitle(e)}">${this._upgradeIcon(e)}<sub>x${t}</sub></span>`).join(``);this._html(`upgrade-owned`,o?`<span class="upgrade-owned-label">Đang có:</span>${o}`:``),this._open(`upgrade-screen`)}_upgradeIcon(e){return V[e]?V[e].icon:`✨`}_upgradeTitle(e){let t=V[e];return t?`${t.name}: ${t.desc}`:e}chooseUpgradeByIndex(e){let t=this._currentChoices&&this._currentChoices[e];return!t||!this.isUpgradeOpen()?!1:this.chooseUpgrade(t.id)}chooseUpgrade(e){if(!this._pickHandler)return!1;let t=this._pickHandler(e);return t&&this.hideUpgradePicker(),!!t}hideUpgradePicker(){this._pickHandler=null,this._currentChoices=null,this._close(`upgrade-screen`)}isUpgradeOpen(){return this._isOpen(`upgrade-screen`)}renderBuffs(e){let t=this.$(`buff-row`);if(!t)return;let n=this.game,r=[],i=n.progress?n.progress.getCompanion():null,a=i?D[i]:null;if(a){let e=s.find(e=>e.id===i);r.push(`<span class="buff-chip companion" title="${a.passive}: ${a.desc}">${e?e.icon.slice(0,2):`🐱`}</span>`)}e.shieldLimit>0&&r.push(`<span class="buff-chip shield${e.shieldCharges>0?``:` spent`}" title="Lá chắn combo: bỏ qua nét vẽ sai">🛡️<sub>${e.shieldCharges}/${e.shieldLimit}</sub></span>`);for(let[t,n]of Object.entries(e.stacks))t!==`combo_shield`&&r.push(`<span class="buff-chip" title="${this._upgradeTitle(t)}">${this._upgradeIcon(t)}${n>1?`<sub>x${n}</sub>`:``}</span>`);t.innerHTML=r.join(``)}showToast(e,t=`info`){let n=this.$(`toast-stack`);if(!n||typeof document>`u`||!document.createElement)return;let r=document.createElement(`div`);for(r.className=`toast toast-${t}`,r.innerHTML=e,n.appendChild(r);n.children&&n.children.length>rr&&n.removeChild;)n.removeChild(n.children[0]);let i=setTimeout(()=>{r.remove&&r.remove()},ir);this._toastTimers.push(i)}showAchievementToast(e){this.showToast(`<span class="toast-icon">${e.icon}</span><span class="toast-body"><b>Thành tựu mới!</b><br>${e.name}</span>`,`achievement`)}setCountdown(e){let t=this.$(`countdown-overlay`);t&&t.classList&&(e<=0?(t.classList.remove(`show`),this._countdownShown=0):e!==this._countdownShown&&(this._countdownShown=e,this._text(`countdown-num`,String(e)),t.classList.remove(`show`),t.offsetWidth!==void 0&&t.offsetWidth,t.classList.add(`show`)))}applyAltInput(){let e=!!this.game.settings.get(`altInput`),n=this.$(`rune-pad`);n&&!this._padBuilt&&(n.innerHTML=ar.map((e,n)=>{let r=t[e];return`<button type="button" class="rune-pad-btn" data-cast="${e}" style="--rune-color:${r.color}" aria-label="${r.description}"><span class="rune-pad-key">${n+1}</span><span class="rune-pad-sym">${r.symbol}</span></button>`}).join(``),this._padBuilt=!0),this._hidden(`rune-pad`,!e)}applyAssistBadge(){this._hidden(`assist-badge`,!this.game.isAssisted())}renderPracticeRunes(){let e=this.game,n=An.map(n=>{let r=t[n],i=e.practice.getMastery(n),a=[`practice-rune`];return e.practice.target===n&&a.push(`active`),i.mastered&&a.push(`mastered`),`<button type="button" class="${a.join(` `)}" data-rune="${n}" style="--rune-color:${r.color}" title="${r.name}">
         <span class="practice-rune-symbol">${r.symbol}</span>
         <span class="practice-rune-prog">${i.mastered?`★`:i.good+`/`+i.needed}</span>
       </button>`}).join(``);this._html(`practice-runes`,n)}refreshPractice(){let e=this.game.practice;if(!e)return;this.renderPracticeRunes();let n=t[e.target],r=e.getMastery();this._text(`practice-tip`,`${n.symbol} ${n.name}: ${e.tip}`);let i=this.$(`practice-meter-mark`);i&&i.style&&(i.style.left=`${Math.round(r.threshold*100)}%`);let a=Array.from({length:r.needed},(e,t)=>t<r.good?`●`:`○`).join(` `);this._text(`practice-mastery`,r.mastered?`🎓 Đã thành thạo ${n.symbol} (tốt nhất ${Math.round(r.best*100)}%)`:`Thành thạo: ${a}  — cần ${r.needed} nét từ ${Math.round(r.threshold*100)}%`);let o=e.history.map(e=>`<i class="${e.passed?e.accuracy>=r.threshold?`great`:`ok`:`miss`}" title="${Math.round(e.accuracy*100)}%"></i>`).join(``);this._html(`practice-history`,o);let s=this.$(`practice-verdict`);s&&(e.lastResult?(s.textContent=e.lastResult.text,s.className=`practice-verdict tone-${e.lastResult.tone}`):(s.textContent=`Vẽ ấn ký bất kỳ lúc nào — không có u linh nào tấn công.`,s.className=`practice-verdict`)),this.updatePracticeLive(e.lastResult?e.lastResult.accuracy:0);let c=this.$(`btn-practice-template`);c&&c.classList&&(e.showTemplate?c.classList.remove(`off`):c.classList.add(`off`))}updatePracticeLive(e){let t=Math.max(0,Math.min(100,Math.round(e*100))),n=this.$(`practice-meter-fill`),r=this.game.practice.getMastery().threshold*100;n&&n.style&&(n.style.width=`${t}%`,n.className=`practice-meter-fill ${t>=r?`high`:t>=55?`mid`:`low`}`),this._text(`practice-meter-pct`,`${t}%`)}renderRunSummary(e,n){let i=n.bossRush?`Trùm`:n.mode===`STORY`?`Màn`:`Đợt`,a=e=>e?`<span class="new-pill">KỶ LỤC MỚI</span>`:``,o=!n.assisted,s=`<div class="rs-modeline">${n.bossRush?`💀 Boss Rush`:n.mode===`STORY`?`📖 Cốt Truyện`:n.daily?`📅 Thử Thách Ngày`:`⚡ Vô Tận`} • ${r[n.difficulty]?r[n.difficulty].badge:``}</div>`;if(o){let e=n.daily&&n.daily.record,t=n.rush&&n.rush.record,r=n.bossRush?t?t.level:n.level:n.daily?e?e.wave:n.level:n.record?n.record.level:n.level,o=n.bossRush?n.maxCombo:n.daily?e?e.combo:n.maxCombo:n.record?n.record.combo:n.maxCombo,c=n.daily?`Tốt nhất hôm nay`:`Kỷ lục`;s+=`<div class="rs-grid">
@@ -933,6 +933,17 @@
 
         <!-- Meta features -->
         <div class="menu-meta-grid">
+          <button class="lore-strip" id="btn-open-lore" title="Nhật Ký Ký Ức: lần theo cái tên bị lãng quên">
+            <span class="lore-strip-icon">📔</span>
+            <span class="lore-strip-body">
+              <span class="lore-strip-top">
+                <span class="lore-strip-title">Nhật Ký Ký Ức</span>
+                <span class="lore-strip-name" id="lore-strip-name">_ _ _ _ _</span>
+              </span>
+              <span class="lore-strip-hint" id="lore-strip-hint"></span>
+            </span>
+            <span class="meta-tile-badge hidden" id="lore-menu-badge">MỚI</span>
+          </button>
           <button class="meta-tile" id="btn-open-daily">
             <span class="meta-tile-icon">📅</span>
             <span class="meta-tile-label">Thử Thách Ngày</span>
@@ -1012,6 +1023,7 @@
           <button class="story-chap-btn" data-act="chapter" data-chap="4">🏀 Màn 4</button>
           <button class="story-chap-btn" data-act="chapter" data-chap="5">🏰 Màn 5</button>
           <button class="story-chap-btn" data-act="victory" data-index="0">🏆 Hồi Kết</button>
+          <button class="story-chap-btn hidden" id="story-true-pill" data-act="trueEnding" data-index="0">🌠 Hồi Kết Thật</button>
         </div>
 
         <!-- Illustrated Story Scene Canvas -->
@@ -1062,7 +1074,7 @@
       <div class="glass-card victory-card">
         <div class="victory-trophy-badge">🏆 CHIẾN THẮNG HUY HOÀNG 🏆</div>
         <h1 class="game-title victory-title">GIẢI CỨU HỌC VIỆN!</h1>
-        <p class="game-subtitle">Chúa tể bóng ma đã bị tiêu diệt! Cuốn Sách Thần Chú Cổ Đại đã trở về an toàn với Momo!</p>
+        <p class="game-subtitle">Màn sương đã tan! Cổ Thư đã trở về an toàn với Momo, và vị hiệp sĩ cổ xưa cuối cùng cũng được giải thoát.</p>
 
         <div class="story-canvas-wrap victory-canvas-wrap">
           <canvas id="victoryCanvas" width="480" height="200"></canvas>
@@ -1088,6 +1100,15 @@
         </div>
 
         <div class="run-summary" id="vic-summary"></div>
+
+        <div class="vic-lore" id="vic-lore">
+          <div class="lore-name vic-lore-name" id="vic-lore-name"></div>
+          <p class="vic-lore-text" id="vic-lore-text"></p>
+          <div class="vic-lore-actions">
+            <button class="btn-subtle" id="btn-vic-lore"><span>📔 Nhật Ký Ký Ức</span></button>
+            <button class="btn-subtle" id="btn-vic-ending"><span>🎬 Xem lại hồi kết</span></button>
+          </div>
+        </div>
 
         <div class="button-group">
           <button class="btn-primary" id="btn-vic-replay-story">
@@ -1269,6 +1290,13 @@
           </section>
 
           <section class="settings-group">
+            <h3 class="settings-heading">🎭 Cốt truyện</h3>
+            <label class="setting-row"><span class="setting-label">Lời thoại nhân vật trong trận</span>
+              <input type="checkbox" class="switch" data-setting="storyLines"></label>
+            <p class="setting-note">Đối thoại giữa các màn, tiếng thì thầm của Cổ Thư và lời động viên của đồng hành. Tắt đi nếu bạn muốn chơi liền mạch; Mảnh Ký Ức vẫn được ghi vào Nhật Ký.</p>
+          </section>
+
+          <section class="settings-group">
             <h3 class="settings-heading">🎬 Khoảnh khắc đỉnh cao</h3>
             <label class="setting-row"><span class="setting-label">Ghi lại đoạn combo hay nhất để lưu / chia sẻ</span>
               <input type="checkbox" class="switch" data-setting="highlight"></label>
@@ -1362,6 +1390,26 @@
       </div>
     </div>
 
+    <!-- UI Overlay: MEMORY JOURNAL (the forgotten name) -->
+    <div id="lore-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card companion-card lore-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">📔 NHẬT KÝ KÝ ỨC</span>
+            <h2 class="game-title meta-title">CÁI TÊN BỊ LÃNG QUÊN</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-lore">ĐÓNG ✕</button>
+        </div>
+        <div class="lore-name" id="lore-name" aria-live="polite"></div>
+        <p class="game-subtitle companion-sub" id="lore-sub"></p>
+        <div class="companion-grid" id="lore-grid"></div>
+        <div class="lore-actions">
+          <button class="btn-secondary hidden" id="btn-lore-ending"><span>🎬 Xem lại Hồi Kết</span></button>
+          <button class="btn-gold hidden" id="btn-lore-true-ending"><span>🌠 Xem Hồi Kết Thật</span></button>
+        </div>
+      </div>
+    </div>
+
     <!-- UI Overlay: WARDROBE (ink trails and hats) -->
     <div id="wardrobe-screen" class="ui-screen modal-overlay meta-layer">
       <div class="glass-card meta-card companion-card">
@@ -1404,6 +1452,7 @@
         <span class="meta-badge">🎁 PHẦN THƯỞNG</span>
         <h2 class="game-title meta-title">CHỌN MỘT NÂNG CẤP</h2>
         <p class="game-subtitle" id="upgrade-subtitle">Chỉ có hiệu lực trong lượt chơi này.</p>
+        <div class="shard-card hidden" id="upgrade-shard"></div>
         <div class="upgrade-choices" id="upgrade-choices"></div>
         <div class="upgrade-owned" id="upgrade-owned"></div>
       </div>

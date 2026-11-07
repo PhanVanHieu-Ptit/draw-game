@@ -1,7 +1,7 @@
 /**
  * @file Settings.js
  * @description Persistent player preferences (volume, gesture sensitivity, haptics, shake, hints, graphics,
- * accessibility: colour-blind markers, slow-motion assist, alternative input).
+ * story dialogue, accessibility: colour-blind markers, slow-motion assist, alternative input).
  *
  * The store only holds and validates values and notifies listeners; Game applies them to the
  * subsystems (see Game._applySetting). localStorage may be missing or throw (private mode, sandboxed
@@ -40,11 +40,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   colorBlind: false,
   assist: 0,
   altInput: false,
-  highlight: true
+  highlight: true,
+  storyLines: true
 });
 
 const NUMBER_KEYS = ['masterVolume', 'musicVolume', 'sfxVolume', 'catVolume'];
-const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight'];
+const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight', 'storyLines'];
 
 /**
  * Coerce a value for `key` into something valid, or return undefined if it is not salvageable.
