@@ -1,3 +1,4 @@
+import { CombatSystem } from '../src/combat/CombatSystem.js';
 /**
  * @file test-boss-gradual-arrival.js
  * @description Verifies gradual Boss arrival mechanics:
@@ -83,6 +84,8 @@ let bannerShown = false;
 let warningShown = false;
 
 const gameContext = {
+  combat: new CombatSystem(),
+  _tickCombatFeedback: Game.prototype._tickCombatFeedback,
   player: playerMock,
   enemies: [],
   enemyPool: {

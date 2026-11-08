@@ -1,3 +1,4 @@
+import { CombatSystem } from '../src/combat/CombatSystem.js';
 /**
  * @file test-boss-spawn-deadlock-prevention.js
  * @description Verifies deadlock prevention for Boss spawning:
@@ -132,6 +133,8 @@ const contactHeart = new Enemy({
 });
 
 const gameContext = {
+  combat: new CombatSystem(),
+  _tickCombatFeedback: Game.prototype._tickCombatFeedback,
   player: playerMock,
   enemies: [contactHeart],
   enemyPool: {

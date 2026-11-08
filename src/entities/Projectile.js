@@ -30,6 +30,7 @@ export class Projectile extends Entity {
     if (config.startX !== undefined) {
       this.init(config);
     } else {
+      this.cast = null;
       this.targetEnemy = null;
       this.gesture = '';
       this.particleSystem = null;
@@ -48,6 +49,8 @@ export class Projectile extends Entity {
     this.y = config.startY;
     this.vx = 0;
     this.vy = 0;
+    this.cast = config.cast;
+    this.targetGeneration = config.targetEnemy?.combatGeneration;
     this.targetEnemy = config.targetEnemy;
     this.gesture = config.gesture;
     this.particleSystem = config.particleSystem;
@@ -71,6 +74,7 @@ export class Projectile extends Entity {
    * Reset projectile state for object pool release
    */
   reset() {
+    this.cast = null;
     this.targetEnemy = null;
     this.particleSystem = null;
     this.isDead = true;

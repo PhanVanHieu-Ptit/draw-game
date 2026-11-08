@@ -7,6 +7,7 @@
  */
 
 import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS, PLAYER_CONFIG, ACADEMY_CHARACTERS } from './Constants.js';
+import { CombatSystem, comboMultiplier, tickCombo } from '../combat/CombatSystem.js';
 import { StateMachine } from './StateMachine.js';
 import { SettingsStore, AUDIO_SCALE } from './Settings.js';
 import { ProgressStore } from './ProgressStore.js';
@@ -45,7 +46,7 @@ const COUNTDOWN_STEPS = 3;
 const SLOWMO_COMBOS = [5, 10, 20, 35];
 
 export class Game {
-  constructor(canvas) {
+  constructor(canvas, combatOptions = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
@@ -173,6 +174,8 @@ export class Game {
     this._equipCompanion();
 
     // Scoring & Combo runtime state
+    this.combat = new CombatSystem(combatOptions);
+    this.combat.onEvent(event => this._onCombatEvent(event));
     this.score = 0;
     this.displayedScore = 0;
     this.highScore = 0; // best score of the current mode + difficulty, see refreshHighScore()
@@ -936,6 +939,8 @@ export class Game {
     this.bossEntranceWarningTimer = 0;
 
     // Surprises, phrase chain and the clip recorder start fresh with every run
+    this._combatFizzleDelay = 0;
+    this._comboWarning = false;
     this.events.reset();
     this.phrases.reset();
     this.waveSystem.eventSpeedScale = 1;
@@ -1313,6 +1318,7 @@ export class Game {
         const newEnemy = this.enemyPool.acquire();
         newEnemy.init({
           type: enemyConfig.archetype,
+          eliteModifier: enemyConfig.eliteModifier,
           x: spawnPos.x,
           y: spawnPos.y,
           canvasWidth: this.width,
@@ -1332,6 +1338,10 @@ export class Game {
           levelId: (this.waveSystem && this.waveSystem.levelData) ? this.waveSystem.levelData.id : 'library'
         });
         this.enemies.push(newEnemy);
+        if (this.combat.rules.flags.eliteModifiers && this.combat.rules.elite[newEnemy.eliteModifier]) {
+          this.particleSystem.emitFloatingText(`ELITE: ${newEnemy.eliteModifier.toUpperCase()}`, newEnemy.x, newEnemy.y - 55, '#fbbf24', 18);
+          this.audioSystem.playSpell('lightning');
+        }
         if (this.progress.markSeen(bestiaryId(newEnemy))) {
           this.progress.save(); // first meeting with this kind of ghost: remember it (rare event)
         }
@@ -1346,7 +1356,7 @@ export class Game {
               minion.isDead = true;
               if (minion.isHeartGhost) {
                 // Heart ghost automatically converts into +1 HP heal for Momo!
-                const healed = this.player.heal(1);
+                const healed = this.combat.heal(this.player, 1);
                 if (healed) {
                   this.particleSystem.emitFloatingText('+1 HP ❤️ (THU HOẠCH TIM)', this.player.x, this.player.y - 60, '#f43f5e', 24);
                   this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
@@ -1407,13 +1417,16 @@ export class Game {
     // 3. Update Enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
+      enemy.statusEffects?.tick(dt);
+      const elite = this.combat.rules.flags.eliteModifiers && this.combat.rules.elite[enemy.eliteModifier];
+      enemy.combatSpeedScale = (enemy.statusEffects?.speedMultiplier ?? 1) * (elite?.speedMultiplier ?? 1);
       enemy.update(dt, this.player);
 
       // Check collision with Player
       if (enemy.collidesWith(this.player)) {
         if (enemy.isHeartGhost) {
           // Touching Heart Ghost peacefully heals Momo!
-          const healed = this.player.heal(1);
+          const healed = this.combat.heal(this.player, 1);
           if (healed) {
             this.progress.addStat('heals');
             this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
@@ -1429,7 +1442,7 @@ export class Game {
           continue;
         }
 
-        const damageTaken = this.player.takeDamage(1);
+        const damageTaken = this.combat.damagePlayer(this.player);
         if (damageTaken) {
           this.metrics.damageTaken++;
           
@@ -1485,7 +1498,7 @@ export class Game {
 
       if (hasImpacted) {
         if (proj.targetEnemy && !proj.targetEnemy.isDead) {
-          const hitResult = proj.targetEnemy.takeHit(proj.gesture);
+          const hitResult = this.combat.hit(proj.cast, proj.targetEnemy, proj.targetGeneration);
           if (hitResult.matched) {
             const rune = RUNES[proj.gesture] || { color: '#38bdf8' };
             this.particleSystem.emitHitBurst(proj.x, proj.y, rune.color, 16);
@@ -1581,7 +1594,7 @@ export class Game {
               } else if (proj.targetEnemy.isBlastGhost || proj.gesture === 'spiral') {
                 this.triggerPushbackAll(320);
               } else if (proj.targetEnemy.isHeartGhost || proj.gesture === 'heart') {
-                const healed = this.player.heal(1);
+                const healed = this.combat.heal(this.player, 1);
                 if (healed) {
                   this.progress.addStat('heals');
                   this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
@@ -1610,6 +1623,7 @@ export class Game {
         }
 
         // Return impacted projectile to pool with O(1) swap-and-pop removal
+        if (proj.cast && --proj.cast.pending === 0) this.combat.emit('cast:completed', { cast: proj.cast });
         this.projectilePool.release(proj);
         this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
         this.projectiles.pop();
@@ -1625,15 +1639,13 @@ export class Game {
       }
     }
 
-    // 5. Update Combo Decay
-    if (this.comboCount > 0) {
-      this.comboTimer -= dt;
-      if (this.comboTimer <= 0) {
-        this.comboCount = 0;
-        this.comboMultiplier = 1;
-        this.comboTimer = 0;
-      }
-    }
+    // Simulation time only: pause/countdown never enters updatePlaying.
+    const combo = tickCombo(this.comboCount, this.comboTimer, dt);
+    if (this.comboCount > 0 && combo.count === 0) this.combat.emit('combo:expired');
+    this.comboCount = combo.count;
+    this.comboTimer = combo.timer;
+    this.comboMultiplier = comboMultiplier(combo.count, this.combat.rules.combo.tiers);
+    this._tickCombatFeedback(dt);
 
     // 6. Smooth Lerp Score Display (frame-rate independent)
     if (this.displayedScore < this.score) {
@@ -2018,6 +2030,13 @@ export class Game {
     }
     if (stateName !== GAME_STATES.PLAYING) return;
 
+    this.executeSpell(result, rawStroke);
+  }
+
+  /** Recognition adapter ends above; synthetic input uses the same execution path. */
+  executeSpell(result, rawStroke = []) {
+    if (this.stateMachine.getCurrentStateName() !== GAME_STATES.PLAYING) return;
+    if (this.resumeCountdown > 0 || this.uiManager.meta.isUpgradeOpen()) return;
     this.metrics.spellsCast++;
 
     const gesture = result.gesture;
@@ -2031,6 +2050,15 @@ export class Game {
       return;
     }
 
+    const duration = rawStroke.length > 1
+      ? (rawStroke[rawStroke.length - 1].timestamp - rawStroke[0].timestamp) / 1000 : NaN;
+    const cast = this.combat.beginCast(result, duration);
+    if (!cast) {
+      this.audioSystem.playFizzle();
+      this.uiManager.showGestureFeedback(gesture, result.score, false, 'Phép chưa được trang bị');
+      this._fizzleCombo();
+      return;
+    }
     this._trackCast(gesture, result);
 
     // Find all enemies whose active (0th) symbol matches the recognized gesture
@@ -2063,7 +2091,7 @@ export class Game {
       }
 
       if (gesture === 'heart') {
-        const healed = this.player.heal(1);
+        const healed = this.combat.heal(this.player, 1);
         if (healed) {
           this.progress.addStat('heals');
           this.particleSystem.emitFloatingText('+1 HP ❤️ Purr~', this.player.x, this.player.y - 60, '#f43f5e', 24);
@@ -2091,6 +2119,7 @@ export class Game {
         }
       }
 
+      cast.pending = matchingEnemies.length;
       // Fire pooled projectile to each matching enemy
       const wandTip = this.player.getWandTip();
       for (let i = 0; i < matchingEnemies.length; i++) {
@@ -2101,6 +2130,7 @@ export class Game {
           startY: wandTip.y,
           targetEnemy: enemy,
           gesture: gesture,
+          cast,
           particleSystem: this.particleSystem
         });
         this.projectiles.push(projectile);
@@ -2108,6 +2138,7 @@ export class Game {
 
       // Combo Progression
       this.comboCount++;
+      this.combat.emit('combo:advanced', { count: this.comboCount });
       this.metrics.maxCombo = Math.max(this.metrics.maxCombo || 0, this.comboCount);
       this.comboTimer = this.comboDecayTime;
       this.comboMultiplier = this._calculateComboMultiplier(this.comboCount);
@@ -2135,7 +2166,7 @@ export class Game {
       }
 
       const runeData = RUNES[gesture];
-      const points = this._addScore((runeData.baseScore || 100) * this.comboMultiplier);
+      const points = this._addScore((runeData.baseScore || 100) * this.comboMultiplier * (cast.perfect ? this.combat.rules.perfect.scoreMultiplier : 1));
 
       this.particleSystem.emitFloatingText(
         `+${points}`,
@@ -2145,11 +2176,12 @@ export class Game {
         20
       );
 
+      if (cast.perfect) this.combat.emit('cast:perfect', { cast });
       this.uiManager.showGestureFeedback(gesture, result.score, true);
     } else {
       if (gesture === 'heart') {
         // In Google Doodle, drawing heart always restores HP even without enemies having heart
-        const healed = this.player.heal(1);
+        const healed = this.combat.heal(this.player, 1);
         if (healed) {
           this.progress.addStat('heals');
           this.audioSystem.playSpell('heart');
@@ -2163,11 +2195,11 @@ export class Game {
         }
       } else if (gesture === 'circle') {
         this.audioSystem.playSpell(gesture);
-        setTimeout(() => this.audioSystem.playFizzle(), 140);
+        this._combatFizzleDelay = 0.14;
         this.particleSystem.emitFloatingText('Chưa có U Linh Băng Giá! ❄️', this.player.x, this.player.y - 60, '#38bdf8', 20);
       } else if (gesture === 'spiral') {
         this.audioSystem.playSpell(gesture);
-        setTimeout(() => this.audioSystem.playFizzle(), 140);
+        this._combatFizzleDelay = 0.14;
         this.particleSystem.emitFloatingText('Chưa có U Linh Cuồng Phong! 🌀', this.player.x, this.player.y - 60, '#34d399', 20);
       } else if (gesture === 'lightning') {
         this.audioSystem.soundLightning();
@@ -2175,11 +2207,13 @@ export class Game {
         this.triggerShake(8, 0.3);
       } else {
         this.audioSystem.playSpell(gesture);
-        setTimeout(() => this.audioSystem.playFizzle(), 140);
+        this._combatFizzleDelay = 0.14;
       }
       this.uiManager.showGestureFeedback(gesture, result.score, false);
       this._fizzleCombo();
     }
+    this.combat.emit('cast:launched', { cast, targets: matchingEnemies.length });
+    if (!matchingEnemies.length) this.combat.emit('cast:completed', { cast });
   }
 
   /**
@@ -2188,6 +2222,7 @@ export class Game {
    */
   triggerFreezeAll(duration = 4.5) {
     duration += this.upgrades.freezeBonus;
+    this.combat.emit('support:freeze', { duration });
     this.progress.addStat('freezes');
     this.freezeOverlayTimer = duration;
     let frozenCount = 0;
@@ -2298,7 +2333,8 @@ export class Game {
    */
   _addScore(points) {
     const eventMult = this.events ? this.events.scoreMult : 1;
-    const awarded = Math.round(points * this.upgrades.scoreMultiplier * eventMult);
+    const awarded = this.combat.score(points, this.upgrades.scoreMultiplier, eventMult);
+    this.combat.emit('score:awarded', { points: awarded });
     this.score += awarded;
     return awarded;
   }
@@ -2362,7 +2398,7 @@ export class Game {
 
     // Oliver's cookie soup: heal one heart every N cleared stages
     const healEvery = this.upgrades.healEvery;
-    if (healEvery > 0 && this._stagesClearedThisRun % healEvery === 0 && this.player.heal(1)) {
+    if (healEvery > 0 && this._stagesClearedThisRun % healEvery === 0 && this.combat.heal(this.player, 1)) {
       this.progress.addStat('heals');
       this.particleSystem.emitFloatingText('🥣 SÚP BÁNH QUY +1 ❤️', this.player.x, this.player.y - 70, '#fb923c', 22);
       this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
@@ -2965,7 +3001,7 @@ export class Game {
     this.particleSystem.emitFloatingText('🌟 U LINH VÀNG! ĐIỂM x2 TRONG 10 GIÂY!', this.width / 2, this.height * 0.26, '#fde047', 26);
     this.particleSystem.emitHitBurst(enemy.x, enemy.y, '#fde047', 36);
     this.comboTimer = this.comboDecayTime;
-    if (this.player.heal(1)) {
+    if (this.combat.heal(this.player, 1)) {
       this.progress.addStat('heals');
       this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 22);
       this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
@@ -3013,7 +3049,7 @@ export class Game {
         this.triggerFreezeAll(3.5);
         break;
       case 'heal':
-        if (this.player.heal(1)) {
+        if (this.combat.heal(this.player, 1)) {
           this.progress.addStat('heals');
           this.particleSystem.emitFloatingText('+1 HP ❤️', this.player.x, this.player.y - 60, '#f43f5e', 24);
           this.uiManager.updateHearts(this.player.hp, this.player.maxHp);
@@ -3023,8 +3059,7 @@ export class Game {
         }
         break;
       case 'aegis':
-        this.player.invulnerableTimer = Math.max(this.player.invulnerableTimer, 3.5);
-        this.player.isInvulnerable = true;
+        this.combat.grantInvulnerability(this.player, 3.5);
         this.particleSystem.emitFloatingText('🛡️ BẤT TỬ 3,5 GIÂY', this.player.x, this.player.y - 60, '#38bdf8', 22);
         break;
       case 'gale':
@@ -3054,16 +3089,19 @@ export class Game {
     for (let i = 0; i < this.projectiles.length; i++) {
       if (this.projectiles[i].targetEnemy) targeted.add(this.projectiles[i].targetEnemy);
     }
+    const cast = this.combat.beginCast({ gesture: 'horizontal', synthetic: true }, NaN, true);
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
       if (e.isDead || e.isBoss || e.isHeartGhost || e.isFreezeGhost || e.isBlastGhost || targeted.has(e)) continue;
       const rune = e.symbolQueue[0];
       if (!PHRASE_RUNES.includes(rune)) continue;
-      const res = e.takeHit(rune);
+      cast.gesture = rune;
+      const res = this.combat.hit(cast, e);
       if (!res.matched) continue;
       this.particleSystem.emitHitBurst(e.x, e.y, RUNES[rune].color, 14);
       if (res.destroyed) this._phraseKill(e, rune);
     }
+    this.combat.emit('cast:completed', { cast });
     this.lightningFlashTimer = 0.18;
     this.triggerShake(10, 0.35);
   }
@@ -3160,12 +3198,30 @@ export class Game {
   }
 
   _calculateComboMultiplier(count) {
-    for (const tier of COMBO_CONFIG.TIERS) {
-      if (count >= tier.min && count <= tier.max) {
-        return tier.mult;
-      }
+    return comboMultiplier(count, this.combat?.rules.combo.tiers);
+  }
+
+  _tickCombatFeedback(dt) {
+    if (this._combatFizzleDelay > 0) {
+      this._combatFizzleDelay -= dt;
+      if (this._combatFizzleDelay <= 0) this.audioSystem.playFizzle();
     }
-    return 1;
+    const urgent = this.comboCount > 0 && this.comboTimer / this.comboDecayTime <= this.combat.rules.combo.warningFraction;
+    if (urgent && !this._comboWarning) {
+      this.particleSystem.emitFloatingText('COMBO SẮP HẾT!', this.player.x, this.player.y - 95, '#fbbf24', 18);
+      this.audioSystem.playCombo(this.comboCount);
+    }
+    this._comboWarning = urgent;
+  }
+
+  _onCombatEvent(event) {
+    const labels = { 'cast:perfect': '✨ PERFECT!', 'hit:blocked': '🛡️ GIÁP!', 'element:reaction': '⚡ PHẢN ỨNG!', 'chain:reaction': '⚡ CHAIN!' };
+    if (event.type === 'chain:reaction') this._addScore(event.bonus);
+    if (labels[event.type]) {
+      const target = event.enemy || this.player;
+      this.particleSystem.emitFloatingText(labels[event.type], target.x, target.y - 70, '#fde047', 22);
+      this.audioSystem.playHit(event.cast.gesture);
+    }
   }
 
   /**
