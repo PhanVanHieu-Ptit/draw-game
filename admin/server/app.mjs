@@ -1,3 +1,4 @@
+import { configurationRoute } from "./configuration.mjs";
 import { createServer } from "node:http";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
@@ -123,6 +124,21 @@ export function createAdminServer({
         );
         return send(200, { user: publicUser(user) });
       }
+      if (
+        await configurationRoute({
+          req,
+          path,
+          method,
+          body,
+          send,
+          store: () => store,
+          mutate,
+          current,
+          now,
+          permits,
+        })
+      )
+        return;
       if (!current) return send(401, { message: "Authentication required." });
       if (path === "/api/auth/me" && method === "GET")
         return send(200, { user: publicUser(current) });
@@ -145,9 +161,9 @@ export function createAdminServer({
           metrics: {
             activePlayers: null,
             gameSessions: null,
-            publishedConfiguration: store.configuration.filter(
-              (c) => c.status === "published",
-            ).length,
+            publishedConfiguration: Object.values(
+              store.environments || {},
+            ).filter((e) => e.published).length,
             scheduledEvents: null,
             gameplayPerformance: null,
           },

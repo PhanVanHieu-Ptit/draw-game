@@ -115,7 +115,7 @@ export function Dashboard() {
               [
                 "Published configuration",
                 data?.metrics.publishedConfiguration,
-                "Admin store · drafts only",
+                "Environments with a publication",
               ],
               [
                 "Scheduled events",

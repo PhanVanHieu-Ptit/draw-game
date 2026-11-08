@@ -1,3 +1,4 @@
+import { validateConfig, SCHEMA_VERSION } from '../../shared/game-configuration.js';
 /**
  * @file RunSave.js
  * @description Saves an Endless run in progress so the player can continue it later.
@@ -33,6 +34,7 @@ function nonNegativeInt(n, fallback = 0) {
 export function buildEndlessSnapshot(game) {
   const m = game.metrics || {};
   return {
+    configuration: game.runConfiguration || null,
     v: VERSION,
     mode: 'ENDLESS',
     savedAt: Date.now(),
@@ -63,6 +65,7 @@ export function buildEndlessSnapshot(game) {
  */
 export function sanitizeSnapshot(raw) {
   if (!raw || typeof raw !== 'object' || raw.v !== VERSION || raw.mode !== 'ENDLESS') return null;
+  if (raw.configuration && (raw.configuration.schemaVersion !== SCHEMA_VERSION || validateConfig(raw.configuration.values).length)) return null;
   const wave = nonNegativeInt(raw.wave);
   if (wave < MIN_SAVE_WAVE || wave > 9999) return null;
   const savedAt = nonNegativeInt(raw.savedAt);
@@ -83,6 +86,7 @@ export function sanitizeSnapshot(raw) {
   return {
     v: VERSION,
     mode: 'ENDLESS',
+    configuration: raw.configuration ? structuredClone(raw.configuration) : null,
     savedAt,
     difficulty: DIFFICULTIES.includes(raw.difficulty) ? raw.difficulty : 'NORMAL',
     assisted: !!raw.assisted,
