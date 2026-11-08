@@ -78,10 +78,14 @@ export class SettingsStore {
   /**
    * @param {Storage|null} [storage] defaults to window.localStorage when available
    */
-  constructor(storage) {
+  constructor(storage, defaults = {}) {
     this._storage = storage !== undefined ? storage : SettingsStore._defaultStorage();
     this._listeners = [];
     this._values = { ...DEFAULT_SETTINGS };
+    for (const [key, value] of Object.entries(defaults)) {
+      const clean = sanitizeSetting(key, value);
+      if (clean !== undefined) this._values[key] = clean;
+    }
     this._load();
   }
 

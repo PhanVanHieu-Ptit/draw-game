@@ -1,3 +1,4 @@
+import { ConfigurationPage } from "./ConfigurationPage";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -195,6 +196,8 @@ function Root() {
                         element={
                           m.key === "dashboard" ? (
                             <Dashboard />
+                          ) : m.key === "configuration" ? (
+                            <ConfigurationPage />
                           ) : (
                             <ModulePage key={m.key} module={m} />
                           )

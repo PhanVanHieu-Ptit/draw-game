@@ -1,3 +1,4 @@
+import { freezeConfig, defaults, SCHEMA_VERSION } from '../../shared/game-configuration.js';
 /**
  * @file Game.js
  * @description Master Game Coordinator implementing Core Loop, Clean Architecture, 
@@ -175,6 +176,7 @@ export class Game {
 
     // Scoring & Combo runtime state
     this.combat = new CombatSystem(combatOptions);
+    this._localCombatRules = structuredClone(this.combat.rules);
     this.combat.onEvent(event => this._onCombatEvent(event));
     this.score = 0;
     this.displayedScore = 0;
@@ -353,6 +355,10 @@ export class Game {
     this.waveSystem.onWaveComplete = (waveNum) => {
       this.triggerShake(5, 0.3);
       this.audioSystem.playWaveComplete();
+      if (this.runConfiguration?.id !== 'local' && this.runConfiguration?.values && this.waveSystem.gameMode === 'ENDLESS' && waveNum >= this.runConfiguration.values.global.maxWaves) {
+        this.stateMachine.changeState(GAME_STATES.VICTORY);
+        return;
+      }
       this._onStageCleared(waveNum);
     };
 
@@ -917,6 +923,23 @@ export class Game {
   }
 
   resetGameData() {
+    this.runConfiguration = this._pendingRestore ? freezeConfig(structuredClone(this._pendingRestore.configuration || { id: 'local', schemaVersion: SCHEMA_VERSION, values: defaults })) : this.remoteConfiguration?.pin();
+    if (this.waveSystem.gameMode === 'ENDLESS' && this.runConfiguration?.values.modes.endlessEnabled === false) {
+      this.waveSystem.setMode('STORY');
+    }
+    this._configurationTime = 0;
+    const remote = this.runConfiguration?.id !== 'local' && this.runConfiguration?.values;
+    this._spellReadyAt = {};
+    if (!remote && this._localCombatRules) {
+      this.combat.rules = structuredClone(this._localCombatRules);
+      this.gestureEngine.setSensitivity(this.settings.get('sensitivity'));
+    }
+    if (remote) {
+      this.combat.rules.damage = { ...this.combat.rules.damage, runes: remote.combat.runeDamage, player: remote.combat.playerDamage };
+      this.combat.rules.scoring.multiplier = remote.combo.scoreMultiplier;
+      Object.assign(this.combat.rules.flags, remote.flags);
+      this.gestureEngine.minScore = remote.gestures.minScore;
+    }
     this.score = 0;
     this.displayedScore = 0;
     this.comboCount = 0;
@@ -1053,6 +1076,7 @@ export class Game {
   }
 
   update(dt) {
+    if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) this._configurationTime = (this._configurationTime || 0) + dt;
     if (this.backgroundRenderer) {
       this.backgroundRenderer.update(dt);
     }
@@ -1331,7 +1355,7 @@ export class Game {
           bossPhases: enemyConfig.bossPhases,
           bossLives: enemyConfig.bossLives,
           speedMultiplier: enemyConfig.speedMultiplier !== undefined
-            ? enemyConfig.speedMultiplier * (isBoss ? 1 : this.upgrades.enemySpeedScale) * (this.assistScale || 1)
+            ? enemyConfig.speedMultiplier * (this.runConfiguration?.id !== "local" ? (this.runConfiguration?.values.difficulty[({ NORMAL: "normalSpeed", HARDCORE: "hardcoreSpeed", INFERNO: "infernoSpeed" })[this.difficulty]] || 1) : 1) * (isBoss ? 1 : this.upgrades.enemySpeedScale) * (this.assistScale || 1)
             : enemyConfig.speedMultiplier,
           targetPlayerPos: this.player,
           levelIndex: this.waveSystem ? this.waveSystem.currentLevelIndex : 1,
@@ -2050,6 +2074,12 @@ export class Game {
       return;
     }
 
+    const cooldown = this.runConfiguration?.values.spells.cooldownSeconds || 0;
+    const castTime = this._configurationTime || 0;
+    if ((this._spellReadyAt?.[gesture] || 0) > castTime) return;
+    this._spellReadyAt ||= {};
+    this._spellReadyAt[gesture] = castTime + cooldown;
+
     const duration = rawStroke.length > 1
       ? (rawStroke[rawStroke.length - 1].timestamp - rawStroke[0].timestamp) / 1000 : NaN;
     const cast = this.combat.beginCast(result, duration);
@@ -2323,7 +2353,7 @@ export class Game {
 
   /** Seconds a combo survives without a hit (base value + upgrades) */
   get comboDecayTime() {
-    return COMBO_CONFIG.DECAY_TIME + this.upgrades.comboTimeBonus;
+    return (this.runConfiguration?.id !== "local" && this.runConfiguration?.values.combo.decaySeconds || COMBO_CONFIG.DECAY_TIME) + this.upgrades.comboTimeBonus;
   }
 
   /**
@@ -2672,6 +2702,7 @@ export class Game {
 
   /** Practice Mode: draw freely with accuracy feedback and no enemies */
   startPractice() {
+    if (this.remoteConfiguration?.pin().values.modes.practiceEnabled === false) return;
     this.stateMachine.changeState(GAME_STATES.PRACTICE);
   }
 

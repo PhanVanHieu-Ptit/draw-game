@@ -9,7 +9,11 @@ export const modules = [
   "system",
 ];
 export const roles = {
-  "Super Admin": modules.flatMap((m) => [`${m}:read`, `${m}:write`]),
+  "Super Admin": [
+    ...modules.flatMap((m) => [`${m}:read`, `${m}:write`]),
+    "configuration:review",
+    "configuration:publish",
+  ],
   "Game Designer": [
     "dashboard:read",
     "configuration:read",
