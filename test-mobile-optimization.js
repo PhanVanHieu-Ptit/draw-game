@@ -414,7 +414,7 @@ console.log('\n--- 6. Game integration (resize, tiers, background layer, auto-pa
   let barWrites = 0;
   const barStyle = { set width(v) { barWrites++; this._w = v; }, get width() { return this._w; } };
   let classOps = 0;
-  ui.comboBadge = { classList: { add: () => { classOps++; }, remove: () => { classOps++; } } };
+  ui.comboBadge = { setAttribute: () => {}, classList: { add: () => { classOps++; }, remove: () => { classOps++; } } };
   ui.comboMult = { textContent: '' };
   ui.comboBar = { style: barStyle };
   ui._comboActive = false; ui._comboPct = undefined; ui._comboLabel = '';

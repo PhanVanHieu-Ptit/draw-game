@@ -1355,7 +1355,7 @@ export class UIManager {
     if (!this.comboBadge) return;
 
     // Called every frame: only touch the DOM (and trigger style recalc) when something visible changed.
-    if (count > 1) {
+    if (count > 0) {
       if (!this._comboActive) {
         this.comboBadge.classList.add('active');
         this._comboActive = true;
@@ -1370,6 +1370,8 @@ export class UIManager {
         const pct = Math.max(0, Math.round(decayProgress * 100));
         if (pct !== this._comboPct) {
           this.comboBar.style.width = `${pct}%`;
+          this.comboBar.style.backgroundColor = pct <= 25 ? '#f59e0b' : '';
+          this.comboBadge.setAttribute('aria-label', `${count} combo, ${pct}% thời gian còn lại`);
           this._comboPct = pct;
         }
       }

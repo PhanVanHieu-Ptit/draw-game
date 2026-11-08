@@ -4,6 +4,7 @@
  * Optimized with Object Pooling and frame-rate independent multi-harmonic sine wave animations.
  */
 
+import { StatusEffects } from '../combat/StatusEffects.js';
 import { Entity } from './Entity.js';
 import { RUNES, ENEMY_TYPES } from '../core/Constants.js';
 import { applyBorderPattern, resetBorderPattern, drawRunePattern } from './RunePatterns.js';
@@ -269,6 +270,13 @@ export class Enemy extends Entity {
    * @param {Object} config 
    */
   init(config) {
+    this.combatGeneration = (this.combatGeneration || 0) + 1;
+    this.statusEffects = this.statusEffects || new StatusEffects();
+    this.statusEffects.clear();
+    this.combatElement = null;
+    this.combatSpeedScale = 1;
+    this.eliteModifier = config.eliteModifier || null;
+    this.eliteBlocks = 0;
     this.x = config.x || 0;
     this.y = config.y || 0;
     this.vx = 0;
@@ -515,7 +523,7 @@ export class Enemy extends Entity {
    */
   freeze(duration = 4.5) {
     this.isFrozen = true;
-    this.freezeTimer = duration;
+    this.freezeTimer = Math.max(this.freezeTimer, duration);
     this.thawTimer = 0;
     this.slowTimer = 0;
     this.expressionTimer = duration + 0.8;
@@ -994,7 +1002,7 @@ export class Enemy extends Entity {
         // Normal perpendicular vector for menacing undulating flight motion
         const px = -ny;
         const py = nx;
-        const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * thawMult;
+        const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * thawMult * (this.combatSpeedScale ?? 1);
         const wave = Math.sin(this.time * 2.0 + this.phase) * (currentSpeed * 0.35);
 
         this.x += (nx * currentSpeed + px * wave) * dt;
@@ -1022,7 +1030,7 @@ export class Enemy extends Entity {
       const surgeMult = 1.0;
 
       const sprintMult = this.sprintTimer > 0 && this.gimmick ? this.gimmick.speed : 1.0;
-      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult * thawMult * sprintMult;
+      const currentSpeed = this.speed * (this.slowTimer > 0 ? this.slowFactor : 1.0) * surgeMult * thawMult * sprintMult * (this.combatSpeedScale ?? 1);
       const wave = Math.sin(this.time * this.oscillationFrequency + this.phase) * (currentSpeed * this.oscillationAmplitude);
 
       this.x += (nx * currentSpeed + px * wave) * dt;
@@ -1043,8 +1051,8 @@ export class Enemy extends Entity {
     const px = -this.goldenDirY;
     const py = this.goldenDirX;
     const slow = this.slowTimer > 0 ? this.slowFactor : 1.0;
-    this.x += (this.goldenDirX * this.speed * boost * slow + px * weave) * dt;
-    this.y += (this.goldenDirY * this.speed * boost * slow + py * weave) * dt;
+    this.x += (this.goldenDirX * this.speed * boost * slow * (this.combatSpeedScale ?? 1) + px * weave) * dt;
+    this.y += (this.goldenDirY * this.speed * boost * slow * (this.combatSpeedScale ?? 1) + py * weave) * dt;
 
     const m = 140;
     if (this.x < -m || this.x > this.canvasWidth + m || this.y < -m || this.y > this.canvasHeight + m) {
