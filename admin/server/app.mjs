@@ -126,6 +126,7 @@ export function createAdminServer({
       }
       if (
         await configurationRoute({
+          content: path.startsWith("/api/gameplay/environments/") || path.startsWith("/api/game-content/"),
           req,
           path,
           method,

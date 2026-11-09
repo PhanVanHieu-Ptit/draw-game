@@ -14,6 +14,8 @@ cp .env.example .env
 npm run server
 ```
 
+`npm run server` watches backend and shared-module changes and restarts the local API automatically. Restarts clear in-memory sessions, so sign in again afterward. Use `npm run server:start` when file watching is not needed. After changing `.env`, restart the server manually.
+
 In another terminal, from `admin/`:
 
 ```sh

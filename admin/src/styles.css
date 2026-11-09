@@ -170,3 +170,8 @@ h1 {
     display: none;
   }
 }
+
+.gameplay-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.gameplay-fields > div { min-width: 0; }
+.gameplay-fields label { display: block; margin-bottom: 6px; font-weight: 600; }
+.gameplay-fields > div:has(.ant-space-vertical), .gameplay-fields > div:has(> .gameplay-fields) { grid-column: 1 / -1; }
