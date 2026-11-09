@@ -1,3 +1,4 @@
+import { loadPublishedStory, setStoryLocale } from './shared/story/runtime.js';
 /**
  * @file main.js
  * @description Entry point for Arcane Paws: Spellscribe game.
@@ -24,6 +25,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     game.settings.onChange((key, value) => game._applySetting(key, value));
     game._applyAllSettings();
   }
+  await loadPublishedStory(import.meta.env.VITE_STORY_CONTENT_URL);
+  setStoryLocale(import.meta.env.VITE_STORY_LOCALE || 'vi');
   game.start();
 
   // Expose to window for debugging if needed

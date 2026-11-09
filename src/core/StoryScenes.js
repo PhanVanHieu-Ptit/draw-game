@@ -1,3 +1,4 @@
+import { storyLines } from '../../shared/story/runtime.js';
 /**
  * @file StoryScenes.js
  * @description In-run story: who says what, and when, during a Story level. Pure data plus two small
@@ -185,18 +186,12 @@ export function lineDuration(text) {
  * @returns {Array<Speaker & { who: string, text: string, ms: number }>}
  */
 export function buildScene(level, beat, opts = {}) {
-  const scene = STORY_SCENES[level];
-  const cfg = LEVEL_CONFIGS[level - 1];
-  if (!scene || !cfg || !Array.isArray(scene[beat])) return [];
-
-  const lines = [];
-  for (const line of scene[beat]) {
-    if (opts.replay && line.once) continue;
-    const text = line.quote ? cfg[line.quote] : line.text;
-    if (!text) continue;
-    lines.push({ ...resolveSpeaker(line.who, level), who: line.who, text, ms: lineDuration(text) });
-  }
-  return lines;
+  const resolve = line => ({
+    ...resolveSpeaker(line.who, level), ...line, ms: lineDuration(line.text),
+    ...(line.choices ? { choices: line.choices.map(choice => ({...choice,resume:()=>choice.resume().map(resolve)})) } : {}),
+    ...(line.resume ? {resume:()=>line.resume().map(resolve)} : {})
+  });
+  return storyLines(`chapter.${level}.${beat}`, opts).map(resolve);
 }
 
 /**
@@ -210,6 +205,6 @@ export function buildBark(companionId, event, count = 0) {
   const who = BARKS[companionId] ? companionId : 'momo';
   const lines = BARKS[who][event];
   if (!lines || lines.length === 0) return null;
-  const text = lines[count % lines.length];
+  const text = storyLines(`reaction.${who}.${event}.${count % lines.length}`)[0]?.text || lines[count % lines.length];
   return { ...resolveSpeaker(who, 1), who, text, ms: Math.max(2600, lineDuration(text) - 500) };
 }

@@ -1,10 +1,11 @@
+import { storyContent } from '../../shared/story/runtime.js';
 /**
  * @file UIManager.js
  * @description Manages HTML5 UI overlays, HUD updates, 5-level stage selection,
  * level transition banners (Ready... Set... Draw!), Story Cutscenes, and Victory screens.
  */
 
-import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
+import { GAME_STATES, RUNES, LEVEL_CONFIGS, STORAGE_KEYS, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
 import { loreSummary } from '../core/Lore.js';
 import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
@@ -219,7 +220,7 @@ export class UIManager {
     if (this.btnStoryNext) {
       this.btnStoryNext.addEventListener('click', () => {
         if (this.currentStoryAct === 'intro') {
-          const slides = STORY_SLIDES.INTRO;
+          const slides = storyContent.slides.INTRO;
           if (this.currentStoryIndex < slides.length - 1) {
             this.showStorySlide(this.currentStoryIndex + 1);
           } else if (this.isStoryPreviewMode) {
@@ -242,7 +243,7 @@ export class UIManager {
             this.showStoryVictorySlide(0);
           }
         } else if (this.currentStoryAct === 'victory') {
-          const vicSlides = STORY_SLIDES.VICTORY;
+          const vicSlides = storyContent.slides.VICTORY;
           if (this.currentStoryIndex < vicSlides.length - 1) {
             this.showStoryVictorySlide(this.currentStoryIndex + 1);
           } else if (this._endingOverlay) {
@@ -251,7 +252,7 @@ export class UIManager {
             this.game.stateMachine.changeState(GAME_STATES.MENU);
           }
         } else if (this.currentStoryAct === 'trueEnding') {
-          if (this.currentStoryIndex < STORY_SLIDES.TRUE_ENDING.length - 1) {
+          if (this.currentStoryIndex < storyContent.slides.TRUE_ENDING.length - 1) {
             this.showStoryEndingSlide(this.currentStoryIndex + 1);
           } else if (this._endingOverlay) {
             this._nextEnding();
@@ -284,7 +285,7 @@ export class UIManager {
           if (this.currentStoryIndex > 0) {
             this.showStoryEndingSlide(this.currentStoryIndex - 1);
           } else if (!this._endingOverlay) {
-            this.showStoryVictorySlide(STORY_SLIDES.VICTORY.length - 1);
+            this.showStoryVictorySlide(storyContent.slides.VICTORY.length - 1);
           }
         }
       });
@@ -820,7 +821,7 @@ export class UIManager {
   // STORY CUTSCENE SLIDES & CHAPTER REVIEW
   // =========================================================================
   showStorySlide(index) {
-    const slides = STORY_SLIDES.INTRO;
+    const slides = storyContent.slides.INTRO;
     if (index < 0 || index >= slides.length) return;
     this.currentStoryAct = 'intro';
     this.currentStoryIndex = index;
@@ -861,7 +862,7 @@ export class UIManager {
   }
 
   showStoryChapter(chapNum) {
-    const chapter = STORY_CHAPTERS.find(c => c.chapter === chapNum) || STORY_CHAPTERS[0];
+    const chapter = storyContent.chapters.find(c => c.chapter === chapNum) || storyContent.chapters[0];
     if (!chapter) return;
     this.currentStoryAct = 'chapter';
     this.currentChapterIndex = chapNum;
@@ -901,7 +902,7 @@ export class UIManager {
   }
 
   showStoryVictorySlide(index) {
-    const slides = STORY_SLIDES.VICTORY;
+    const slides = storyContent.slides.VICTORY;
     if (index < 0 || index >= slides.length) return;
     this.currentStoryAct = 'victory';
     this.currentStoryIndex = index;
@@ -932,7 +933,7 @@ export class UIManager {
 
   /** The true ending: three slides, unlocked by keeping every pledge */
   showStoryEndingSlide(index) {
-    const slides = STORY_SLIDES.TRUE_ENDING;
+    const slides = storyContent.slides.TRUE_ENDING;
     if (index < 0 || index >= slides.length) return;
     this.currentStoryAct = 'trueEnding';
     this.currentStoryIndex = index;
@@ -1428,7 +1429,34 @@ export class UIManager {
   // =========================================================================
   // IN-GAME CHARACTER DIALOGUE & SPEECH TOAST
   // =========================================================================
-  showDialogue({ name, role, text, avatar = '🐱', characterId = null, color = '#c084fc', duration = 3800 } = {}) {
+  showStoryChoices(line, choose) {
+    this._storyChoiceElement?.remove();
+    const overlay = document.createElement('div');
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-label','Story choice');
+    Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'10000',background:'#100c22ee',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'16px',padding:'24px',color:'white'});
+    const question = document.createElement('p');
+    question.textContent = line.text;
+    overlay.append(question);
+    const paused = this.game.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING;
+    if (paused) this.game.stateMachine.changeState(GAME_STATES.PAUSE);
+    line.choices.forEach((choice,index)=>{
+      const button = document.createElement('button');
+      button.textContent = choice.text;
+      Object.assign(button.style,{padding:'14px 24px',color:'white',background:'#594080',border:'1px solid #c5a1ff',borderRadius:'10px',cursor:'pointer',fontSize:'18px'});
+      button.onclick = () => {
+        overlay.remove();
+        if (paused && this.game.stateMachine.getCurrentStateName() === GAME_STATES.PAUSE) this.game.stateMachine.changeState(GAME_STATES.PLAYING);
+        choose(index);
+      };
+      overlay.append(button);
+    });
+    document.body.append(overlay);
+    this._storyChoiceElement = overlay;
+    overlay.querySelector('button')?.focus();
+  }
+
+  showDialogue({ name, role, text, expression, avatar = '🐱', characterId = null, color = '#c084fc', duration = 3800 } = {}) {
     if (!this.dialogueToast) return;
     clearTimeout(this._dialogueTimeout);
 
@@ -1449,7 +1477,8 @@ export class UIManager {
 
     if (this.diagName) this.diagName.textContent = name || 'Momo';
     if (this.diagRole) {
-      this.diagRole.textContent = role || 'Đồng Hành';
+      const expressions = {neutral:'',happy:'😊',sad:'😢',angry:'😠',surprised:'😮',afraid:'😨',determined:'✊'};
+      this.diagRole.textContent = `${role || 'Đồng Hành'}${expression ? ` ${expressions[expression] || ''}` : ''}`;
       this.diagRole.style.color = color;
       this.diagRole.style.background = `${color}25`;
     }

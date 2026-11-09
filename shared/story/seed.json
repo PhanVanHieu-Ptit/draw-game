@@ -1,0 +1,1918 @@
+{
+  "schemaVersion": 1,
+  "chapters": [
+    {
+      "id": 1,
+      "titleKey": "chapters.0.title"
+    },
+    {
+      "id": 2,
+      "titleKey": "chapters.1.title"
+    },
+    {
+      "id": 3,
+      "titleKey": "chapters.2.title"
+    },
+    {
+      "id": 4,
+      "titleKey": "chapters.3.title"
+    },
+    {
+      "id": 5,
+      "titleKey": "chapters.4.title"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "chapter.1.intro.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapters.0.quotes.intro",
+      "who": "barnaby",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 150
+      },
+      "edges": [
+        {
+          "to": "chapter.1.intro.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.1.intro.1",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapter.1.intro.1.text",
+      "who": "momo",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 150
+      },
+      "edges": [
+        {
+          "to": "chapter.1.intro.2"
+        }
+      ]
+    },
+    {
+      "id": "chapter.1.intro.2",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapter.1.intro.2.text",
+      "who": "grimoire",
+      "once": true,
+      "position": {
+        "x": 530,
+        "y": 150
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.1.mid.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapter.1.mid.0.text",
+      "who": "barnaby",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 260
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.1.bossSpawn.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapters.0.quotes.boss",
+      "who": "boss",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 370
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.1.bossHurtFirst.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapter.1.bossHurtFirst.0.text",
+      "who": "boss",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 480
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.1.bossDefeat.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "chapters.0.quotes.defeat",
+      "who": "freed",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 590
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.2.intro.0",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapters.1.quotes.intro",
+      "who": "oliver",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 700
+      },
+      "edges": [
+        {
+          "to": "chapter.2.intro.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.2.intro.1",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapter.2.intro.1.text",
+      "who": "momo",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 700
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.2.mid.0",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapter.2.mid.0.text",
+      "who": "oliver",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 810
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.2.bossSpawn.0",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapters.1.quotes.boss",
+      "who": "boss",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 920
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.2.bossHurtFirst.0",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapter.2.bossHurtFirst.0.text",
+      "who": "boss",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 1030
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.2.bossDefeat.0",
+      "chapter": 2,
+      "type": "Dialogue",
+      "textKey": "chapters.1.quotes.defeat",
+      "who": "freed",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 1140
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.3.intro.0",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapters.2.quotes.intro",
+      "who": "luna",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 1250
+      },
+      "edges": [
+        {
+          "to": "chapter.3.intro.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.3.intro.1",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapter.3.intro.1.text",
+      "who": "luna",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 1250
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.3.mid.0",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapter.3.mid.0.text",
+      "who": "grimoire",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 1360
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.3.bossSpawn.0",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapters.2.quotes.boss",
+      "who": "boss",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 1470
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.3.bossHurtFirst.0",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapter.3.bossHurtFirst.0.text",
+      "who": "boss",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 1580
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.3.bossDefeat.0",
+      "chapter": 3,
+      "type": "Dialogue",
+      "textKey": "chapters.2.quotes.defeat",
+      "who": "freed",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 1690
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.4.intro.0",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapters.3.quotes.intro",
+      "who": "nyx",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 1800
+      },
+      "edges": [
+        {
+          "to": "chapter.4.intro.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.4.intro.1",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapter.4.intro.1.text",
+      "who": "nyx",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 1800
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.4.mid.0",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapter.4.mid.0.text",
+      "who": "momo",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 1910
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.4.bossSpawn.0",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapters.3.quotes.boss",
+      "who": "boss",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2020
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.4.bossHurtFirst.0",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapter.4.bossHurtFirst.0.text",
+      "who": "boss",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 2130
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.4.bossDefeat.0",
+      "chapter": 4,
+      "type": "Dialogue",
+      "textKey": "chapters.3.quotes.defeat",
+      "who": "freed",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2240
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.5.intro.0",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapters.4.quotes.intro",
+      "who": "allies",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2350
+      },
+      "edges": [
+        {
+          "to": "chapter.5.intro.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.5.intro.1",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapter.5.intro.1.text",
+      "who": "momo",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 2350
+      },
+      "edges": [
+        {
+          "to": "chapter.5.intro.2"
+        }
+      ]
+    },
+    {
+      "id": "chapter.5.intro.2",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapter.5.intro.2.text",
+      "who": "barnaby",
+      "once": true,
+      "position": {
+        "x": 530,
+        "y": 2350
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.5.bossSpawn.0",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapters.4.quotes.boss",
+      "who": "boss",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2460
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.5.bossHurtFirst.0",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapter.5.bossHurtFirst.0.text",
+      "who": "umbra",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 2570
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.5.bossHurtLast.0",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapter.5.bossHurtLast.0.text",
+      "who": "barnaby",
+      "once": true,
+      "position": {
+        "x": 30,
+        "y": 2680
+      },
+      "edges": [
+        {
+          "to": "chapter.5.bossHurtLast.1"
+        }
+      ]
+    },
+    {
+      "id": "chapter.5.bossHurtLast.1",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapter.5.bossHurtLast.1.text",
+      "who": "umbra",
+      "once": true,
+      "position": {
+        "x": 280,
+        "y": 2680
+      },
+      "edges": []
+    },
+    {
+      "id": "chapter.5.bossDefeat.0",
+      "chapter": 5,
+      "type": "Dialogue",
+      "textKey": "chapters.4.quotes.defeat",
+      "who": "freed",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2790
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.momo.combo.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.momo.combo.0.0.text",
+      "who": "momo",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 2900
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.momo.combo.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.momo.combo.1.0.text",
+      "who": "momo",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3010
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.momo.lowHp.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.momo.lowHp.0.0.text",
+      "who": "momo",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3120
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.momo.lowHp.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.momo.lowHp.1.0.text",
+      "who": "momo",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3230
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.oliver.combo.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.oliver.combo.0.0.text",
+      "who": "oliver",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3340
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.oliver.combo.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.oliver.combo.1.0.text",
+      "who": "oliver",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3450
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.oliver.lowHp.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.oliver.lowHp.0.0.text",
+      "who": "oliver",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3560
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.oliver.lowHp.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.oliver.lowHp.1.0.text",
+      "who": "oliver",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3670
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.luna.combo.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.luna.combo.0.0.text",
+      "who": "luna",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3780
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.luna.combo.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.luna.combo.1.0.text",
+      "who": "luna",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 3890
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.luna.lowHp.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.luna.lowHp.0.0.text",
+      "who": "luna",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4000
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.luna.lowHp.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.luna.lowHp.1.0.text",
+      "who": "luna",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4110
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.nyx.combo.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.nyx.combo.0.0.text",
+      "who": "nyx",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4220
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.nyx.combo.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.nyx.combo.1.0.text",
+      "who": "nyx",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4330
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.nyx.lowHp.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.nyx.lowHp.0.0.text",
+      "who": "nyx",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4440
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.nyx.lowHp.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.nyx.lowHp.1.0.text",
+      "who": "nyx",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4550
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.barnaby.combo.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.barnaby.combo.0.0.text",
+      "who": "barnaby",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4660
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.barnaby.combo.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.barnaby.combo.1.0.text",
+      "who": "barnaby",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4770
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.barnaby.lowHp.0.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.barnaby.lowHp.0.0.text",
+      "who": "barnaby",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4880
+      },
+      "edges": []
+    },
+    {
+      "id": "reaction.barnaby.lowHp.1.0",
+      "chapter": 1,
+      "type": "Dialogue",
+      "textKey": "reaction.barnaby.lowHp.1.0.text",
+      "who": "barnaby",
+      "once": false,
+      "position": {
+        "x": 30,
+        "y": 4990
+      },
+      "edges": []
+    },
+    {
+      "id": "memory.1",
+      "chapter": 1,
+      "type": "Memory",
+      "textKey": "memories.0.shard",
+      "memoryId": "1",
+      "position": {
+        "x": 30,
+        "y": 1200
+      },
+      "edges": []
+    },
+    {
+      "id": "memory.2",
+      "chapter": 2,
+      "type": "Memory",
+      "textKey": "memories.1.shard",
+      "memoryId": "2",
+      "position": {
+        "x": 30,
+        "y": 1200
+      },
+      "edges": []
+    },
+    {
+      "id": "memory.3",
+      "chapter": 3,
+      "type": "Memory",
+      "textKey": "memories.2.shard",
+      "memoryId": "3",
+      "position": {
+        "x": 30,
+        "y": 1200
+      },
+      "edges": []
+    },
+    {
+      "id": "memory.4",
+      "chapter": 4,
+      "type": "Memory",
+      "textKey": "memories.3.shard",
+      "memoryId": "4",
+      "position": {
+        "x": 30,
+        "y": 1200
+      },
+      "edges": []
+    },
+    {
+      "id": "memory.5",
+      "chapter": 5,
+      "type": "Memory",
+      "textKey": "memories.4.shard",
+      "memoryId": "5",
+      "position": {
+        "x": 30,
+        "y": 1200
+      },
+      "edges": []
+    },
+    {
+      "id": "ending.normal.0",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "normal",
+      "textKey": "slides.VICTORY.0.text",
+      "position": {
+        "x": 30,
+        "y": 1400
+      },
+      "edges": [
+        {
+          "to": "ending.normal.1"
+        }
+      ]
+    },
+    {
+      "id": "ending.normal.1",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "normal",
+      "textKey": "slides.VICTORY.1.text",
+      "position": {
+        "x": 280,
+        "y": 1400
+      },
+      "edges": [
+        {
+          "to": "ending.normal.2"
+        }
+      ]
+    },
+    {
+      "id": "ending.normal.2",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "normal",
+      "textKey": "slides.VICTORY.2.text",
+      "position": {
+        "x": 530,
+        "y": 1400
+      },
+      "edges": []
+    },
+    {
+      "id": "ending.true.0",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "true",
+      "textKey": "slides.TRUE_ENDING.0.text",
+      "position": {
+        "x": 30,
+        "y": 1400
+      },
+      "edges": [
+        {
+          "to": "ending.true.1"
+        }
+      ]
+    },
+    {
+      "id": "ending.true.1",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "true",
+      "textKey": "slides.TRUE_ENDING.1.text",
+      "position": {
+        "x": 280,
+        "y": 1400
+      },
+      "edges": [
+        {
+          "to": "ending.true.2"
+        }
+      ]
+    },
+    {
+      "id": "ending.true.2",
+      "chapter": 5,
+      "type": "Ending",
+      "ending": "true",
+      "textKey": "slides.TRUE_ENDING.2.text",
+      "position": {
+        "x": 530,
+        "y": 1400
+      },
+      "edges": []
+    }
+  ],
+  "entries": {
+    "chapter.1.intro": "chapter.1.intro.0",
+    "chapter.1.mid": "chapter.1.mid.0",
+    "chapter.1.bossSpawn": "chapter.1.bossSpawn.0",
+    "chapter.1.bossHurtFirst": "chapter.1.bossHurtFirst.0",
+    "chapter.1.bossDefeat": "chapter.1.bossDefeat.0",
+    "chapter.2.intro": "chapter.2.intro.0",
+    "chapter.2.mid": "chapter.2.mid.0",
+    "chapter.2.bossSpawn": "chapter.2.bossSpawn.0",
+    "chapter.2.bossHurtFirst": "chapter.2.bossHurtFirst.0",
+    "chapter.2.bossDefeat": "chapter.2.bossDefeat.0",
+    "chapter.3.intro": "chapter.3.intro.0",
+    "chapter.3.mid": "chapter.3.mid.0",
+    "chapter.3.bossSpawn": "chapter.3.bossSpawn.0",
+    "chapter.3.bossHurtFirst": "chapter.3.bossHurtFirst.0",
+    "chapter.3.bossDefeat": "chapter.3.bossDefeat.0",
+    "chapter.4.intro": "chapter.4.intro.0",
+    "chapter.4.mid": "chapter.4.mid.0",
+    "chapter.4.bossSpawn": "chapter.4.bossSpawn.0",
+    "chapter.4.bossHurtFirst": "chapter.4.bossHurtFirst.0",
+    "chapter.4.bossDefeat": "chapter.4.bossDefeat.0",
+    "chapter.5.intro": "chapter.5.intro.0",
+    "chapter.5.bossSpawn": "chapter.5.bossSpawn.0",
+    "chapter.5.bossHurtFirst": "chapter.5.bossHurtFirst.0",
+    "chapter.5.bossHurtLast": "chapter.5.bossHurtLast.0",
+    "chapter.5.bossDefeat": "chapter.5.bossDefeat.0",
+    "reaction.momo.combo.0": "reaction.momo.combo.0.0",
+    "reaction.momo.combo.1": "reaction.momo.combo.1.0",
+    "reaction.momo.lowHp.0": "reaction.momo.lowHp.0.0",
+    "reaction.momo.lowHp.1": "reaction.momo.lowHp.1.0",
+    "reaction.oliver.combo.0": "reaction.oliver.combo.0.0",
+    "reaction.oliver.combo.1": "reaction.oliver.combo.1.0",
+    "reaction.oliver.lowHp.0": "reaction.oliver.lowHp.0.0",
+    "reaction.oliver.lowHp.1": "reaction.oliver.lowHp.1.0",
+    "reaction.luna.combo.0": "reaction.luna.combo.0.0",
+    "reaction.luna.combo.1": "reaction.luna.combo.1.0",
+    "reaction.luna.lowHp.0": "reaction.luna.lowHp.0.0",
+    "reaction.luna.lowHp.1": "reaction.luna.lowHp.1.0",
+    "reaction.nyx.combo.0": "reaction.nyx.combo.0.0",
+    "reaction.nyx.combo.1": "reaction.nyx.combo.1.0",
+    "reaction.nyx.lowHp.0": "reaction.nyx.lowHp.0.0",
+    "reaction.nyx.lowHp.1": "reaction.nyx.lowHp.1.0",
+    "reaction.barnaby.combo.0": "reaction.barnaby.combo.0.0",
+    "reaction.barnaby.combo.1": "reaction.barnaby.combo.1.0",
+    "reaction.barnaby.lowHp.0": "reaction.barnaby.lowHp.0.0",
+    "reaction.barnaby.lowHp.1": "reaction.barnaby.lowHp.1.0",
+    "memory.1": "memory.1",
+    "memory.2": "memory.2",
+    "memory.3": "memory.3",
+    "memory.4": "memory.4",
+    "memory.5": "memory.5",
+    "ending.normal": "ending.normal.0",
+    "ending.true": "ending.true.0"
+  },
+  "documents": {
+    "chapters": [
+      {
+        "chapter": 1,
+        "level": 1,
+        "levelId": "library",
+        "badge": {
+          "key": "chapters.0.badge"
+        },
+        "title": {
+          "key": "chapters.0.title"
+        },
+        "slideIndex": 3,
+        "companion": {
+          "name": {
+            "key": "chapters.0.companion.name"
+          },
+          "role": {
+            "key": "chapters.0.companion.role"
+          },
+          "icon": "🦉",
+          "color": "#60a5fa"
+        },
+        "bossName": {
+          "key": "chapters.0.bossName"
+        },
+        "bossIcon": "👻📚",
+        "runes": {
+          "key": "chapters.0.runes"
+        },
+        "text": {
+          "key": "chapters.0.text"
+        },
+        "quotes": {
+          "intro": {
+            "key": "chapters.0.quotes.intro"
+          },
+          "boss": {
+            "key": "chapters.0.quotes.boss"
+          },
+          "defeat": {
+            "key": "chapters.0.quotes.defeat"
+          }
+        }
+      },
+      {
+        "chapter": 2,
+        "level": 2,
+        "levelId": "cafeteria",
+        "badge": {
+          "key": "chapters.1.badge"
+        },
+        "title": {
+          "key": "chapters.1.title"
+        },
+        "slideIndex": 4,
+        "companion": {
+          "name": {
+            "key": "chapters.1.companion.name"
+          },
+          "role": {
+            "key": "chapters.1.companion.role"
+          },
+          "icon": "🐱🥐",
+          "color": "#fb923c"
+        },
+        "bossName": {
+          "key": "chapters.1.bossName"
+        },
+        "bossIcon": "👻🍲",
+        "runes": {
+          "key": "chapters.1.runes"
+        },
+        "text": {
+          "key": "chapters.1.text"
+        },
+        "quotes": {
+          "intro": {
+            "key": "chapters.1.quotes.intro"
+          },
+          "boss": {
+            "key": "chapters.1.quotes.boss"
+          },
+          "defeat": {
+            "key": "chapters.1.quotes.defeat"
+          }
+        }
+      },
+      {
+        "chapter": 3,
+        "level": 3,
+        "levelId": "classroom",
+        "badge": {
+          "key": "chapters.2.badge"
+        },
+        "title": {
+          "key": "chapters.2.title"
+        },
+        "slideIndex": 5,
+        "companion": {
+          "name": {
+            "key": "chapters.2.companion.name"
+          },
+          "role": {
+            "key": "chapters.2.companion.role"
+          },
+          "icon": "🐱✨",
+          "color": "#c084fc"
+        },
+        "bossName": {
+          "key": "chapters.2.bossName"
+        },
+        "bossIcon": "👻🪐",
+        "runes": {
+          "key": "chapters.2.runes"
+        },
+        "text": {
+          "key": "chapters.2.text"
+        },
+        "quotes": {
+          "intro": {
+            "key": "chapters.2.quotes.intro"
+          },
+          "boss": {
+            "key": "chapters.2.quotes.boss"
+          },
+          "defeat": {
+            "key": "chapters.2.quotes.defeat"
+          }
+        }
+      },
+      {
+        "chapter": 4,
+        "level": 4,
+        "levelId": "gymnasium",
+        "badge": {
+          "key": "chapters.3.badge"
+        },
+        "title": {
+          "key": "chapters.3.title"
+        },
+        "slideIndex": 6,
+        "companion": {
+          "name": {
+            "key": "chapters.3.companion.name"
+          },
+          "role": {
+            "key": "chapters.3.companion.role"
+          },
+          "icon": "🐱⚡",
+          "color": "#34d399"
+        },
+        "bossName": {
+          "key": "chapters.3.bossName"
+        },
+        "bossIcon": "👻🏀",
+        "runes": {
+          "key": "chapters.3.runes"
+        },
+        "text": {
+          "key": "chapters.3.text"
+        },
+        "quotes": {
+          "intro": {
+            "key": "chapters.3.quotes.intro"
+          },
+          "boss": {
+            "key": "chapters.3.quotes.boss"
+          },
+          "defeat": {
+            "key": "chapters.3.quotes.defeat"
+          }
+        }
+      },
+      {
+        "chapter": 5,
+        "level": 5,
+        "levelId": "rooftop",
+        "badge": {
+          "key": "chapters.4.badge"
+        },
+        "title": {
+          "key": "chapters.4.title"
+        },
+        "slideIndex": 7,
+        "companion": {
+          "name": {
+            "key": "chapters.4.companion.name"
+          },
+          "role": {
+            "key": "chapters.4.companion.role"
+          },
+          "icon": "🐾🌟",
+          "color": "#f43f5e"
+        },
+        "bossName": {
+          "key": "chapters.4.bossName"
+        },
+        "bossIcon": "👑👻",
+        "runes": {
+          "key": "chapters.4.runes"
+        },
+        "text": {
+          "key": "chapters.4.text"
+        },
+        "quotes": {
+          "intro": {
+            "key": "chapters.4.quotes.intro"
+          },
+          "boss": {
+            "key": "chapters.4.quotes.boss"
+          },
+          "defeat": {
+            "key": "chapters.4.quotes.defeat"
+          }
+        }
+      }
+    ],
+    "slides": {
+      "INTRO": [
+        {
+          "title": {
+            "key": "slides.INTRO.0.title"
+          },
+          "text": {
+            "key": "slides.INTRO.0.text"
+          },
+          "illustration": "library_reading",
+          "actionPrompt": {
+            "key": "slides.INTRO.0.actionPrompt"
+          }
+        },
+        {
+          "title": {
+            "key": "slides.INTRO.1.title"
+          },
+          "text": {
+            "key": "slides.INTRO.1.text"
+          },
+          "illustration": "ghost_theft",
+          "actionPrompt": {
+            "key": "slides.INTRO.1.actionPrompt"
+          }
+        },
+        {
+          "title": {
+            "key": "slides.INTRO.2.title"
+          },
+          "text": {
+            "key": "slides.INTRO.2.text"
+          },
+          "illustration": "cat_wand_ready",
+          "actionPrompt": {
+            "key": "slides.INTRO.2.actionPrompt"
+          }
+        }
+      ],
+      "VICTORY": [
+        {
+          "title": {
+            "key": "slides.VICTORY.0.title"
+          },
+          "text": {
+            "key": "slides.VICTORY.0.text"
+          },
+          "illustration": "boss_defeated"
+        },
+        {
+          "title": {
+            "key": "slides.VICTORY.1.title"
+          },
+          "text": {
+            "key": "slides.VICTORY.1.text"
+          },
+          "illustration": "book_recovered"
+        },
+        {
+          "title": {
+            "key": "slides.VICTORY.2.title"
+          },
+          "text": {
+            "key": "slides.VICTORY.2.text"
+          },
+          "illustration": "happy_celebration"
+        }
+      ],
+      "TRUE_ENDING": [
+        {
+          "title": {
+            "key": "slides.TRUE_ENDING.0.title"
+          },
+          "text": {
+            "key": "slides.TRUE_ENDING.0.text"
+          },
+          "illustration": "name_restored"
+        },
+        {
+          "title": {
+            "key": "slides.TRUE_ENDING.1.title"
+          },
+          "text": {
+            "key": "slides.TRUE_ENDING.1.text"
+          },
+          "illustration": "barnaby_confession"
+        },
+        {
+          "title": {
+            "key": "slides.TRUE_ENDING.2.title"
+          },
+          "text": {
+            "key": "slides.TRUE_ENDING.2.text"
+          },
+          "illustration": "constellation_lumen",
+          "actionPrompt": {
+            "key": "slides.TRUE_ENDING.2.actionPrompt"
+          }
+        }
+      ],
+      "CHAPTERS": [
+        {
+          "chapter": 1,
+          "level": 1,
+          "levelId": "library",
+          "badge": {
+            "key": "slides.CHAPTERS.0.badge"
+          },
+          "title": {
+            "key": "slides.CHAPTERS.0.title"
+          },
+          "slideIndex": 3,
+          "companion": {
+            "name": {
+              "key": "slides.CHAPTERS.0.companion.name"
+            },
+            "role": {
+              "key": "slides.CHAPTERS.0.companion.role"
+            },
+            "icon": "🦉",
+            "color": "#60a5fa"
+          },
+          "bossName": {
+            "key": "slides.CHAPTERS.0.bossName"
+          },
+          "bossIcon": "👻📚",
+          "runes": {
+            "key": "slides.CHAPTERS.0.runes"
+          },
+          "text": {
+            "key": "slides.CHAPTERS.0.text"
+          },
+          "quotes": {
+            "intro": {
+              "key": "slides.CHAPTERS.0.quotes.intro"
+            },
+            "boss": {
+              "key": "slides.CHAPTERS.0.quotes.boss"
+            },
+            "defeat": {
+              "key": "slides.CHAPTERS.0.quotes.defeat"
+            }
+          }
+        },
+        {
+          "chapter": 2,
+          "level": 2,
+          "levelId": "cafeteria",
+          "badge": {
+            "key": "slides.CHAPTERS.1.badge"
+          },
+          "title": {
+            "key": "slides.CHAPTERS.1.title"
+          },
+          "slideIndex": 4,
+          "companion": {
+            "name": {
+              "key": "slides.CHAPTERS.1.companion.name"
+            },
+            "role": {
+              "key": "slides.CHAPTERS.1.companion.role"
+            },
+            "icon": "🐱🥐",
+            "color": "#fb923c"
+          },
+          "bossName": {
+            "key": "slides.CHAPTERS.1.bossName"
+          },
+          "bossIcon": "👻🍲",
+          "runes": {
+            "key": "slides.CHAPTERS.1.runes"
+          },
+          "text": {
+            "key": "slides.CHAPTERS.1.text"
+          },
+          "quotes": {
+            "intro": {
+              "key": "slides.CHAPTERS.1.quotes.intro"
+            },
+            "boss": {
+              "key": "slides.CHAPTERS.1.quotes.boss"
+            },
+            "defeat": {
+              "key": "slides.CHAPTERS.1.quotes.defeat"
+            }
+          }
+        },
+        {
+          "chapter": 3,
+          "level": 3,
+          "levelId": "classroom",
+          "badge": {
+            "key": "slides.CHAPTERS.2.badge"
+          },
+          "title": {
+            "key": "slides.CHAPTERS.2.title"
+          },
+          "slideIndex": 5,
+          "companion": {
+            "name": {
+              "key": "slides.CHAPTERS.2.companion.name"
+            },
+            "role": {
+              "key": "slides.CHAPTERS.2.companion.role"
+            },
+            "icon": "🐱✨",
+            "color": "#c084fc"
+          },
+          "bossName": {
+            "key": "slides.CHAPTERS.2.bossName"
+          },
+          "bossIcon": "👻🪐",
+          "runes": {
+            "key": "slides.CHAPTERS.2.runes"
+          },
+          "text": {
+            "key": "slides.CHAPTERS.2.text"
+          },
+          "quotes": {
+            "intro": {
+              "key": "slides.CHAPTERS.2.quotes.intro"
+            },
+            "boss": {
+              "key": "slides.CHAPTERS.2.quotes.boss"
+            },
+            "defeat": {
+              "key": "slides.CHAPTERS.2.quotes.defeat"
+            }
+          }
+        },
+        {
+          "chapter": 4,
+          "level": 4,
+          "levelId": "gymnasium",
+          "badge": {
+            "key": "slides.CHAPTERS.3.badge"
+          },
+          "title": {
+            "key": "slides.CHAPTERS.3.title"
+          },
+          "slideIndex": 6,
+          "companion": {
+            "name": {
+              "key": "slides.CHAPTERS.3.companion.name"
+            },
+            "role": {
+              "key": "slides.CHAPTERS.3.companion.role"
+            },
+            "icon": "🐱⚡",
+            "color": "#34d399"
+          },
+          "bossName": {
+            "key": "slides.CHAPTERS.3.bossName"
+          },
+          "bossIcon": "👻🏀",
+          "runes": {
+            "key": "slides.CHAPTERS.3.runes"
+          },
+          "text": {
+            "key": "slides.CHAPTERS.3.text"
+          },
+          "quotes": {
+            "intro": {
+              "key": "slides.CHAPTERS.3.quotes.intro"
+            },
+            "boss": {
+              "key": "slides.CHAPTERS.3.quotes.boss"
+            },
+            "defeat": {
+              "key": "slides.CHAPTERS.3.quotes.defeat"
+            }
+          }
+        },
+        {
+          "chapter": 5,
+          "level": 5,
+          "levelId": "rooftop",
+          "badge": {
+            "key": "slides.CHAPTERS.4.badge"
+          },
+          "title": {
+            "key": "slides.CHAPTERS.4.title"
+          },
+          "slideIndex": 7,
+          "companion": {
+            "name": {
+              "key": "slides.CHAPTERS.4.companion.name"
+            },
+            "role": {
+              "key": "slides.CHAPTERS.4.companion.role"
+            },
+            "icon": "🐾🌟",
+            "color": "#f43f5e"
+          },
+          "bossName": {
+            "key": "slides.CHAPTERS.4.bossName"
+          },
+          "bossIcon": "👑👻",
+          "runes": {
+            "key": "slides.CHAPTERS.4.runes"
+          },
+          "text": {
+            "key": "slides.CHAPTERS.4.text"
+          },
+          "quotes": {
+            "intro": {
+              "key": "slides.CHAPTERS.4.quotes.intro"
+            },
+            "boss": {
+              "key": "slides.CHAPTERS.4.quotes.boss"
+            },
+            "defeat": {
+              "key": "slides.CHAPTERS.4.quotes.defeat"
+            }
+          }
+        }
+      ]
+    },
+    "memories": [
+      {
+        "level": 1,
+        "letter": "L",
+        "icon": "📚",
+        "keeper": {
+          "key": "memories.0.keeper"
+        },
+        "title": {
+          "key": "memories.0.title"
+        },
+        "shard": {
+          "key": "memories.0.shard"
+        },
+        "pledge": {
+          "virtue": {
+            "key": "memories.0.pledge.virtue"
+          },
+          "enVirtue": {
+            "key": "memories.0.pledge.enVirtue"
+          },
+          "title": {
+            "key": "memories.0.pledge.title"
+          },
+          "riddle": {
+            "key": "memories.0.pledge.riddle"
+          },
+          "objective": {
+            "key": "memories.0.pledge.objective"
+          },
+          "reveal": {
+            "key": "memories.0.pledge.reveal"
+          }
+        }
+      },
+      {
+        "level": 2,
+        "letter": "U",
+        "icon": "🍲",
+        "keeper": {
+          "key": "memories.1.keeper"
+        },
+        "title": {
+          "key": "memories.1.title"
+        },
+        "shard": {
+          "key": "memories.1.shard"
+        },
+        "pledge": {
+          "virtue": {
+            "key": "memories.1.pledge.virtue"
+          },
+          "enVirtue": {
+            "key": "memories.1.pledge.enVirtue"
+          },
+          "title": {
+            "key": "memories.1.pledge.title"
+          },
+          "riddle": {
+            "key": "memories.1.pledge.riddle"
+          },
+          "objective": {
+            "key": "memories.1.pledge.objective"
+          },
+          "reveal": {
+            "key": "memories.1.pledge.reveal"
+          }
+        }
+      },
+      {
+        "level": 3,
+        "letter": "M",
+        "icon": "🔭",
+        "keeper": {
+          "key": "memories.2.keeper"
+        },
+        "title": {
+          "key": "memories.2.title"
+        },
+        "shard": {
+          "key": "memories.2.shard"
+        },
+        "pledge": {
+          "virtue": {
+            "key": "memories.2.pledge.virtue"
+          },
+          "enVirtue": {
+            "key": "memories.2.pledge.enVirtue"
+          },
+          "title": {
+            "key": "memories.2.pledge.title"
+          },
+          "riddle": {
+            "key": "memories.2.pledge.riddle"
+          },
+          "objective": {
+            "key": "memories.2.pledge.objective"
+          },
+          "reveal": {
+            "key": "memories.2.pledge.reveal"
+          }
+        }
+      },
+      {
+        "level": 4,
+        "letter": "E",
+        "icon": "🏀",
+        "keeper": {
+          "key": "memories.3.keeper"
+        },
+        "title": {
+          "key": "memories.3.title"
+        },
+        "shard": {
+          "key": "memories.3.shard"
+        },
+        "pledge": {
+          "virtue": {
+            "key": "memories.3.pledge.virtue"
+          },
+          "enVirtue": {
+            "key": "memories.3.pledge.enVirtue"
+          },
+          "title": {
+            "key": "memories.3.pledge.title"
+          },
+          "riddle": {
+            "key": "memories.3.pledge.riddle"
+          },
+          "objective": {
+            "key": "memories.3.pledge.objective"
+          },
+          "reveal": {
+            "key": "memories.3.pledge.reveal"
+          }
+        }
+      },
+      {
+        "level": 5,
+        "letter": "N",
+        "icon": "🏰",
+        "keeper": {
+          "key": "memories.4.keeper"
+        },
+        "title": {
+          "key": "memories.4.title"
+        },
+        "shard": {
+          "key": "memories.4.shard"
+        },
+        "pledge": {
+          "virtue": {
+            "key": "memories.4.pledge.virtue"
+          },
+          "enVirtue": {
+            "key": "memories.4.pledge.enVirtue"
+          },
+          "title": {
+            "key": "memories.4.pledge.title"
+          },
+          "riddle": {
+            "key": "memories.4.pledge.riddle"
+          },
+          "objective": {
+            "key": "memories.4.pledge.objective"
+          },
+          "reveal": {
+            "key": "memories.4.pledge.reveal"
+          }
+        }
+      }
+    ]
+  },
+  "locales": {
+    "vi": {
+      "chapters.0.badge": "CHƯƠNG 1 • THƯ VIỆN CỔ KÍNH",
+      "chapters.0.title": "Màn Đêm Buông Xuống Thư Viện Cổ Kính",
+      "chapters.0.companion.name": "Viện Trưởng Barnaby",
+      "chapters.0.companion.role": "Đại Pháp Sư Cú Già",
+      "chapters.0.bossName": "Bóng Ma Thủ Thư (Madame Libraria)",
+      "chapters.0.runes": "Ngang [—] và Dọc [|]",
+      "chapters.0.text": "Cổ Thư Nhật Thực vừa bị cướp mất! Sương mù bao trùm thư viện, khiến Madame Libraria, người thủ thư hai trăm năm chưa ai mở sách của bà, cuồng nộ điều khiển hàng ngàn kệ sách bay. Viện Trưởng Barnaby dạy Momo hai nét ma pháp cơ bản [—] và [|], rồi khẽ lảng đi khi Momo hỏi về cái tên bị gạch trong sách.",
+      "chapters.0.quotes.intro": "Momo, cẩn thận! Sương mù này nuốt chữ trên gáy sách, rồi nuốt cả ký ức người đọc. Dùng nét [—] và [|] giải trừ tà khí!",
+      "chapters.0.quotes.boss": "Ai dám gây náo loạn trong thánh địa tri thức của ta?! Hai trăm năm không ai mở sách, thì kệ sách cũng chẳng cần chủ nữa!",
+      "chapters.0.quotes.defeat": "Kính của ta trong sáng trở lại rồi. Cảm ơn Momo! Kẻ cướp Cổ Thư vừa chạy xuống Nhà Bếp, mau đuổi theo!",
+      "chapters.1.badge": "CHƯƠNG 2 • NHÀ ĂN & BẾP MA",
+      "chapters.1.title": "Hương Vị Ma Quái & Vạc Súp Lãng Quên",
+      "chapters.1.companion.name": "Oliver Cam Cam",
+      "chapters.1.companion.role": "Dược Sĩ Bánh Quy",
+      "chapters.1.bossName": "Bóng Ma Đầu Bếp (Chef Bouillon)",
+      "chapters.1.runes": "Caret [∧], V-Shape [∨] & Hồi Máu [❤️]",
+      "chapters.1.text": "Dưới hầm bếp, Bếp Trưởng Bouillon khuấy ngọn lửa ma thuật, ép mọi người nếm món súp lãng quên vì ông đã quá lâu không có ai ngồi ăn cùng. Oliver lăn xả tiếp tế súp hồi sinh lực [❤️]. Cùng nhau, họ vẽ ấn ký nhọn [∧] và [∨] dập tắt nồi súp ma, và Momo nhặt được một mảnh ký ức về ổ bánh cháy lúc nửa đêm.",
+      "chapters.1.quotes.intro": "Momo ơi! Tớ đem bánh quy và súp hồi máu [❤️] tới đây! Cẩn thận các nét [∧] và [∨] nhé!",
+      "chapters.1.quotes.boss": "Món súp lãng quên 100 năm của ta... không một kẻ phàm trần nào được phép chối từ!",
+      "chapters.1.quotes.defeat": "Mùi thơm này... hóa ra món ngon nhất là có người ngồi ăn cùng. Lên Tháp Thiên Văn đi, hắn vừa chạy qua đó!",
+      "chapters.2.badge": "CHƯƠNG 3 • LỚP HỌC THIÊN VĂN",
+      "chapters.2.title": "Quỹ Đạo Thiên Thể & Ấn Ký Sét Giáng",
+      "chapters.2.companion.name": "Luna Bạch Miêu",
+      "chapters.2.companion.role": "Chiêm Tinh Học Giả",
+      "chapters.2.bossName": "Bóng Ma Thiên Văn (Professor Stella)",
+      "chapters.2.runes": "Ấn Ký Sấm Sét [⚡]",
+      "chapters.2.text": "Giáo sư Stella bị các vòng xoay hành tinh giam cầm trong ảo ảnh tận thế, vì suốt bao năm chẳng ai còn ngước nhìn bầu trời. Luna chỉ cho Momo một khoảng trống hình mèo trên bản đồ sao cổ, và truyền dạy Ấn Ký Sét [⚡] để đập tan quỹ đạo lạc lối.",
+      "chapters.2.quotes.intro": "Các chòm sao đang hỗn loạn! Hãy vẽ Ấn Ký Sét [⚡] để đập tan lớp giáp ma của các hành tinh lạc lối!",
+      "chapters.2.quotes.boss": "Quỹ đạo vũ trụ đã an bài! Chẳng ai ngước nhìn trời nữa, vậy thì để trời rơi xuống đầu các ngươi!",
+      "chapters.2.quotes.defeat": "Ánh sao phương bắc đã chỉ lối. Kẻ thao túng đang mượn sức mạnh thể thao ở Nhà Đấu để gom năng lượng!",
+      "chapters.3.badge": "CHƯƠNG 4 • NHÀ THI ĐẤU MA ÁM",
+      "chapters.3.title": "Tiếng Còi Bão Táp & Lũ Ma Siêu Tốc",
+      "chapters.3.companion.name": "Nyx Tam Thể",
+      "chapters.3.companion.role": "Đạo Tặc Tốc Độ",
+      "chapters.3.bossName": "Bóng Ma Huấn Luyện Viên (Coach Striker)",
+      "chapters.3.runes": "Phản Xạ Cực Nhanh & Ấn Ký Hỗn Hợp",
+      "chapters.3.text": "Sàn gỗ rực lửa bốc khói! Hàng loạt u linh siêu tốc lao vụt qua dưới tiếng còi thịnh nộ của Coach Striker, người thầy chỉ còn nhớ bước chân của một ai đó đã từng chạy chậm lại để chờ ông. Nhờ Nyx chỉ điểm, Momo vượt qua bài kiểm tra phản xạ và đoạt chìa khóa lên sân thượng.",
+      "chapters.3.quotes.intro": "Xem ai nhanh hơn nào Momo! Lũ ma siêu tốc lượn lách ghê lắm, vung đũa thật dứt khoát vào nhé!",
+      "chapters.3.quotes.boss": "Tuýt! Không ai được bỏ qua bài tập kỷ luật thép! 100 vòng quanh sân đấu ma thuật ngay!",
+      "chapters.3.quotes.defeat": "Tuýt! Hết giờ! Phản xạ xuất sắc, Momo! Cửa lên Sân Thượng đã mở. Hãy cứu lấy người đang đợi ở trên đó.",
+      "chapters.4.badge": "CHƯƠNG 5 • SÂN THƯỢNG LÂU ĐÀI",
+      "chapters.4.title": "Đêm Trăng Máu & Sự Thật Về Chúa Tể Umbra",
+      "chapters.4.companion.name": "Liên Minh Mèo Phép Thuật",
+      "chapters.4.companion.role": "Momo & Những Người Bạn",
+      "chapters.4.bossName": "Chúa Tể Bóng Ma (Lord Umbra)",
+      "chapters.4.runes": "Phối Hợp Toàn Bộ Ấn Ký Cổ Ngữ",
+      "chapters.4.text": "Dưới Trăng Máu trên đỉnh tháp chuông, Chúa Tể Umbra giáng đòn bão lốc từ Cổ Thư. Sự thật hé lộ: ngài là chú mèo hiệp sĩ đã tự ràng mình vào phong ấn cách đây ba trăm năm rồi bị lãng quên, và “Umbra” chỉ là cái tên sương mù đặt cho ngài. Bằng sự cảm thông, Momo đã giải thoát cho ngài.",
+      "chapters.4.quotes.intro": "Oliver, Luna, Nyx và Viện Trưởng Barnaby cùng truyền sức mạnh! Đỉnh tháp trăng máu - trận chiến định mệnh!",
+      "chapters.4.quotes.boss": "300 năm qua các ngươi đã lãng quên ta! Đêm nay, ranh giới hai cõi sẽ vĩnh viễn hòa làm một!",
+      "chapters.4.quotes.defeat": "Ánh sáng ấm áp này... Ta nhớ ra rồi... Ta từng là chú mèo hiệp sĩ bảo vệ ngôi trường này...",
+      "slides.INTRO.0.title": "Cổ Thư Nhật Thực Trong Đêm Yên Tĩnh",
+      "slides.INTRO.0.text": "Tại Thư Viện Học Viện Mèo Arcane, Momo đang cùng bạn thân Oliver nghiên cứu Cổ Thư Nhật Thực, phong ấn bảo hộ học viện suốt ba trăm năm. Cô bé thắc mắc mãi: ở trang cuối có một chỗ bị gạch xóa, như thể ai đó đã cố quên một cái tên.",
+      "slides.INTRO.0.actionPrompt": "Tiếp Tục ➜",
+      "slides.INTRO.1.title": "Phong Ấn Bị Phá Vỡ! Lời Nguyền Trăng Máu",
+      "slides.INTRO.1.text": "Bất thình lình Trăng Máu lên, một bóng ma khổng lồ xé toạc ô kính màu và cướp lấy Cổ Thư! Làn sương u linh tràn khắp học viện, nuốt chữ trên gáy sách và nuốt cả ký ức của các thầy cô. Ai bị sương chạm vào đều nổi giận, vì cảm thấy mình đã bị lãng quên.",
+      "slides.INTRO.1.actionPrompt": "Tiếp Tục ➜",
+      "slides.INTRO.2.title": "Hội Mèo Xuất Kích: Cầm Đũa Phép Lên!",
+      "slides.INTRO.2.text": "Được Oliver, Luna, Nyx và Viện Trưởng Barnaby tiếp thêm dũng khí, Momo vung đũa phép thần kỳ, vẽ nên các ấn ký cổ ngữ. Mỗi nét vẽ không chỉ đánh tan u linh, mà còn là một lời nhắn: “Tớ vẫn nhớ cậu.”",
+      "slides.INTRO.2.actionPrompt": "VÀO TRẬN NGAY! ⚡",
+      "slides.VICTORY.0.title": "Linh Hồn Hiệp Sĩ Umbra Được Giải Thoát!",
+      "slides.VICTORY.0.text": "Đòn ma pháp thanh tẩy chan chứa tình bạn của Momo xé tan màn sương. Chúa Tể Bóng Ma gục xuống, hiện nguyên hình là Hộ Vệ Umbra cổ xưa: một hiệp sĩ mèo, kiếm run run trong tay, mắt rưng rưng như người vừa tỉnh sau cơn ác mộng ba trăm năm.",
+      "slides.VICTORY.1.title": "Cổ Thư Trở Về, Nhưng Cái Tên Vẫn Còn Lạc",
+      "slides.VICTORY.1.text": "Cổ Thư Nhật Thực nhẹ nhàng đáp xuống tay Momo, phong ấn sáng lại. “Cảm ơn con,” hiệp sĩ thì thầm. “Nhưng Umbra chỉ là cái tên sương mù đặt cho ta. Tên thật của ta… ta cũng không nhớ nữa.” Trên bìa sách hiện ra năm ô trống, chờ được lấp đầy.",
+      "slides.VICTORY.2.title": "Bữa Tiệc Tưng Bừng, Và Một Lời Hứa Nhỏ",
+      "slides.VICTORY.2.text": "Học viện rực rỡ pháo hoa! Oliver bưng đĩa bánh nướng, Luna chỉ lên bầu trời sao, Nyx cùng các thầy cô hân hoan ăn mừng. Chỉ Momo đứng lặng bên cửa sổ, nắm chặt đũa phép: “Nhất định tớ sẽ tìm ra cái tên ấy.” (Mở Nhật Ký Ký Ức để lần theo manh mối.)",
+      "slides.TRUE_ENDING.0.title": "Năm Chữ Cái, Một Cái Tên",
+      "slides.TRUE_ENDING.0.text": "Momo đặt năm mảnh sáng lên bìa Cổ Thư: L, U, M, E, N. Từng chữ bừng lên như đom đóm rồi ghép lại. “Lumen,” Momo gọi khẽ. “Ánh sáng.” Màn sương đã đặt cho ngài cái tên Umbra, “bóng tối”, để ngài tin rằng mình vốn là thứ đáng bị quên.",
+      "slides.TRUE_ENDING.1.title": "Lời Thú Nhận Của Viện Trưởng Barnaby",
+      "slides.TRUE_ENDING.1.text": "Tượng đá của Barnaby nứt ra, đôi mắt cú già ngân ngấn. “Ta là cậu học trò nhỏ của ngài ấy. Ta nhớ tên ngài suốt ba trăm năm, nhưng mỗi lần thốt ra, sương lại cắn đau, nên ta chọn im lặng.” Momo ôm lấy ông: “Nhớ là một việc, dám gọi là một việc khác. Hôm nay mình cùng gọi, thầy nhé.”",
+      "slides.TRUE_ENDING.2.title": "Chòm Sao Hiệp Sĩ Lumen",
+      "slides.TRUE_ENDING.2.text": "Cả học viện cùng cất tiếng gọi “Lumen!”, và trên bầu trời, chòm sao bị tẩy mất ba trăm năm sáng lên: một chú mèo hiệp sĩ ngồi gác. Từ nay, mỗi kỳ Trăng Máu ai cũng gọi tên ngài. Nhưng ngoài kia, còn biết bao cái tên khác đang chờ được gọi…",
+      "slides.TRUE_ENDING.2.actionPrompt": "Về Kết Quả ➜",
+      "slides.CHAPTERS.0.badge": "CHƯƠNG 1 • THƯ VIỆN CỔ KÍNH",
+      "slides.CHAPTERS.0.title": "Màn Đêm Buông Xuống Thư Viện Cổ Kính",
+      "slides.CHAPTERS.0.companion.name": "Viện Trưởng Barnaby",
+      "slides.CHAPTERS.0.companion.role": "Đại Pháp Sư Cú Già",
+      "slides.CHAPTERS.0.bossName": "Bóng Ma Thủ Thư (Madame Libraria)",
+      "slides.CHAPTERS.0.runes": "Ngang [—] và Dọc [|]",
+      "slides.CHAPTERS.0.text": "Cổ Thư Nhật Thực vừa bị cướp mất! Sương mù bao trùm thư viện, khiến Madame Libraria, người thủ thư hai trăm năm chưa ai mở sách của bà, cuồng nộ điều khiển hàng ngàn kệ sách bay. Viện Trưởng Barnaby dạy Momo hai nét ma pháp cơ bản [—] và [|], rồi khẽ lảng đi khi Momo hỏi về cái tên bị gạch trong sách.",
+      "slides.CHAPTERS.0.quotes.intro": "Momo, cẩn thận! Sương mù này nuốt chữ trên gáy sách, rồi nuốt cả ký ức người đọc. Dùng nét [—] và [|] giải trừ tà khí!",
+      "slides.CHAPTERS.0.quotes.boss": "Ai dám gây náo loạn trong thánh địa tri thức của ta?! Hai trăm năm không ai mở sách, thì kệ sách cũng chẳng cần chủ nữa!",
+      "slides.CHAPTERS.0.quotes.defeat": "Kính của ta trong sáng trở lại rồi. Cảm ơn Momo! Kẻ cướp Cổ Thư vừa chạy xuống Nhà Bếp, mau đuổi theo!",
+      "slides.CHAPTERS.1.badge": "CHƯƠNG 2 • NHÀ ĂN & BẾP MA",
+      "slides.CHAPTERS.1.title": "Hương Vị Ma Quái & Vạc Súp Lãng Quên",
+      "slides.CHAPTERS.1.companion.name": "Oliver Cam Cam",
+      "slides.CHAPTERS.1.companion.role": "Dược Sĩ Bánh Quy",
+      "slides.CHAPTERS.1.bossName": "Bóng Ma Đầu Bếp (Chef Bouillon)",
+      "slides.CHAPTERS.1.runes": "Caret [∧], V-Shape [∨] & Hồi Máu [❤️]",
+      "slides.CHAPTERS.1.text": "Dưới hầm bếp, Bếp Trưởng Bouillon khuấy ngọn lửa ma thuật, ép mọi người nếm món súp lãng quên vì ông đã quá lâu không có ai ngồi ăn cùng. Oliver lăn xả tiếp tế súp hồi sinh lực [❤️]. Cùng nhau, họ vẽ ấn ký nhọn [∧] và [∨] dập tắt nồi súp ma, và Momo nhặt được một mảnh ký ức về ổ bánh cháy lúc nửa đêm.",
+      "slides.CHAPTERS.1.quotes.intro": "Momo ơi! Tớ đem bánh quy và súp hồi máu [❤️] tới đây! Cẩn thận các nét [∧] và [∨] nhé!",
+      "slides.CHAPTERS.1.quotes.boss": "Món súp lãng quên 100 năm của ta... không một kẻ phàm trần nào được phép chối từ!",
+      "slides.CHAPTERS.1.quotes.defeat": "Mùi thơm này... hóa ra món ngon nhất là có người ngồi ăn cùng. Lên Tháp Thiên Văn đi, hắn vừa chạy qua đó!",
+      "slides.CHAPTERS.2.badge": "CHƯƠNG 3 • LỚP HỌC THIÊN VĂN",
+      "slides.CHAPTERS.2.title": "Quỹ Đạo Thiên Thể & Ấn Ký Sét Giáng",
+      "slides.CHAPTERS.2.companion.name": "Luna Bạch Miêu",
+      "slides.CHAPTERS.2.companion.role": "Chiêm Tinh Học Giả",
+      "slides.CHAPTERS.2.bossName": "Bóng Ma Thiên Văn (Professor Stella)",
+      "slides.CHAPTERS.2.runes": "Ấn Ký Sấm Sét [⚡]",
+      "slides.CHAPTERS.2.text": "Giáo sư Stella bị các vòng xoay hành tinh giam cầm trong ảo ảnh tận thế, vì suốt bao năm chẳng ai còn ngước nhìn bầu trời. Luna chỉ cho Momo một khoảng trống hình mèo trên bản đồ sao cổ, và truyền dạy Ấn Ký Sét [⚡] để đập tan quỹ đạo lạc lối.",
+      "slides.CHAPTERS.2.quotes.intro": "Các chòm sao đang hỗn loạn! Hãy vẽ Ấn Ký Sét [⚡] để đập tan lớp giáp ma của các hành tinh lạc lối!",
+      "slides.CHAPTERS.2.quotes.boss": "Quỹ đạo vũ trụ đã an bài! Chẳng ai ngước nhìn trời nữa, vậy thì để trời rơi xuống đầu các ngươi!",
+      "slides.CHAPTERS.2.quotes.defeat": "Ánh sao phương bắc đã chỉ lối. Kẻ thao túng đang mượn sức mạnh thể thao ở Nhà Đấu để gom năng lượng!",
+      "slides.CHAPTERS.3.badge": "CHƯƠNG 4 • NHÀ THI ĐẤU MA ÁM",
+      "slides.CHAPTERS.3.title": "Tiếng Còi Bão Táp & Lũ Ma Siêu Tốc",
+      "slides.CHAPTERS.3.companion.name": "Nyx Tam Thể",
+      "slides.CHAPTERS.3.companion.role": "Đạo Tặc Tốc Độ",
+      "slides.CHAPTERS.3.bossName": "Bóng Ma Huấn Luyện Viên (Coach Striker)",
+      "slides.CHAPTERS.3.runes": "Phản Xạ Cực Nhanh & Ấn Ký Hỗn Hợp",
+      "slides.CHAPTERS.3.text": "Sàn gỗ rực lửa bốc khói! Hàng loạt u linh siêu tốc lao vụt qua dưới tiếng còi thịnh nộ của Coach Striker, người thầy chỉ còn nhớ bước chân của một ai đó đã từng chạy chậm lại để chờ ông. Nhờ Nyx chỉ điểm, Momo vượt qua bài kiểm tra phản xạ và đoạt chìa khóa lên sân thượng.",
+      "slides.CHAPTERS.3.quotes.intro": "Xem ai nhanh hơn nào Momo! Lũ ma siêu tốc lượn lách ghê lắm, vung đũa thật dứt khoát vào nhé!",
+      "slides.CHAPTERS.3.quotes.boss": "Tuýt! Không ai được bỏ qua bài tập kỷ luật thép! 100 vòng quanh sân đấu ma thuật ngay!",
+      "slides.CHAPTERS.3.quotes.defeat": "Tuýt! Hết giờ! Phản xạ xuất sắc, Momo! Cửa lên Sân Thượng đã mở. Hãy cứu lấy người đang đợi ở trên đó.",
+      "slides.CHAPTERS.4.badge": "CHƯƠNG 5 • SÂN THƯỢNG LÂU ĐÀI",
+      "slides.CHAPTERS.4.title": "Đêm Trăng Máu & Sự Thật Về Chúa Tể Umbra",
+      "slides.CHAPTERS.4.companion.name": "Liên Minh Mèo Phép Thuật",
+      "slides.CHAPTERS.4.companion.role": "Momo & Những Người Bạn",
+      "slides.CHAPTERS.4.bossName": "Chúa Tể Bóng Ma (Lord Umbra)",
+      "slides.CHAPTERS.4.runes": "Phối Hợp Toàn Bộ Ấn Ký Cổ Ngữ",
+      "slides.CHAPTERS.4.text": "Dưới Trăng Máu trên đỉnh tháp chuông, Chúa Tể Umbra giáng đòn bão lốc từ Cổ Thư. Sự thật hé lộ: ngài là chú mèo hiệp sĩ đã tự ràng mình vào phong ấn cách đây ba trăm năm rồi bị lãng quên, và “Umbra” chỉ là cái tên sương mù đặt cho ngài. Bằng sự cảm thông, Momo đã giải thoát cho ngài.",
+      "slides.CHAPTERS.4.quotes.intro": "Oliver, Luna, Nyx và Viện Trưởng Barnaby cùng truyền sức mạnh! Đỉnh tháp trăng máu - trận chiến định mệnh!",
+      "slides.CHAPTERS.4.quotes.boss": "300 năm qua các ngươi đã lãng quên ta! Đêm nay, ranh giới hai cõi sẽ vĩnh viễn hòa làm một!",
+      "slides.CHAPTERS.4.quotes.defeat": "Ánh sáng ấm áp này... Ta nhớ ra rồi... Ta từng là chú mèo hiệp sĩ bảo vệ ngôi trường này...",
+      "memories.0.keeper": "Madame Libraria",
+      "memories.0.title": "Trang Sách Bị Xé",
+      "memories.0.shard": "Cổ Thư không do một bàn chân viết. Có hai: một dấu chân to của hiệp sĩ, và một dấu chân nhỏ run run của cậu học trò ngồi cạnh. Ở cuối trang phong ấn, tên người hiệp sĩ bị gạch đi, bằng chính thứ mực của sương mù.",
+      "memories.0.pledge.virtue": "Học",
+      "memories.0.pledge.enVirtue": "Learn",
+      "memories.0.pledge.title": "Trang Sách Nguyên Vẹn",
+      "memories.0.pledge.riddle": "“Sách quý không chỉ để cất đi, mà để được đọc, trang nào cũng nguyên vẹn.”",
+      "memories.0.pledge.objective": "Hạ Madame Libraria mà không bị trúng đòn nào trong màn này.",
+      "memories.0.pledge.reveal": "Chữ thứ nhất: L. Điều đầu tiên ta dạy các em là Học: phải hiểu mình đang bảo vệ điều gì.",
+      "memories.1.keeper": "Chef Bouillon",
+      "memories.1.title": "Ổ Bánh Cháy Lúc Nửa Đêm",
+      "memories.1.shard": "Đêm nào hiệp sĩ cũng ghé nhà bếp lúc canh khuya, xin ổ bánh mì cháy mà chẳng ai muốn ăn. “Ngon nhất đời,” ngài nói rồi cười. Hóa ra ngài không thích món cháy, ngài chỉ không thích ăn một mình.",
+      "memories.1.pledge.virtue": "Sẻ chia",
+      "memories.1.pledge.enVirtue": "Unite",
+      "memories.1.pledge.title": "Bữa Ăn Liền Mạch",
+      "memories.1.pledge.riddle": "“Một bữa ăn trọn vẹn là một bữa liền mạch, không ai bỏ giữa chừng.”",
+      "memories.1.pledge.objective": "Đạt chuỗi combo 12 trở lên trong màn này.",
+      "memories.1.pledge.reveal": "Chữ thứ hai: U. Ổ bánh cháy ngon nhất đời vì có người ngồi cùng. Sẻ chia là điều gắn mọi người lại.",
+      "memories.2.keeper": "Professor Stella",
+      "memories.2.title": "Chòm Sao Bị Tẩy",
+      "memories.2.shard": "Trước khi tự ràng mình vào phong ấn, hiệp sĩ dặn cậu học trò: “Nếu một ngày ta bị lãng quên, hãy ngước nhìn trời. Ta sẽ viết tên mình ở đó.” Nhưng sương đã tẩy cả chòm sao ấy khỏi mọi tấm bản đồ.",
+      "memories.2.pledge.virtue": "Ngước nhìn",
+      "memories.2.pledge.enVirtue": "Marvel",
+      "memories.2.pledge.title": "Đọc Sao Bằng Lời Chú",
+      "memories.2.pledge.riddle": "“Muốn đọc sao phải bằng lời, không chỉ bằng mắt.”",
+      "memories.2.pledge.objective": "Niệm thành công một Câu Thần Chú (3 nét liên tiếp, xem Sổ Phép) trong màn này.",
+      "memories.2.pledge.reveal": "Chữ thứ ba: M. Hãy ngước lên mà ngạc nhiên về trời đất, đừng để mắt chỉ nhìn xuống chân mình.",
+      "memories.3.keeper": "Coach Striker",
+      "memories.3.title": "Người Chạy Chậm Lại",
+      "memories.3.shard": "Hiệp sĩ huấn luyện lứa học trò đầu tiên của học viện, và luôn chạy chậm lại để chờ đứa nhỏ nhất. “Nhanh để về nhà,” ngài bảo, “đâu phải để bỏ ai lại phía sau.”",
+      "memories.3.pledge.virtue": "Kiên trì",
+      "memories.3.pledge.enVirtue": "Endure",
+      "memories.3.pledge.title": "Chạy Mà Không Vội",
+      "memories.3.pledge.riddle": "“Nhanh mà vội thì lạc đường. Hãy chạy chậm lại để không ai bị bỏ lại.”",
+      "memories.3.pledge.objective": "Giữ độ chính xác từ 80% trở lên trong màn này (nét vẽ trúng / tổng số nét).",
+      "memories.3.pledge.reveal": "Chữ thứ tư: E. Chạy nhanh không khó. Chạy chậm lại để chờ người sau mới khó, và đó là kiên trì.",
+      "memories.4.keeper": "Lord Umbra",
+      "memories.4.title": "Lời Dặn Cuối Cùng",
+      "memories.4.shard": "Đêm Trăng Máu ba trăm năm trước, hiệp sĩ bước vào Cổ Thư để giữ chân Màn Sương Quên Lãng. “Hãy gọi tên ta mỗi kỳ trăng máu,” ngài dặn. Cậu học trò gật đầu, rồi sương trắng phủ xuống và cái tên tan vào gió.",
+      "memories.4.pledge.virtue": "Ghi nhớ",
+      "memories.4.pledge.enVirtue": "Never forget",
+      "memories.4.pledge.title": "Giữ Trọn Lời Thề",
+      "memories.4.pledge.riddle": "“Giữ trọn lời thề là bước tới cuối cùng mà vẫn còn đủ những người thân yêu bên mình.”",
+      "memories.4.pledge.objective": "Hạ Lord Umbra khi Momo còn từ 3 ❤️ trở lên.",
+      "memories.4.pledge.reveal": "Chữ cuối: N. Sẽ không ai bị bỏ lại, chừng nào còn người nhớ tên mình.",
+      "chapter.1.intro.1.text": "Con sẽ vẽ lại từng ấn ký, thưa thầy. Từng nét một.",
+      "chapter.1.intro.2.text": "…đừng… để… họ… quên… ta…",
+      "chapter.1.mid.0.text": "Lạ thật… những con ma này khóc nhiều hơn là tấn công. Chúng không muốn hại ai. Chúng đang sợ bị quên.",
+      "chapter.1.bossHurtFirst.0.text": "Đừng gập góc trang đó! Ồ… cháu mở sách nhẹ tay quá. Đã lâu lắm rồi không ai đọc như thế.",
+      "chapter.2.intro.1.text": "Cảm ơn Oliver. Mà lạ nhỉ, bếp lạnh ngắt, chẳng có lấy một mùi khét.",
+      "chapter.2.mid.0.text": "Bếp trưởng Bouillon nấu cho cả trường suốt bốn mươi năm. Rồi ai cũng quen ăn đồ đóng hộp, ông chẳng còn ai để nấu cho nữa.",
+      "chapter.2.bossHurtFirst.0.text": "Ăn đi! Làm ơn, ăn đi! Chỉ một muỗng thôi cũng được!",
+      "chapter.3.intro.1.text": "Còn một điều lạ nữa, Momo: bản đồ sao cổ có một khoảng trống hình chú mèo ngồi, như ai đó tẩy mất cả một chòm sao.",
+      "chapter.3.mid.0.text": "…hãy ngước nhìn lên… ta sẽ viết tên mình… ở đó…",
+      "chapter.3.bossHurtFirst.0.text": "Ta đếm sao mỗi đêm, và đêm nào cũng thiếu một ngôi. Tại sao lại thiếu?",
+      "chapter.4.intro.1.text": "Mà nhanh chưa đủ đâu. Thầy Striker hay nói: giỏi chạy là biết chạy chậm lại khi có người đang theo sau.",
+      "chapter.4.mid.0.text": "Nyx, cậu có thấy không? Mấy con ma này cứ lượn vòng vòng như đang tìm đường về nhà.",
+      "chapter.4.bossHurtFirst.0.text": "Từng có một người chạy chậm lại để chờ ta kịp đội hình. Ta nhớ rõ bước chân ấy, mà không nhớ nổi mặt người đó!",
+      "chapter.5.intro.1.text": "Con không đánh để thắng đâu, thưa thầy. Con đánh để ngài ấy nghe được ai đó gọi tên mình.",
+      "chapter.5.intro.2.text": "…Ừ. Con cứ làm điều con thấy đúng. Còn ta… ta sẽ ở đây, nhìn con.",
+      "chapter.5.bossHurtFirst.0.text": "Đừng gọi ta là kẻ xấu… mà thật ra, ta cũng chẳng còn nhớ mình là ai. Chẳng ai gọi ta, nên tên ta tan mất rồi!",
+      "chapter.5.bossHurtLast.0.text": "Momo… tay cầm kiếm của ngài ấy đang run. Ngài ấy không muốn đánh nữa.",
+      "chapter.5.bossHurtLast.1.text": "Giọng nào… quen thế… như cậu học trò nhỏ năm xưa cầm bút…",
+      "reaction.momo.combo.0.0.text": "Nét vẽ đang chảy như nước! Tiếp nào!",
+      "reaction.momo.combo.1.0.text": "Mình cảm nhận được nhịp rồi!",
+      "reaction.momo.lowHp.0.0.text": "Còn một trái tim thôi… nhưng mình chưa bỏ cuộc!",
+      "reaction.momo.lowHp.1.0.text": "Thở sâu nào, Momo. Từng nét một.",
+      "reaction.oliver.combo.0.0.text": "Ôi chao, combo đẹp như bánh vừa ra lò!",
+      "reaction.oliver.combo.1.0.text": "Momo giỏi quá, tớ suýt làm rơi cả khay bánh!",
+      "reaction.oliver.lowHp.0.0.text": "Momo! Vẽ trái tim [❤️] đi, tớ đang giữ súp ấm cho cậu!",
+      "reaction.oliver.lowHp.1.0.text": "Cố lên! Chỉ còn một ❤️ thôi, đừng để nguội!",
+      "reaction.luna.combo.0.0.text": "Các vì sao đang xếp thẳng hàng theo nét bút của cậu!",
+      "reaction.luna.combo.1.0.text": "Quỹ đạo hoàn hảo, Momo!",
+      "reaction.luna.lowHp.0.0.text": "Trăng máu đang lên, đừng hoảng. Ánh sao vẫn ở phía cậu.",
+      "reaction.luna.lowHp.1.0.text": "Một ❤️ thôi. Hít sâu, vẽ chậm và chính xác.",
+      "reaction.nyx.combo.0.0.text": "Hê, nhanh phết đấy! Suýt đuổi kịp tớ rồi!",
+      "reaction.nyx.combo.1.0.text": "Combo kìa! Tớ không trêu cậu nữa đâu… hôm nay thôi.",
+      "reaction.nyx.lowHp.0.0.text": "Né đi Momo! Đừng đứng yên giữa đường bay của chúng!",
+      "reaction.nyx.lowHp.1.0.text": "Còn một ❤️! Tớ canh chừng cho cậu đây.",
+      "reaction.barnaby.combo.0.0.text": "Nét bút vững vàng. Ta rất tự hào, Momo.",
+      "reaction.barnaby.combo.1.0.text": "Lòng can đảm đang hiện rõ trong từng nét vẽ.",
+      "reaction.barnaby.lowHp.0.0.text": "Bình tĩnh, Momo. Phong ấn mạnh nhất là lòng can đảm.",
+      "reaction.barnaby.lowHp.1.0.text": "Đừng sợ. Ta vẫn ở trong từng ấn ký của con."
+    },
+    "en": {
+      "chapters.0.title": "Chapter 1: Shadows in the Ancient Library",
+      "chapters.0.text": "The Grimoire is stolen! Dark mist fills the library and Madame Libraria, whose books nobody has opened in 200 years, flings possessed book stacks. Barnaby teaches Momo the horizontal [—] and vertical [|] runes, and quietly changes the subject when she asks about the scratched-out name.",
+      "chapters.1.title": "Chapter 2: The Haunted Feast & Bubbling Cauldron",
+      "chapters.1.text": "Down in the kitchen, Chef Bouillon forces everyone to taste the Soup of Oblivion because nobody has eaten with him in ages. Oliver rushes in with healing [❤️] soup as Momo casts the wedge runes [∧] [∨], and finds a memory of a burnt loaf shared at midnight.",
+      "chapters.2.title": "Chapter 3: Celestial Orbits & Thunder Runes",
+      "chapters.2.text": "Professor Stella is trapped in cosmic illusions because nobody looks up at the sky anymore. Luna shows Momo a cat-shaped gap on the old star chart and teaches her the Lightning Rune [⚡] to shatter the stray orbits.",
+      "chapters.3.title": "Chapter 4: The Whistle of Storms & Speedster Trials",
+      "chapters.3.text": "The gym floor blazes as speedster ghosts dart past Coach Striker's fierce whistle. He only remembers the footsteps of someone who once ran slower to wait for him. Guided by Nyx, Momo aces the agility trial and takes the key to the rooftop.",
+      "chapters.4.title": "Chapter 5: Blood Moon Destiny & Lord Umbra",
+      "chapters.4.text": "Under the Blood Moon on the bell tower, Lord Umbra unleashes the Grimoire. He is the knight cat who bound himself into the seal 300 years ago and was forgotten, and 'Umbra' is just the name the fog gave him. Momo frees him with compassion.",
+      "slides.INTRO.0.title": "The Whispering Grimoire",
+      "slides.INTRO.0.text": "In the quiet Arcane Paws library, wizard cat Momo and foodie pal Oliver study the Grimoire of Whispering Eclipse, the seal that has guarded the academy for 300 years. One name on the last page has been scratched out.",
+      "slides.INTRO.1.title": "The Blood Moon Eclipse!",
+      "slides.INTRO.1.text": "Suddenly the Blood Moon rises and a colossal phantom smashes through the stained glass, seizing the Grimoire! A fog of oblivion floods the academy, and everyone it touches rages because they feel forgotten.",
+      "slides.INTRO.2.title": "Unite The Arcane Paws!",
+      "slides.INTRO.2.text": "Empowered by Oliver, Luna, Nyx and Archmage Barnaby, Momo raises the Obsidian Wand to draw sacred runes. Every stroke does more than banish a ghost: it says, \"I still remember you.\"",
+      "slides.VICTORY.0.title": "Lord Umbra Redeemed!",
+      "slides.VICTORY.0.text": "Momo's brilliant light spell tears the fog apart. The Dark Lord kneels and turns back into the ancient knight guardian Umbra, trembling and teary-eyed after a 300-year nightmare.",
+      "slides.VICTORY.1.title": "The Grimoire Returns, The Name Is Still Lost",
+      "slides.VICTORY.1.text": "The Grimoire floats into Momo's paws and the seal glows again. \"Umbra is only the name the fog gave me,\" the knight whispers. \"I no longer remember my own.\" Five empty blanks appear on the cover.",
+      "slides.VICTORY.2.title": "A Grand Celebration, and a Small Promise",
+      "slides.VICTORY.2.text": "Fireworks light the midnight sky! Oliver brings pastries, Luna points at the stars, Nyx and the teachers cheer. Only Momo stands quietly at the window: \"I will find that name.\" (Open the Memory Journal for clues.)",
+      "slides.TRUE_ENDING.0.title": "Five Letters, One Name",
+      "slides.TRUE_ENDING.0.text": "Momo places five glowing shards on the Grimoire: L, U, M, E, N. \"Lumen,\" she whispers. \"Light.\" The fog had named him Umbra, \"shadow\", so he would believe he deserved to be forgotten.",
+      "slides.TRUE_ENDING.1.title": "Barnaby's Confession",
+      "slides.TRUE_ENDING.1.text": "Barnaby's stone shell cracks. \"I was his little apprentice. I remembered his name for 300 years, but the fog bit me whenever I spoke it, so I stayed silent.\" Momo hugs him: \"Remembering is one thing, daring to say it is another. Let's say it together.\"",
+      "slides.TRUE_ENDING.2.title": "The Constellation of Knight Lumen",
+      "slides.TRUE_ENDING.2.text": "The whole academy calls out \"Lumen!\" and the constellation erased for 300 years blazes back: a knight cat keeping watch. But out there, so many other names are still waiting to be called...",
+      "slides.CHAPTERS.0.title": "Chapter 1: Shadows in the Ancient Library",
+      "slides.CHAPTERS.0.text": "The Grimoire is stolen! Dark mist fills the library and Madame Libraria, whose books nobody has opened in 200 years, flings possessed book stacks. Barnaby teaches Momo the horizontal [—] and vertical [|] runes, and quietly changes the subject when she asks about the scratched-out name.",
+      "slides.CHAPTERS.1.title": "Chapter 2: The Haunted Feast & Bubbling Cauldron",
+      "slides.CHAPTERS.1.text": "Down in the kitchen, Chef Bouillon forces everyone to taste the Soup of Oblivion because nobody has eaten with him in ages. Oliver rushes in with healing [❤️] soup as Momo casts the wedge runes [∧] [∨], and finds a memory of a burnt loaf shared at midnight.",
+      "slides.CHAPTERS.2.title": "Chapter 3: Celestial Orbits & Thunder Runes",
+      "slides.CHAPTERS.2.text": "Professor Stella is trapped in cosmic illusions because nobody looks up at the sky anymore. Luna shows Momo a cat-shaped gap on the old star chart and teaches her the Lightning Rune [⚡] to shatter the stray orbits.",
+      "slides.CHAPTERS.3.title": "Chapter 4: The Whistle of Storms & Speedster Trials",
+      "slides.CHAPTERS.3.text": "The gym floor blazes as speedster ghosts dart past Coach Striker's fierce whistle. He only remembers the footsteps of someone who once ran slower to wait for him. Guided by Nyx, Momo aces the agility trial and takes the key to the rooftop.",
+      "slides.CHAPTERS.4.title": "Chapter 5: Blood Moon Destiny & Lord Umbra",
+      "slides.CHAPTERS.4.text": "Under the Blood Moon on the bell tower, Lord Umbra unleashes the Grimoire. He is the knight cat who bound himself into the seal 300 years ago and was forgotten, and 'Umbra' is just the name the fog gave him. Momo frees him with compassion."
+    }
+  },
+  "endings": {
+    "normal": {
+      "rule": "storyVictory",
+      "entry": "ending.normal.0"
+    },
+    "true": {
+      "rule": "allPledges",
+      "entry": "ending.true.0"
+    }
+  }
+}
