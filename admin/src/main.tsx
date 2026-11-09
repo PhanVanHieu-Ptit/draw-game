@@ -1,3 +1,4 @@
+import { GameplayPage } from "./GameplayPage";
 import { ConfigurationPage } from "./ConfigurationPage";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -196,6 +197,8 @@ function Root() {
                         element={
                           m.key === "dashboard" ? (
                             <Dashboard />
+                          ) : m.key === "gameplay" ? (
+                            <GameplayPage />
                           ) : m.key === "configuration" ? (
                             <ConfigurationPage />
                           ) : (

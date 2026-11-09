@@ -1,3 +1,7 @@
+import {
+  validateContent,
+  CONTENT_SCHEMA_VERSION,
+} from "../../shared/gameplay-content.js";
 import { randomUUID } from "node:crypto";
 import {
   validateConfig,
@@ -28,7 +32,16 @@ export async function configurationRoute({
   current,
   now,
   permits,
+  content = false,
 }) {
+  if (content)
+    path = path
+      .replace("/gameplay/environments/", "/configuration/environments/")
+      .replace("/game-content/", "/game-config/");
+  const validate = content ? validateContent : validateConfig;
+  const storageKey = content ? "contentEnvironments" : "environments";
+  const readState = (s, env) =>
+    environmentState({ environments: s[storageKey] }, env);
   const match = path.match(
     /^\/api\/(configuration\/environments|game-config)\/([^/]+)(?:\/(save|validate|review|publish|rollback))?$/,
   );
@@ -37,7 +50,7 @@ export async function configurationRoute({
   if (!ENVIRONMENTS.includes(environment)) fail(400, "Unknown environment.");
   if (scope === "game-config") {
     if (method !== "GET" || action) fail(404, "Unknown operation.");
-    const state = environmentState(store(), environment);
+    const state = readState(store(), environment);
     if (!state.published) fail(404, "No published configuration.");
     send(200, state.published);
     return true;
@@ -46,7 +59,7 @@ export async function configurationRoute({
   if (!permits(current, `configuration:${method === "GET" ? "read" : "write"}`))
     fail(403, "Permission denied.");
   if (method === "GET" && !action) {
-    send(200, environmentState(store(), environment));
+    send(200, readState(store(), environment));
     return true;
   }
   if (method !== "POST" || !action) fail(404, "Unknown operation.");
@@ -61,15 +74,15 @@ export async function configurationRoute({
   const input = await body();
   let result;
   await mutate((s) => {
-    s.environments ||= {};
-    const state = (s.environments[environment] ||= structuredClone(
-      environmentState(s, environment),
+    s[storageKey] ||= {};
+    const state = (s[storageKey][environment] ||= structuredClone(
+      readState(s, environment),
     ));
     if (!Number.isInteger(input.revision) || input.revision !== state.revision)
       fail(409, "Configuration changed. Reload and compare before retrying.");
     const timestamp = new Date(now()).toISOString();
     if (action === "save") {
-      const errors = validateConfig(input.values);
+      const errors = validate(input.values);
       if (errors.length) fail(400, errors.join("; "));
       state.draft = {
         values: input.values,
@@ -90,7 +103,7 @@ export async function configurationRoute({
       state.draft = null;
     } else {
       if (!state.draft) fail(400, "Save a draft first.");
-      const errors = validateConfig(state.draft.values);
+      const errors = validate(state.draft.values);
       if (errors.length) fail(400, errors.join("; "));
       const expected = {
         validate: "draft",
@@ -102,7 +115,7 @@ export async function configurationRoute({
       if (action === "publish") {
         state.published = {
           id: randomUUID(),
-          schemaVersion: SCHEMA_VERSION,
+          schemaVersion: content ? CONTENT_SCHEMA_VERSION : SCHEMA_VERSION,
           environment,
           createdAt: timestamp,
           values: structuredClone(state.draft.values),
@@ -115,7 +128,7 @@ export async function configurationRoute({
     state.revision++;
     s.audit.push({
       id: randomUUID(),
-      action: `configuration.${action}`,
+      action: `${content ? "gameplay" : "configuration"}.${action}`,
       actor: current.email,
       target: environment,
       revision: state.revision,

@@ -1,0 +1,20 @@
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { GameplayPage } from './GameplayPage';
+import { contentDefaults } from '../../shared/gameplay-content.js';
+import { request } from './services/api';
+vi.mock('./services/api',()=>({request:vi.fn()}));
+vi.mock('./auth/Auth',()=>({useAuth:()=>({can:()=>true})}));
+beforeEach(()=>{vi.mocked(request).mockResolvedValue({revision:0,draft:null,published:null,versions:[]});vi.spyOn(HTMLCanvasElement.prototype,'getContext').mockReturnValue(null);});
+it('adds an enemy, supports undo and redo, and saves through the content lifecycle',async()=>{
+ render(<GameplayPage/>);
+ await waitFor(()=>expect(screen.getByText('Add enemies')).toBeEnabled());
+ fireEvent.click(screen.getByText('Add enemies'));
+ const name=screen.getByLabelText('enemies.0.name');fireEvent.change(name,{target:{value:'Specter'}});
+ fireEvent.click(screen.getByText('Undo'));expect(screen.getByLabelText('enemies.0.name')).toHaveValue('New enemy');
+ fireEvent.click(screen.getByText('Redo'));expect(screen.getByLabelText('enemies.0.name')).toHaveValue('Specter');
+ fireEvent.click(screen.getByText('Save draft'));
+ await waitFor(()=>expect(request).toHaveBeenCalledTimes(2));
+ const [path,options]=vi.mocked(request).mock.calls[1];expect(path).toBe('/gameplay/environments/development/save');
+ const payload=JSON.parse(options!.body as string);expect(payload.revision).toBe(0);expect(payload.values.enemies[0].name).toBe('Specter');expect(payload.values.waves).toEqual(contentDefaults.waves);
+});
