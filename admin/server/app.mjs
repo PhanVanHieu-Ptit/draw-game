@@ -1,3 +1,4 @@
+import { storyRoute } from './story.mjs';
 import { configurationRoute } from "./configuration.mjs";
 import { createServer } from "node:http";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
@@ -75,7 +76,7 @@ export function createAdminServer({
         let raw = "";
         for await (const chunk of req) {
           raw += chunk;
-          if (Buffer.byteLength(raw) > 16384)
+          if (Buffer.byteLength(raw) > (path.startsWith('/api/content/story') ? 2097152 : 16384))
             throw Object.assign(new Error("Request too large."), {
               status: 413,
             });
@@ -124,6 +125,7 @@ export function createAdminServer({
         );
         return send(200, { user: publicUser(user) });
       }
+      if (await storyRoute({path,method,body,send,store:()=>store,mutate,current,permits,now})) return;
       if (
         await configurationRoute({
           content: path.startsWith("/api/gameplay/environments/") || path.startsWith("/api/game-content/"),

@@ -1,3 +1,4 @@
+import { storyContent } from '../../shared/story/runtime.js';
 /**
  * @file MetaUI.js
  * @description Screens and widgets around the core game loop: settings, records, daily challenge,
@@ -21,7 +22,7 @@ import { PRACTICE_ORDER } from '../systems/PracticeSession.js';
 import { SPELL_PHRASES, PHRASE_WINDOW } from '../core/Spells.js';
 import { TRAILS, HATS, STREAK_MILESTONES, isCosmeticUnlocked } from '../core/Cosmetics.js';
 import { dateKey, shiftDateKey, parseDailyChallengeParams, getDailyChallenge } from '../core/Challenge.js';
-import { MEMORY_SHARDS, loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
+import { loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
 
 const MAX_TOASTS = 3;
@@ -47,6 +48,8 @@ function formatDuration(totalSeconds) {
   const m = Math.floor((s % 3600) / 60);
   return h > 0 ? `${h} giờ ${m} phút` : `${m} phút`;
 }
+
+const escapeStoryText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
 export class MetaUI {
   /**
@@ -706,7 +709,7 @@ export class MetaUI {
   /** The five letters of the forgotten name: a letter shows once its pledge is kept */
   _lettersHtml() {
     return loreLetters(this.game.progress)
-      .map(l => `<span class="lore-letter${l.known ? ' known' : ''}">${l.known ? l.letter : '?'}</span>`)
+      .map(l => `<span class="lore-letter${l.known ? ' known' : ''}">${l.known ? escapeStoryText(l.letter) : '?'}</span>`)
       .join('');
   }
 
@@ -718,7 +721,7 @@ export class MetaUI {
       ? `Cái tên đã được gọi lại: Lumen. Mảnh Ký Ức ${sum.shards}/${sum.total}, Lời Hứa ${sum.pledges}/${sum.total}.`
       : `Mảnh Ký Ức ${sum.shards}/${sum.total} • Lời Hứa ${sum.pledges}/${sum.total}. Hạ trùm mỗi màn để lấy ký ức của họ; giữ trọn Lời Hứa của màn đó để thắp sáng một chữ cái. Đủ năm chữ sẽ mở Hồi Kết Thật.`);
 
-    const html = MEMORY_SHARDS.map((def) => {
+    const html = storyContent.memories.map((def) => {
       const have = p.hasShard(def.level);
       const kept = p.hasPledge(def.level);
       if (!have) {
@@ -726,24 +729,24 @@ export class MetaUI {
         <div class="companion-item spell-item locked" style="--card-accent:#64748b">
           <div class="companion-portrait"><span class="spell-icon">❓</span></div>
           <div class="companion-info">
-            <div class="companion-item-name">Màn ${def.level} · ???</div>
-            <div class="companion-desc">💡 Hạ ${def.keeper} trong Cốt Truyện để thu thập Mảnh Ký Ức này.</div>
+            <div class="companion-item-name">Màn ${escapeStoryText(def.level)} · ???</div>
+            <div class="companion-desc">💡 Hạ ${escapeStoryText(def.keeper)} trong Cốt Truyện để thu thập Mảnh Ký Ức này.</div>
           </div>
           <span class="companion-state">🔒</span>
         </div>`;
       }
       const pledge = kept
-        ? `<div class="lore-pledge kept">✨ <b>${def.pledge.virtue} (${def.pledge.enVirtue})</b>: ${def.pledge.reveal}</div>`
-        : `<div class="lore-pledge">🧩 <b>Lời Hứa “${def.pledge.title}”</b>: ${def.pledge.riddle}<br><small>Nói rõ hơn: ${def.pledge.objective}</small></div>`;
+        ? `<div class="lore-pledge kept">✨ <b>${escapeStoryText(def.pledge.virtue)} (${escapeStoryText(def.pledge.enVirtue)})</b>: ${escapeStoryText(def.pledge.reveal)}</div>`
+        : `<div class="lore-pledge">🧩 <b>Lời Hứa “${escapeStoryText(def.pledge.title)}”</b>: ${escapeStoryText(def.pledge.riddle)}<br><small>Nói rõ hơn: ${escapeStoryText(def.pledge.objective)}</small></div>`;
       return `
         <div class="companion-item spell-item" style="--card-accent:${kept ? '#fde047' : '#c084fc'}">
-          <div class="companion-portrait"><span class="spell-icon">${def.icon}</span></div>
+          <div class="companion-portrait"><span class="spell-icon">${escapeStoryText(def.icon)}</span></div>
           <div class="companion-info">
-            <div class="companion-item-name">Màn ${def.level} · ${def.title}</div>
-            <div class="companion-desc">${def.shard}</div>
+            <div class="companion-item-name">Màn ${escapeStoryText(def.level)} · ${escapeStoryText(def.title)}</div>
+            <div class="companion-desc">${escapeStoryText(def.shard)}</div>
             ${pledge}
           </div>
-          <span class="companion-state">${kept ? `✨ ${def.letter}` : '?'}</span>
+          <span class="companion-state">${kept ? `✨ ${escapeStoryText(def.letter)}` : '?'}</span>
         </div>`;
     }).join('');
     this._html('lore-grid', html);
@@ -763,17 +766,17 @@ export class MetaUI {
       this._hidden('upgrade-shard', true);
       return;
     }
-    let html = `<div class="shard-head"><span class="shard-icon">${def.icon}</span>
-      <span class="shard-title">🔮 ${lore.newShard ? 'MẢNH KÝ ỨC MỚI' : 'KÝ ỨC'}: ${def.title}</span></div>`;
+    let html = `<div class="shard-head"><span class="shard-icon">${escapeStoryText(def.icon)}</span>
+      <span class="shard-title">🔮 ${lore.newShard ? 'MẢNH KÝ ỨC MỚI' : 'KÝ ỨC'}: ${escapeStoryText(def.title)}</span></div>`;
     if (lore.newShard) {
       // The boss's parting words flash by on the banner; here the player can actually read them
-      const cfg = LEVEL_CONFIGS[def.level - 1];
-      if (cfg && cfg.bossDefeatQuote) html += `<p class="shard-quote">“${cfg.bossDefeatQuote}” <span>— ${def.keeper}</span></p>`;
-      html += `<p class="shard-text">${def.shard}</p>`;
+      const cfg = {bossDefeatQuote:storyContent.chapters.find(c=>c.chapter===def.level)?.quotes.defeat};
+      if (cfg && cfg.bossDefeatQuote) html += `<p class="shard-quote">“${escapeStoryText(cfg.bossDefeatQuote)}” <span>— ${escapeStoryText(def.keeper)}</span></p>`;
+      html += `<p class="shard-text">${escapeStoryText(def.shard)}</p>`;
     }
     html += `<div class="lore-name shard-letters">${this._lettersHtml()}</div>`;
-    if (lore.newPledge) html += `<p class="shard-pledge kept">✨ ${def.pledge.reveal}</p>`;
-    else if (!p.hasPledge(def.level)) html += `<p class="shard-pledge">🧩 ${def.pledge.riddle}</p>`;
+    if (lore.newPledge) html += `<p class="shard-pledge kept">✨ ${escapeStoryText(def.pledge.reveal)}</p>`;
+    else if (!p.hasPledge(def.level)) html += `<p class="shard-pledge">🧩 ${escapeStoryText(def.pledge.riddle)}</p>`;
     el.innerHTML = html;
     this._hidden('upgrade-shard', false);
   }

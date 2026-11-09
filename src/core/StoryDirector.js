@@ -17,7 +17,8 @@ export class StoryDirector {
   /**
    * @param {(line: object) => void} say shows one line (a resolved line from StoryScenes)
    */
-  constructor(say) {
+  constructor(say, onCancel) {
+    this.onCancel = onCancel;
     this.say = typeof say === 'function' ? say : () => {};
     this.enabled = true;
     this.cancel();
@@ -37,6 +38,8 @@ export class StoryDirector {
 
   /** Forget everything that is queued, scheduled or showing (a run ends, the player quits) */
   cancel() {
+    this.onCancel?.();
+    this.generation = (this.generation || 0) + 1;
     this.queue = [];
     this.pending = [];
     this.current = null;
@@ -114,6 +117,12 @@ export class StoryDirector {
     }
   }
 
+  resumeGraph(lines) {
+    this.current = null;
+    this.queue.unshift(...lines);
+    this._next();
+  }
+
   _next() {
     const line = this.queue.shift();
     if (!line) {
@@ -123,7 +132,7 @@ export class StoryDirector {
       return;
     }
     this.current = line;
-    this.timer = (line.ms || 3500) / 1000 + LINE_GAP;
+    this.timer = line.choices || line.battleId ? Infinity : (line.ms || 3500) / 1000 + LINE_GAP;
     this.say(line);
   }
 }

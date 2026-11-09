@@ -1,3 +1,4 @@
+import { storyContent } from '../../shared/story/runtime.js';
 /**
  * @file Lore.js
  * @description The mystery that runs through the Story: "Cái Tên Bị Lãng Quên" (the forgotten name).
@@ -113,7 +114,7 @@ export const OATH = 'Học để hiểu · Sẻ để gần · Ngước để m�
 
 /** @param {number} level @returns {ShardDef|null} */
 export function shardForLevel(level) {
-  return MEMORY_SHARDS.find(s => s.level === level) || null;
+  return storyContent.memories.find(s => s.level === level) || null;
 }
 
 /**
@@ -165,7 +166,7 @@ export function evaluatePledge(level, facts) {
  * @returns {Array<{level: number, letter: string, known: boolean}>}
  */
 export function loreLetters(store) {
-  return MEMORY_SHARDS.map(s => ({ level: s.level, letter: s.letter, known: store.hasPledge(s.level) }));
+  return storyContent.memories.map(s => ({ level: s.level, letter: s.letter, known: store.hasPledge(s.level) }));
 }
 
 /**
@@ -174,7 +175,7 @@ export function loreLetters(store) {
  *   `name` is "L U _ _ _" style, `ready` means every pledge is kept (the true ending is open)
  */
 export function loreSummary(store) {
-  const total = MEMORY_SHARDS.length;
+  const total = storyContent.memories.length;
   const pledges = store.pledgeCount();
   return {
     shards: store.shardCount(),
@@ -191,15 +192,15 @@ export function loreSummary(store) {
  * @returns {string}
  */
 export function mysteryHint(store) {
-  if (store.pledgeCount() >= MEMORY_SHARDS.length) {
+  if (store.pledgeCount() >= storyContent.memories.length) {
     return 'Đủ năm chữ cái rồi. Cái tên đã được gọi lại.';
   }
   if (store.shardCount() === 0) {
     return 'Có một cái tên đã bị sương mù xóa khỏi lịch sử. Hạ các trùm để lần theo dấu vết.';
   }
   // The first pledge that is still open on a level whose shard we already hold
-  const open = MEMORY_SHARDS.find(s => store.hasShard(s.level) && !store.hasPledge(s.level));
+  const open = storyContent.memories.find(s => store.hasShard(s.level) && !store.hasPledge(s.level));
   if (open) return open.pledge.riddle;
-  const missing = MEMORY_SHARDS.find(s => !store.hasShard(s.level));
+  const missing = storyContent.memories.find(s => !store.hasShard(s.level));
   return missing ? `Mảnh Ký Ức tiếp theo đang ở Màn ${missing.level}: ${missing.keeper}.` : '';
 }

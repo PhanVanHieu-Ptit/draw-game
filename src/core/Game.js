@@ -1,3 +1,4 @@
+import { endingAvailable } from '../../shared/story/runtime.js';
 import { freezeConfig, defaults, SCHEMA_VERSION } from '../../shared/game-configuration.js';
 /**
  * @file Game.js
@@ -153,7 +154,7 @@ export class Game {
     this._newCompanions = [];
 
     // In-run story: scenes between fights, companion reactions, and the per-level facts the pledges read
-    this.storyDirector = new StoryDirector((line) => this._showStoryLine(line));
+    this.storyDirector = new StoryDirector((line) => this._showStoryLine(line), () => { this.uiManager?._storyChoiceElement?.remove(); this._graphBattle = null; });
     this._pendingLore = null;
     this._resetStoryTracking();
 
@@ -330,8 +331,13 @@ export class Game {
       }
 
       // The purified boss's parting words (the memory itself is on the upgrade screen)
+      const waitingBattle = this._graphBattle;
+      const generation = this.storyDirector.generation;
       this.storyDirector.cancel();
       this.storyDirector.play(this._scene(lvlNum, 'bossDefeat'));
+      if (waitingBattle && waitingBattle.generation === generation && waitingBattle.line.battleId === lvlData.id) {
+        this.storyDirector.play(waitingBattle.line.resume());
+      }
     };
 
     this.waveSystem.onGameVictory = () => {
@@ -2884,11 +2890,36 @@ export class Game {
       return beat === 'bossSpawn' || beat === 'bossDefeat' ? buildScene(level, beat, { replay: true }) : [];
     }
     // A level whose memory is already in the journal skips the extra lines
-    return buildScene(level, beat, { replay: this.progress.hasShard(level) });
+    return buildScene(level, beat, { replay: this.progress.hasShard(level), interactive: true, state: this._storyGraphState(), onState: state => { this.progress.data.storyState = state; this.progress.save(); } });
+  }
+
+  _storyGraphState() {
+    const state = this._graphStoryState ||= structuredClone(this.progress.data.storyState || {flags:{},promises:[],memories:[],rewards:[]});
+    for (let level=1;level<=5;level++) {
+      if (this.progress.hasShard(level) && !state.memories.includes(String(level))) state.memories.push(String(level));
+      if (this.progress.hasPledge(level) && !state.promises.includes(String(level))) state.promises.push(String(level));
+    }
+    return state;
   }
 
   _showStoryLine(line) {
     if (!this.uiManager) return;
+    if (line.choices) {
+      const generation = this.storyDirector.generation;
+      this.uiManager.showStoryChoices(line, index => {
+        if (generation !== this.storyDirector.generation) return;
+        this.storyDirector.resumeGraph(line.choices[index].resume());
+      });
+      return;
+    }
+    if (line.battleId) {
+      if (this.waveSystem.isIntermission && this.waveSystem.levelData?.id === line.battleId) {
+        this.storyDirector.resumeGraph(line.resume());
+        return;
+      }
+      this._graphBattle = {line,generation:this.storyDirector.generation};
+      return;
+    }
     this.uiManager.showDialogue({
       name: line.name,
       role: line.role,
@@ -2896,6 +2927,7 @@ export class Game {
       characterId: line.characterId,
       color: line.color,
       text: line.text,
+      expression: line.expression,
       duration: line.ms
     });
   }
@@ -3014,7 +3046,7 @@ export class Game {
     if (this.waveSystem.gameMode !== 'STORY' || this.bossRush || this.challenge) return [];
     const queue = [];
     if (!this.progress.isEndingSeen('normal')) queue.push('normal');
-    if (loreSummary(this.progress).ready && !this.progress.isEndingSeen('true')) queue.push('true');
+    if (endingAvailable('true', {storyVictory:true,pledges:this.progress.pledgeCount()}) && !this.progress.isEndingSeen('true')) queue.push('true');
     return queue;
   }
 

@@ -1,3 +1,4 @@
+import { sanitizeStoryState } from '../../shared/story/engine.js';
 /**
  * @file ProgressStore.js
  * @description Long-term player progress persisted in localStorage:
@@ -110,6 +111,7 @@ function freshData() {
     phrases: {},
     cosmetics: { trail: DEFAULT_TRAIL, hat: DEFAULT_HAT, seen: {} },
     rush: emptyRush(),
+    storyState: sanitizeStoryState(),
     lore: emptyLore()
   };
 }
@@ -249,6 +251,8 @@ export class ProgressStore {
       for (const k of Object.keys(r)) r[k] = Math.round(nonNegative(parsed.rush[k]));
       d.rush = r;
     }
+
+    d.storyState = sanitizeStoryState(parsed.storyState || {});
 
     if (parsed.lore && typeof parsed.lore === 'object') {
       for (const field of ['shards', 'pledges']) {

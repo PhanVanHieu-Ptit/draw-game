@@ -1,3 +1,4 @@
+import { StoryPage } from './StoryPage';
 import { GameplayPage } from "./GameplayPage";
 import { ConfigurationPage } from "./ConfigurationPage";
 import React, { useState } from "react";
@@ -199,6 +200,8 @@ function Root() {
                             <Dashboard />
                           ) : m.key === "gameplay" ? (
                             <GameplayPage />
+                          ) : m.key === "content" ? (
+                            <StoryPage />
                           ) : m.key === "configuration" ? (
                             <ConfigurationPage />
                           ) : (
