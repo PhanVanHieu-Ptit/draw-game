@@ -73,14 +73,20 @@ export function createAdminServer({
       )
         return send(403, { message: "Cross-origin request rejected." });
       const body = async () => {
-        let raw = "";
+        const limit = path.startsWith('/api/content/story') ? 2097152 : 16384;
+        // Collect the raw Buffers and decode once at the end: decoding each chunk on its own turns a multi-byte
+        // character that straddles two chunks into U+FFFD.
+        const chunks = [];
+        let size = 0;
         for await (const chunk of req) {
-          raw += chunk;
-          if (Buffer.byteLength(raw) > (path.startsWith('/api/content/story') ? 2097152 : 16384))
+          size += chunk.length;
+          if (size > limit)
             throw Object.assign(new Error("Request too large."), {
               status: 413,
             });
+          chunks.push(chunk);
         }
+        const raw = Buffer.concat(chunks).toString("utf8");
         try {
           return JSON.parse(raw || "{}");
         } catch {

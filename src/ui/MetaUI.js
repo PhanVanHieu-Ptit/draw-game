@@ -1167,6 +1167,14 @@ export class MetaUI {
     );
   }
 
+  /** @param {{title: string}} def the memory shard just found; its title is Story CMS text, so it is escaped */
+  showShardToast(def) {
+    this.showToast(
+      `<span class="toast-icon">🔮</span><span class="toast-body"><b>Mảnh Ký Ức mới!</b><br>${escapeStoryText(def.title)} — xem trong Nhật Ký Ký Ức</span>`,
+      'unlock'
+    );
+  }
+
   // ------------------------------------------------------------------ resume countdown
 
   /** @param {number} n seconds left (3, 2, 1); 0 hides the overlay */

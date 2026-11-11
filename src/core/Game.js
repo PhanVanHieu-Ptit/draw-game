@@ -3021,10 +3021,7 @@ export class Game {
     if (newShard || newPledge) p.save();
 
     if (newShard) {
-      this.uiManager.meta.showToast(
-        `<span class="toast-icon">🔮</span><span class="toast-body"><b>Mảnh Ký Ức mới!</b><br>${def.title} — xem trong Nhật Ký Ký Ức</span>`,
-        'unlock'
-      );
+      this.uiManager.meta.showShardToast(def);
       this.uiManager.meta.markLoreNew();
     }
     if (newPledge) {

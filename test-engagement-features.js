@@ -200,15 +200,33 @@ console.log('\n--- 2. Surprises and WaveSystem hooks ---');
   ws.initLevel(2);
   assert(ws.spawnQueue.length === 0, 'a new wave drops stale queued ghosts');
 
+  // Blood moon: generate the same seeded wave twice, once at normal speed and once at 1.25x, and compare the
+  // first ORDINARY ghost of each. Heart / freeze / blast ghosts have a fixed speed that ignores
+  // eventSpeedScale on purpose (WaveSystem._generateEnemyConfig), and an unseeded wave drew one of them first
+  // about 31% of the time, which made this assertion flaky. With the same seed both waves are the same
+  // sequence, so the two samples are the very same ghost and the speed ratio is exactly the scale.
+  const firstOrdinaryGhost = (seed, scale) => {
+    ws.eventSpeedScale = scale;
+    ws.setMode('ENDLESS');
+    ws.setSeed(seed);
+    ws.initLevel(3);
+    for (let i = 0; i < 400; i++) {
+      const r = ws.update(0.1, 5, 0, 0);
+      const ordinary = (r ? [].concat(r) : []).find(g => !g.isHeartGhost && !g.isFreezeGhost && !g.isBlastGhost);
+      if (ordinary) return ordinary;
+    }
+    return null;
+  };
+  let moonGhostsFaster = true;
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const base = firstOrdinaryGhost(seed, 1);
+    const fast = firstOrdinaryGhost(seed, 1.25);
+    const ratio = base && fast ? fast.speedMultiplier / base.speedMultiplier : NaN;
+    if (!(base && fast && fast.archetype === base.archetype && Math.abs(ratio - 1.25) < 1e-9)) moonGhostsFaster = false;
+  }
+  ws.setSeed(null);
   ws.eventSpeedScale = 1;
-  ws.setMode('ENDLESS'); ws.initLevel(3);
-  let base = null;
-  for (let i = 0; i < 400 && !base; i++) { const r = ws.update(0.1, 5, 0, 0); if (r) base = Array.isArray(r) ? r[0] : r; }
-  ws.eventSpeedScale = 1.25;
-  ws.initLevel(3);
-  let fast = null;
-  for (let i = 0; i < 400 && !fast; i++) { const r = ws.update(0.1, 5, 0, 0); if (r) fast = Array.isArray(r) ? r[0] : r; }
-  assert(base && fast && fast.speedMultiplier > base.speedMultiplier * 1.2, 'ghosts generated during a blood moon are faster');
+  assert(moonGhostsFaster, 'ghosts generated during a blood moon are faster');
 
   const rush = new WaveSystem();
   rush.setMode('STORY');

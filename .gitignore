@@ -1,0 +1,23 @@
+# Dependencies (installed with `pnpm install`; never commit them)
+node_modules/
+
+# OS noise
+.DS_Store
+
+# Logs
+*.log
+
+# Secrets and local configuration (keep the committed templates)
+.env
+.env.*
+!.env.example
+
+# Test and coverage output
+coverage/
+test-results/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# NOTE: dist/ and arcane-paws-standalone.html are intentionally NOT ignored here.
+# They are tracked build artifacts until the artifact policy (FND-04 / DEC-08) is decided.
