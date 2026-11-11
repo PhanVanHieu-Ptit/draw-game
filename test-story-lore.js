@@ -19,6 +19,7 @@ import { HATS, TRAILS, isCosmeticUnlocked } from './src/core/Cosmetics.js';
 import { SettingsStore, DEFAULT_SETTINGS, sanitizeSetting } from './src/core/Settings.js';
 import { LEVEL_CONFIGS, STORY_SLIDES, STORY_CHAPTERS, GAME_STATES } from './src/core/Constants.js';
 import { StoryCanvasRenderer } from './src/ui/StoryCanvasRenderer.js';
+import { getStory, installStory } from './shared/story/runtime.js';
 import { drawHat } from './src/entities/Hats.js';
 
 let passed = 0;
@@ -27,6 +28,14 @@ function assert(cond, msg) {
   if (cond) { console.log(`  ✅ PASS: ${msg}`); passed++; }
   else { console.error(`  ❌ FAIL: ${msg}`); failed++; }
 }
+
+/**
+ * What a button currently says. UIManager sets a label as the textContent of a child <span> (never through
+ * innerHTML), so read the children first and fall back to textContent / innerHTML for an element set the old way.
+ */
+const labelOf = (el) => (el.children && el.children.length
+  ? el.children.map(c => c.textContent).join('')
+  : (el.textContent || el.innerHTML));
 
 class MemoryStorage {
   constructor() { this.map = new Map(); }
@@ -292,6 +301,7 @@ console.log('\n--- 6. Game integration ---');
   const fakeEl = () => ({
     addEventListener() {}, classList: { add() {}, remove() {}, contains: () => false },
     style: { setProperty() {} }, textContent: '', innerHTML: '', innerText: '', appendChild() {},
+    children: [], replaceChildren(...nodes) { this.children = nodes; },
     querySelectorAll: () => [], querySelector: () => null, setAttribute() {}
   });
   global.window = {
@@ -300,7 +310,7 @@ console.log('\n--- 6. Game integration ---');
   };
   global.document = {
     addEventListener() {}, hidden: false,
-    createElement: () => ({ getContext: () => noopCtx, classList: { add() {}, remove() {}, contains: () => false }, appendChild() {}, width: 100, height: 100 }),
+    createElement: (tag) => ({ tagName: String(tag || '').toUpperCase(), getContext: () => noopCtx, classList: { add() {}, remove() {}, contains: () => false }, appendChild() {}, width: 100, height: 100 }),
     getElementById: () => fakeEl(), querySelectorAll: () => [], querySelector: () => null
   };
   const mockCanvas = {
@@ -554,11 +564,11 @@ console.log('\n--- 7. Ending overlay and illustrations ---');
   assert(game.progress.isEndingSeen('normal') && !game.progress.isEndingSeen('true'), 'it counts as seen as soon as it starts (a skip does not force a replay)');
   assert(ui.btnStoryPrev.style.visibility === 'hidden', 'there is nothing before the first slide');
   ui.showStoryVictorySlide(2);
-  assert(ui.btnStoryNext.innerHTML.includes('Tiếp Tục'), 'at the end of the first ending the button leads on to the next one');
+  assert(labelOf(ui.btnStoryNext).includes('Tiếp Tục'), 'at the end of the first ending the button leads on to the next one');
   ui._nextEnding();
   assert(ui.currentStoryAct === 'trueEnding' && ui.currentStoryIndex === 0 && game.progress.isEndingSeen('true'), 'the true ending follows');
   ui.showStoryEndingSlide(2);
-  assert(ui.btnStoryNext.innerHTML.includes('Xem Kết Quả'), 'and its last slide leads to the result screen');
+  assert(labelOf(ui.btnStoryNext).includes('Xem Kết Quả'), 'and its last slide leads to the result screen');
   assert(ui.storySlideTitle.textContent === STORY_SLIDES.TRUE_ENDING[2].title, 'the slide text is shown');
   ui._nextEnding();
   assert(!ui._endingOverlay && !classes.has('active') && !classes.has('ending-overlay'), 'after the last slide the overlay is gone');
@@ -567,11 +577,44 @@ console.log('\n--- 7. Ending overlay and illustrations ---');
   const before = game.progress.data.stats.trueEndings;
   ui.playEnding(['true'], { replay: true });
   ui.showStoryEndingSlide(2);
-  assert(ui.btnStoryNext.innerHTML.includes('Đóng') && game.progress.data.stats.trueEndings === before, 'a replay is not counted again and ends with "Đóng"');
+  assert(labelOf(ui.btnStoryNext).includes('Đóng') && game.progress.data.stats.trueEndings === before, 'a replay is not counted again and ends with "Đóng"');
   ui.closeEnding();
   assert(!ui._endingOverlay, 'closeEnding() removes it (Esc / skip)');
   ui.closeEnding();
   assert(!ui._endingOverlay, 'closing twice is harmless');
+
+  // CMS text is never parsed as HTML. `actionPrompt` is free text a Content Editor can publish; the story
+  // validator only checks that it is a string, so the UI has to treat it as text (SEC-01).
+  const payload = '<img src=x onerror=alert(1)>';
+  const innerHtmlWrites = [];
+  const label = { children: [], textContent: '', replaceChildren(...nodes) { this.children = nodes; }, appendChild(node) { this.children.push(node); } };
+  Object.defineProperty(label, 'innerHTML', { get: () => '', set: (value) => innerHtmlWrites.push(value) });
+  ui.btnStoryNext = label;
+  const original = getStory();
+  const hostile = getStory();
+  hostile.locales.vi['slides.INTRO.0.actionPrompt'] = payload;
+  assert(installStory(hostile) === true, 'a story whose button text contains markup still installs (the CMS only checks for a string)');
+  ui.isStoryPreviewMode = false;
+  ui.showStorySlide(0);
+  assert(innerHtmlWrites.length === 0, 'the story button label is never assigned through innerHTML');
+  assert(label.children.length === 1 && label.children[0].tagName === 'SPAN' && label.children[0].textContent === payload && labelOf(label) === payload,
+    'markup in CMS button text is shown as plain text inside a single <span>');
+  installStory(original);
+
+  // The same goes for the memory-shard toast: a shard's title is CMS text too, and a toast is built from HTML.
+  const toastHtml = [];
+  game.uiManager.meta.showToast = (html) => toastHtml.push(html);
+  game.waveSystem.setMode('STORY');
+  game.bossRush = false;
+  game.challenge = null;
+  const hostileShard = getStory();
+  hostileShard.locales.vi['memories.0.title'] = payload;
+  assert(installStory(hostileShard) === true && shardForLevel(1).title === payload, 'a memory shard whose title contains markup installs (the CMS only checks for a string)');
+  game._awardLore(1);
+  assert(toastHtml.some(t => t.includes('Mảnh Ký Ức mới')), 'the new-shard toast is shown');
+  assert(!toastHtml.some(t => t.includes('<img')), 'a CMS shard title never becomes an element in the toast');
+  assert(toastHtml.some(t => t.includes('&lt;img src=x onerror=alert(1)&gt;')), 'it is shown as escaped text instead');
+  installStory(original);
 }
 
 console.log('\n========================================');

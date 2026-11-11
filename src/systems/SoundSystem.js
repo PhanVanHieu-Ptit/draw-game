@@ -1813,8 +1813,9 @@ export class SoundSystem {
         `/${name}.mp3`,
         `./assets/audio/${name}.mp3`,
         `assets/audio/${name}.mp3`,
-        `/assets/audio/${name}.mp3`,
-        `https://www.google.com/logos/2016/halloween16/r4/${name}.mp3`
+        `/assets/audio/${name}.mp3`
+        // Own-origin copies only: never fall back to another site's server (tests/no-hotlinks.test.js).
+        // If none loads, this returns null and the synthesized sounds are used instead.
       ];
 
       for (const url of candidates) {

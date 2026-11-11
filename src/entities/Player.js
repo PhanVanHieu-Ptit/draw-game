@@ -93,8 +93,9 @@ export class Player extends Entity {
         `assets/${sheetName}`,
         `/assets/${sheetName}`,
         sheetName,
-        `/${sheetName}`,
-        `https://www.google.com/logos/2016/halloween16/r4/${sheetName}`
+        `/${sheetName}`
+        // Own-origin copies only: never fall back to another site's server (tests/no-hotlinks.test.js).
+        // If none loads, Momo is drawn as vectors.
       ];
 
       let urlIdx = 0;

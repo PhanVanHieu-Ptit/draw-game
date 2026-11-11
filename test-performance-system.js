@@ -217,3 +217,7 @@ assert(pt.y === 600, `Retina Y coordinate correctly normalized (expected 600, go
 console.log('\n========================================');
 console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
 console.log('========================================\n');
+
+// Soft asserts only count failures, so without this a broken assertion would still exit 0 and `npm test`
+// (a chain of `&&`) would carry on as if the suite were green.
+process.exit(failed > 0 ? 1 : 0);

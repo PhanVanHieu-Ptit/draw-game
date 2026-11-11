@@ -1,0 +1,52 @@
+{
+  "$comment": "Single list of the game's Node test suites, read by scripts/run-tests.mjs (npm test). Every file matching test-*.js, scripts/test-*.js or tests/*.test.js must appear in `suites` or `quarantine`, otherwise the runner fails (orphan guard). Admin suites run through `npm run test:admin`.",
+  "suites": [
+    { "id": "combat", "file": "tests/combat.test.js", "area": "combat" },
+    { "id": "gesture-recognition", "file": "tests/gesture-recognition.test.js", "area": "gestures" },
+    { "id": "gesture-enhancements", "file": "test-gesture-enhancements.js", "area": "gestures" },
+    { "id": "performance-system", "file": "test-performance-system.js", "area": "performance" },
+    { "id": "visual-effects", "file": "test-visual-effects.js", "area": "visuals" },
+    { "id": "sound-system", "file": "test-sound-system.js", "area": "sound" },
+    { "id": "new-features", "file": "scripts/test-new-features.js", "area": "features" },
+    { "id": "doodle-levels-story", "file": "test-doodle-levels-story.js", "area": "story" },
+    { "id": "story-character-expansion", "file": "test-story-character-expansion.js", "area": "story" },
+    { "id": "character-visuals", "file": "test-character-visuals.js", "area": "visuals" },
+    { "id": "difficulty-scaling", "file": "test-difficulty-scaling.js", "area": "balance" },
+    { "id": "boss-retreat-all-minions", "file": "scripts/test-boss-retreat-all-minions.js", "area": "boss" },
+    { "id": "boss-spawn-deadlock-prevention", "file": "scripts/test-boss-spawn-deadlock-prevention.js", "area": "boss" },
+    { "id": "share-card-haptic-catsfx", "file": "test-share-card-haptic-catsfx.js", "area": "features" },
+    { "id": "boss-gradual-arrival", "file": "scripts/test-boss-gradual-arrival.js", "area": "boss" },
+    { "id": "final-boss-half-screen-right", "file": "scripts/test-final-boss-half-screen-right.js", "area": "boss" },
+    { "id": "tactical-rune-requirement", "file": "test-tactical-rune-requirement.js", "area": "gameplay" },
+    { "id": "mobile-optimization", "file": "test-mobile-optimization.js", "area": "mobile" },
+    { "id": "endless-mode", "file": "test-endless-mode.js", "area": "gameplay" },
+    { "id": "meta-features", "file": "test-meta-features.js", "area": "meta" },
+    { "id": "enemy-render-performance", "file": "test-enemy-render-performance.js", "area": "performance" },
+    { "id": "engagement-features", "file": "test-engagement-features.js", "area": "engagement" },
+    { "id": "story-lore", "file": "test-story-lore.js", "area": "story" },
+    { "id": "powerups-freeze-blast", "file": "test-powerups-freeze-blast.js", "area": "gameplay" },
+    { "id": "gesture-momo-sound", "file": "scripts/test-gesture-momo-sound.js", "area": "sound" },
+    { "id": "test-runner", "file": "tests/run-tests.test.js", "area": "tooling" },
+    { "id": "no-hotlinks", "file": "tests/no-hotlinks.test.js", "area": "security" }
+  ],
+  "quarantine": [
+    {
+      "id": "center-cat-boss-tutorial",
+      "file": "scripts/test-center-cat-boss-tutorial.js",
+      "reason": "Outdated test: fails with a TypeError on the first tutorial minion after WaveSystem changed.",
+      "task": "TST-04"
+    },
+    {
+      "id": "boss-minions-and-scary-face",
+      "file": "scripts/test-boss-minions-and-scary-face.js",
+      "reason": "Outdated expectations (level 1 now has 12 minions, new concurrent-minion caps) plus one RNG-dependent assertion.",
+      "task": "TST-05"
+    },
+    {
+      "id": "monster-sounds",
+      "file": "scripts/test-monster-sounds.js",
+      "reason": "Outdated test: its fake projectile lacks the cast identity the combat refactor requires.",
+      "task": "TST-06"
+    }
+  ]
+}

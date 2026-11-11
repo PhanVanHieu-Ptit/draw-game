@@ -13,6 +13,19 @@ import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChall
 import { MetaUI, PAD_ORDER } from './MetaUI.js';
 import { buildDailyChallengeUrl } from '../core/Challenge.js';
 
+/**
+ * Set a button's label to `text`, shown as plain text inside one <span>.
+ * Never build a label with innerHTML: some labels come from the Story CMS (a slide's `actionPrompt`), and CMS text
+ * must not be parsed as markup.
+ * @param {HTMLElement} btn
+ * @param {string} text
+ */
+function setButtonLabel(btn, text) {
+  const span = document.createElement('span');
+  span.textContent = text;
+  btn.replaceChildren(span);
+}
+
 export class UIManager {
   constructor(game) {
     this.game = game;
@@ -838,9 +851,9 @@ export class UIManager {
 
     if (this.btnStoryNext) {
       if (this.isStoryPreviewMode && index === slides.length - 1) {
-        this.btnStoryNext.innerHTML = `<span>Xem Màn 1 ➜</span>`;
+        setButtonLabel(this.btnStoryNext, 'Xem Màn 1 ➜');
       } else {
-        this.btnStoryNext.innerHTML = `<span>${slide.actionPrompt || 'Tiếp Tục ➜'}</span>`;
+        setButtonLabel(this.btnStoryNext, slide.actionPrompt || 'Tiếp Tục ➜');
       }
     }
     if (this.btnStoryPrev) {
@@ -890,7 +903,7 @@ export class UIManager {
     }
 
     if (this.btnStoryNext) {
-      this.btnStoryNext.innerHTML = `<span>${chapNum < 5 ? `Chương ${chapNum + 1} ➜` : 'Hồi Kết ➜'}</span>`;
+      setButtonLabel(this.btnStoryNext, chapNum < 5 ? `Chương ${chapNum + 1} ➜` : 'Hồi Kết ➜');
     }
     if (this.btnStoryPrev) {
       this.btnStoryPrev.style.visibility = 'visible';
@@ -919,7 +932,7 @@ export class UIManager {
 
     if (this.btnStoryNext) {
       const last = index >= slides.length - 1;
-      this.btnStoryNext.innerHTML = `<span>${last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜'}</span>`;
+      setButtonLabel(this.btnStoryNext, last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜');
     }
     if (this.btnStoryPrev) {
       this.btnStoryPrev.style.visibility = this._endingOverlay && index === 0 ? 'hidden' : 'visible';
@@ -951,7 +964,7 @@ export class UIManager {
 
     if (this.btnStoryNext) {
       const last = index >= slides.length - 1;
-      this.btnStoryNext.innerHTML = `<span>${last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜'}</span>`;
+      setButtonLabel(this.btnStoryNext, last ? this._endingLastLabel('Về Menu 🏠') : 'Tiếp Tục ➜');
     }
     if (this.btnStoryPrev) {
       this.btnStoryPrev.style.visibility = this._endingOverlay && index === 0 ? 'hidden' : 'visible';
