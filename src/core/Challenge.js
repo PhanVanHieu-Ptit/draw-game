@@ -173,22 +173,31 @@ export function getDailyChallenge(key = dateKey()) {
  * @param {string} key date key of the challenge
  * @param {number} score score to beat
  * @param {string} [from] sender name
+ * @param {string} [board] leaderboard id of the challenge the score was set on (live operations: scores are only
+ *   comparable on the same rules and score version, see shared/live-ops boardId). Omitted for the built-in rotation.
  * @returns {string}
  */
-export function buildDailyChallengeUrl(baseUrl, key, score = 0, from = 'Momo') {
+export function buildDailyChallengeUrl(baseUrl, key, score = 0, from = 'Momo', board = '') {
   const url = new URL(baseUrl);
   url.search = '';
   url.hash = '';
   url.searchParams.set('daily', key);
   url.searchParams.set('score', String(Math.max(0, Math.round(score))));
   url.searchParams.set('from', String(from).slice(0, 24));
+  if (isBoardParam(board)) url.searchParams.set('board', board);
   return url.toString();
+}
+
+const BOARD_PARAM = /^(daily|weekly):(\d{4}-\d{2}-\d{2}|\d{4}-W\d{2}):r\d{1,6}:s\d{1,3}$/;
+/** Shape check only; shared/live-ops parseBoardId is the full parser (this file cannot import it: it imports us) */
+function isBoardParam(value) {
+  return typeof value === 'string' && value.length <= 48 && BOARD_PARAM.test(value);
 }
 
 /**
  * Read a daily-challenge link. Everything is validated because the URL is controlled by whoever sent it.
  * @param {string} search e.g. window.location.search
- * @returns {{key: string, score: number, from: string}|null}
+ * @returns {{key: string, score: number, from: string, board: string}|null} `board` is '' when the link names none
  */
 export function parseDailyChallengeParams(search) {
   try {
@@ -200,7 +209,8 @@ export function parseDailyChallengeParams(search) {
     return {
       key,
       score: Number.isFinite(score) && score > 0 ? Math.min(Math.round(score), 99999999) : 0,
-      from: from || 'Một người bạn'
+      from: from || 'Một người bạn',
+      board: isBoardParam(params.get('board')) ? params.get('board') : ''
     };
   } catch (e) {
     return null;

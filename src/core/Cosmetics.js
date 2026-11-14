@@ -2,7 +2,7 @@
  * @file Cosmetics.js
  * @description Cosmetic rewards: ink-trail colours and hats for Momo. They change how the game looks, never
  * how it plays. Every cosmetic is unlocked by something the player has already done (an achievement, a
- * daily-challenge streak, a Boss Rush clear), so ownership is a pure function of ProgressStore and nothing
+ * daily-challenge streak, a Boss Rush clear, a live-event reward), so ownership is a pure function of ProgressStore and nothing
  * extra has to be stored besides what is equipped and which unlocks the player has been told about.
  *
  * Pure data and logic (no DOM, no canvas): drawing the hats lives in entities/Hats.js.
@@ -138,6 +138,9 @@ export function isCosmeticUnlocked(def, store) {
   if (!def) return false;
   const u = def.unlock;
   if (!u) return true;
+  // An event reward owns the item whatever else it asks for (the store validated the grant)
+  const kind = BY_ID.trail[def.id] === def ? 'trail' : 'hat';
+  if (typeof store.hasEventCosmetic === 'function' && store.hasEventCosmetic(`${kind}:${def.id}`)) return true;
   if (u.achievement) return store.isUnlocked(u.achievement);
   if (u.streak) return store.data.stats.bestDailyStreak >= u.streak;
   if (u.stat) return (store.data.stats[u.stat] || 0) >= (u.atLeast || 1);

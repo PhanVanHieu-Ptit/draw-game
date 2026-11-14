@@ -4,6 +4,31 @@ import { createServer } from "node:http";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { roles, permits, modules } from "./policy.mjs";
+<<<<<<< Updated upstream
+=======
+import { createLoginThrottle, clientAddress } from "./throttle.mjs";
+import { liveOpsRoute, countLiveEvents, reconcileAll } from "./liveops.mjs";
+
+// Largest request body, in bytes, per route prefix (the first match wins). Content documents are big by nature:
+// the story and gameplay editors save a whole document per request, and a gameplay document that stays inside the
+// schema's own caps (500 entries per array, 10,000 spawn events, 512-character text) reaches about 1.9 MiB.
+// Everything else (login, configuration) is tiny and keeps the default.
+const MiB = 1024 * 1024;
+const BODY_LIMITS = [
+  ["/api/content/story", 2 * MiB],
+  ["/api/gameplay/", 2 * MiB],
+  // One event (or one flag set) per request: a few KiB. 64 KiB leaves room for 512-character texts and 8 rewards.
+  ["/api/liveops/", 64 * 1024],
+];
+const DEFAULT_BODY_LIMIT = 16 * 1024;
+const bodyLimit = (path) =>
+  BODY_LIMITS.find(([prefix]) => path.startsWith(prefix))?.[1] ??
+  DEFAULT_BODY_LIMIT;
+// An upload over its limit is still read to the end (and thrown away, never buffered) up to this many bytes before
+// the 413 is sent. Giving up the moment the limit is crossed left the connection open until Node's request timeout
+// and often cost the client its 413 (it saw a reset connection instead). Past this size the connection is dropped.
+const DRAIN_LIMIT = 8 * MiB;
+>>>>>>> Stashed changes
 
 export function createAdminServer({
   email,
@@ -13,6 +38,9 @@ export function createAdminServer({
   role = "Super Admin",
   sessionTTL = 8 * 60 * 60 * 1000,
   now = Date.now,
+  // How often scheduled live-ops events are moved to active / completed and recorded, even when nobody is using the
+  // admin. 0 turns the timer off (tests drive `server.reconcileLiveOps()` themselves).
+  liveOpsTickMs = 30 * 1000,
 } = {}) {
   if (!email || !password || password.length < 16)
     throw new Error(
@@ -48,7 +76,7 @@ export function createAdminServer({
     writes = operation.catch(() => {});
     return operation;
   };
-  return createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     const send = (status, body) => {
       res.writeHead(status, {
         "Content-Type": "application/json",
@@ -132,6 +160,7 @@ export function createAdminServer({
         return send(200, { user: publicUser(user) });
       }
       if (await storyRoute({path,method,body,send,store:()=>store,mutate,current,permits,now})) return;
+      if (await liveOpsRoute({ req, path, method, body, send, store: () => store, mutate, current, permits, now })) return;
       if (
         await configurationRoute({
           content: path.startsWith("/api/gameplay/environments/") || path.startsWith("/api/game-content/"),
@@ -173,7 +202,7 @@ export function createAdminServer({
             publishedConfiguration: Object.values(
               store.environments || {},
             ).filter((e) => e.published).length,
-            scheduledEvents: null,
+            scheduledEvents: countLiveEvents(store, now()),
             gameplayPerformance: null,
           },
           health: {
@@ -236,7 +265,22 @@ export function createAdminServer({
         message: error.status
           ? error.message
           : "Server error. Check server storage and configuration.",
+        // Structured problems (a list of field errors, the conflicting events) for the editors; never for a 500
+        ...(error.status && error.details ? { details: error.details } : {}),
       });
     }
   });
+  // Server-authoritative schedule: time moves events on whether or not anyone is looking. Every liveops request also
+  // catches up first, so a missed tick never shows stale state.
+  const reconcile = () => reconcileAll({ store: () => store, mutate, now });
+  server.reconcileLiveOps = async () => {
+    await ready;
+    return reconcile();
+  };
+  if (liveOpsTickMs > 0) {
+    const timer = setInterval(() => void server.reconcileLiveOps().catch(() => {}), liveOpsTickMs);
+    timer.unref?.();
+    server.on("close", () => clearInterval(timer));
+  }
+  return server;
 }

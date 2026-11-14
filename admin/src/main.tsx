@@ -1,6 +1,7 @@
 import { StoryPage } from './StoryPage';
 import { GameplayPage } from "./GameplayPage";
 import { ConfigurationPage } from "./ConfigurationPage";
+import { LiveOpsPage } from "./LiveOpsPage";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -204,6 +205,8 @@ function Root() {
                             <StoryPage />
                           ) : m.key === "configuration" ? (
                             <ConfigurationPage />
+                          ) : m.key === "liveops" ? (
+                            <LiveOpsPage />
                           ) : (
                             <ModulePage key={m.key} module={m} />
                           )

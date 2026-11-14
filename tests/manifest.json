@@ -27,7 +27,9 @@
     { "id": "powerups-freeze-blast", "file": "test-powerups-freeze-blast.js", "area": "gameplay" },
     { "id": "gesture-momo-sound", "file": "scripts/test-gesture-momo-sound.js", "area": "sound" },
     { "id": "test-runner", "file": "tests/run-tests.test.js", "area": "tooling" },
-    { "id": "no-hotlinks", "file": "tests/no-hotlinks.test.js", "area": "security" }
+    { "id": "no-hotlinks", "file": "tests/no-hotlinks.test.js", "area": "security" },
+    { "id": "live-ops-contract", "file": "tests/live-ops-contract.test.js", "area": "liveops" },
+    { "id": "live-ops-client", "file": "tests/live-ops-client.test.js", "area": "liveops" }
   ],
   "quarantine": [
     {

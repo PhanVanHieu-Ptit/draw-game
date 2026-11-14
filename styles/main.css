@@ -4362,3 +4362,72 @@ html, body {
   .lore-strip { padding: 8px 10px; gap: 8px; }
   .lore-strip-name { letter-spacing: 0.18em; font-size: 0.85rem; }
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Live operations: announcement banner, events screen, daily meta line
+   --------------------------------------------------------------------------------------------------------------- */
+.liveops-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  text-align: left;
+  color: #e2e8f0;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 12px;
+}
+.liveops-banner.hidden { display: none; }
+.liveops-banner[data-tone="urgent"] { background: rgba(244, 63, 94, 0.16); border-color: rgba(251, 113, 133, 0.55); }
+.liveops-banner[data-tone="info"] { background: rgba(56, 189, 248, 0.12); border-color: rgba(125, 211, 252, 0.4); }
+.liveops-banner-icon { font-size: 1.3rem; flex: none; }
+.liveops-banner-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.liveops-banner-title { font-size: 0.9rem; color: #fff; overflow-wrap: anywhere; }
+.liveops-banner-text { font-size: 0.78rem; color: #cbd5e1; overflow-wrap: anywhere; }
+.liveops-banner-close {
+  flex: none; min-width: 32px; min-height: 32px; border: 0; border-radius: 8px; cursor: pointer;
+  color: #cbd5e1; background: rgba(255, 255, 255, 0.08);
+}
+.liveops-banner-close:hover { background: rgba(255, 255, 255, 0.16); }
+
+.daily-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 10px; font-size: 0.76rem; color: #94a3b8; }
+.daily-meta b { color: #e2e8f0; font-weight: 700; }
+.daily-meta .daily-offline { color: #fbbf24; }
+
+.events-card { max-width: 680px; }
+.events-status { margin: 0 0 10px; }
+.events-body { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; max-height: 62vh; padding-right: 2px; }
+.events-section-title { margin: 0 0 6px; font-size: 0.85rem; letter-spacing: 0.04em; color: #c4b5fd; text-transform: uppercase; }
+.events-empty { margin: 0; font-size: 0.8rem; color: #94a3b8; }
+.event-card {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; padding: 10px 12px; text-align: left;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+}
+.event-card.live { border-color: rgba(52, 211, 153, 0.55); background: rgba(16, 185, 129, 0.08); }
+.event-card.cancelled { opacity: 0.7; border-style: dashed; }
+.event-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.event-card-name { font-weight: 800; color: #fff; overflow-wrap: anywhere; }
+.event-kind {
+  padding: 1px 8px; font-size: 0.68rem; font-weight: 700; border-radius: 999px; color: #e0e7ff;
+  background: rgba(99, 102, 241, 0.35); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.event-state { margin-left: auto; font-size: 0.72rem; color: #94a3b8; }
+.event-card.live .event-state { color: #6ee7b7; }
+.event-desc { margin: 0; font-size: 0.8rem; color: #cbd5e1; overflow-wrap: anywhere; }
+.event-rules { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.72rem; color: #a5b4fc; }
+.event-rewards { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; font-size: 0.78rem; color: #e2e8f0; }
+.event-rewards li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.event-rewards .done { color: #6ee7b7; }
+.event-rewards .need { color: #94a3b8; font-size: 0.72rem; }
+.event-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.event-actions .need { font-size: 0.74rem; color: #94a3b8; }
+.event-granted { display: flex; flex-wrap: wrap; gap: 6px; }
+.event-granted span {
+  padding: 3px 9px; font-size: 0.76rem; color: #fde68a; background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.4); border-radius: 999px; overflow-wrap: anywhere;
+}
+.run-liveops { margin-top: 8px; padding: 8px 10px; font-size: 0.8rem; color: #fde68a; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 10px; overflow-wrap: anywhere; }
+.run-liveops .refused { color: #94a3b8; }
+@media (max-width: 480px) { .event-state { margin-left: 0; width: 100%; } }

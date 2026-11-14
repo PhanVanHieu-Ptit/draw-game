@@ -2975,7 +2975,7 @@
         "node -e \"const {execSync}=require('child_process');const fs=require('fs');const files=execSync('git ls-files assets public',{encoding:'utf8'}).trim().split('\\n');const doc=fs.readFileSync('docs/ASSETS.md','utf8');const miss=files.filter(f=>!doc.includes(f));console.log('đang track:',files.length,'thiếu trong tài liệu:',miss.length);if(miss.length){console.log(miss.join('\\n'));process.exit(1)}\""
       ],
       "risks": [],
-      "status": "not_started",
+      "status": "in_progress",
       "evidence": [],
       "completedAt": null
     },

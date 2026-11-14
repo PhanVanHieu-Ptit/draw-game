@@ -79,7 +79,8 @@ All responses are JSON with no-store cache headers. Errors return `{message}` wi
 | GET /api/configuration                                | Persisted draft list                                            |
 | POST /api/configuration                               | Validated draft creation with audit event                       |
 | GET /api/system                                       | Last 100 configuration audit events                             |
-| GET /api/{gameplay,content,liveops,players,analytics} | Explicit unconnected integration, empty items                   |
+| GET /api/{gameplay,content,players,analytics}         | Explicit unconnected integration, empty items                   |
+| /api/liveops/environments/:env/…, GET /api/game-liveops/:env | Live Operations (events, flags, history) and its public schedule; see [docs/live-operations.md](../docs/live-operations.md) |
 
 The legacy POST /api/configuration endpoint accepts name and maxWaves and remains a draft-only compatibility endpoint. The environment-scoped lifecycle uses the shared strict schema. Data and audit events are persisted together using serialized atomic file replacement in `admin/.data/store.json`. Environment-scoped publication endpoints atomically commit published snapshots, revisions and audit records. Admin API operational status comes from the responding backend; it is not a claim about external game infrastructure. Dashboard telemetry uses null, displayed as an em dash, until connected. Published configuration count is scoped to the admin store.
 

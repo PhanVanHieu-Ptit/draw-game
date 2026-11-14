@@ -516,7 +516,7 @@ export class UIManager {
         // A daily-challenge card links to that day's challenge; anything else uses the plain score link
         const dailyKey = this._lastCardData && this._lastCardData.dailyKey;
         const url = dailyKey
-          ? buildDailyChallengeUrl(getChallengeUrl(0, 'Momo'), dailyKey, score, 'Momo')
+          ? buildDailyChallengeUrl(getChallengeUrl(0, 'Momo'), dailyKey, score, 'Momo', this._lastCardData.dailyBoard || '')
           : getChallengeUrl(score, 'Momo');
         try {
           await navigator.clipboard.writeText(url);
@@ -756,7 +756,9 @@ export class UIManager {
         levelReached: 5,
         isVictory: true,
         difficulty: payload.difficulty || this.game.difficulty || 'NORMAL',
-        dailyKey: payload.summary && payload.summary.daily ? payload.summary.daily.key : undefined
+        // Only a daily challenge has a shareable date key (a weekly one is keyed by week, which a link cannot carry)
+        dailyKey: payload.summary && payload.summary.daily && payload.summary.daily.kind !== 'weekly' ? payload.summary.daily.key : undefined,
+        dailyBoard: payload.summary && payload.summary.daily && payload.summary.daily.kind !== 'weekly' ? payload.summary.daily.boardId || '' : ''
       };
 
       if (this.vicScore) this.vicScore.textContent = (payload.score || 0).toLocaleString();
@@ -785,7 +787,9 @@ export class UIManager {
         levelReached: payload.wave || this.game.waveSystem.currentLevel || 1,
         isVictory: false,
         difficulty: payload.difficulty || this.game.difficulty || 'NORMAL',
-        dailyKey: payload.summary && payload.summary.daily ? payload.summary.daily.key : undefined
+        // Only a daily challenge has a shareable date key (a weekly one is keyed by week, which a link cannot carry)
+        dailyKey: payload.summary && payload.summary.daily && payload.summary.daily.kind !== 'weekly' ? payload.summary.daily.key : undefined,
+        dailyBoard: payload.summary && payload.summary.daily && payload.summary.daily.kind !== 'weekly' ? payload.summary.daily.boardId || '' : ''
       };
 
       if (this.goScore) this.goScore.textContent = (payload.score || 0).toLocaleString();

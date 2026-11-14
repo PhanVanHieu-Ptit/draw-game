@@ -56,7 +56,8 @@ export const modules = [
     key: "liveops",
     path: "/liveops",
     label: "Live Operations",
-    description: "Coordinate scheduled events and releases.",
+    description:
+      "Schedule daily and weekly challenges, seasonal and random events, rewards, announcements and feature flags.",
   },
   {
     key: "players",
@@ -120,7 +121,7 @@ export function Dashboard() {
               [
                 "Scheduled events",
                 data?.metrics.scheduledEvents,
-                "Live operations required",
+                "Scheduled or running events",
               ],
             ].map(([label, value, note]) => (
               <Col xs={24} sm={12} xl={6} key={String(label)}>

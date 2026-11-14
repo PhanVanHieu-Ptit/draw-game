@@ -16,7 +16,9 @@ import { ProgressStore } from './ProgressStore.js';
 import { evaluateAchievements, bestiaryId } from './Achievements.js';
 import { UpgradeState, UPGRADES, rollUpgradeChoices, shouldOfferUpgrade } from './Upgrades.js';
 import { getCompanion, isCompanionUnlocked, companionsUnlockedByLevel, DEFAULT_COMPANION } from './Companions.js';
-import { getDailyChallenge, dateKey, buildDailyChallengeUrl } from './Challenge.js';
+import { buildDailyChallengeUrl } from './Challenge.js';
+import { LiveOpsService } from './LiveOps.js';
+import { LiveOpsEffects } from '../systems/LiveOpsEffects.js';
 import { RunSaveStore, buildEndlessSnapshot, MIN_SAVE_WAVE } from './RunSave.js';
 import { PhraseTracker, PHRASE_RUNES } from './Spells.js';
 import { evaluateCosmetics, getCosmetic, getTrail, isCosmeticUnlocked, DEFAULT_TRAIL, DEFAULT_HAT } from './Cosmetics.js';
@@ -103,6 +105,11 @@ export class Game {
 
     // Surprises (golden ghost, meteor shower...), secret Spell Phrases, Boss Rush and the best-moment clip
     this.events = new EventSystem();
+    // Live operations: the server-published schedule (daily / weekly challenges, seasonal and random events, flags).
+    // Nothing is requested until main.js configures a URL; `liveRun` is what the current run was pinned to at its start.
+    this.liveOps = new LiveOpsService();
+    this.liveRun = null;
+    this.liveEffects = new LiveOpsEffects();
     this.phrases = new PhraseTracker();
     this.bossRush = false;
     this.highlight = new HighlightRecorder(canvas, {
@@ -761,6 +768,8 @@ export class Game {
     const accuracy = m.spellsCast > 0 ? Math.round((m.spellsHit / m.spellsCast) * 100) : 100;
     const seconds = m.startTime ? Math.round((Date.now() - m.startTime) / 1000) : 0;
     const rush = !!this.bossRush && mode === 'STORY' && !daily;
+    // A seasonal / random event that changed the fight or the score makes this run incomparable with the regular records
+    const altered = !daily && this._liveRunAltersPlay();
 
     const result = this.progress.recordRun({
       mode, difficulty,
@@ -773,7 +782,7 @@ export class Game {
       spellsCast: m.spellsCast,
       spellsHit: m.spellsHit,
       seconds,
-      ranked: !assisted && !daily && !rush,
+      ranked: !assisted && !daily && !rush && !altered,
       assisted
     });
 
@@ -782,18 +791,49 @@ export class Game {
     let previousBest = result.previous.score;
     let isNewHighScore = result.isNewScore;
     if (daily) {
-      dailyInfo = { key: daily.key, name: daily.modifier.name, isNewBest: false, streak: 0 };
-      if (!assisted && daily.key === dateKey()) {
-        const d = this.progress.recordDaily(daily.key, { score: this.score, wave: level, combo: m.maxCombo || 0 });
-        dailyInfo.isNewBest = d.isNewBest;
-        dailyInfo.streak = d.streak;
-        dailyInfo.record = d.record;
-        highScore = d.record.score;
-        previousBest = d.previous;
-        isNewHighScore = d.isNewBest;
+      const weekly = daily.kind === 'weekly';
+      dailyInfo = {
+        key: daily.key, name: daily.modifier.name, isNewBest: false, streak: 0,
+        kind: daily.kind || 'daily', source: daily.source || 'builtin', boardId: daily.boardId || null
+      };
+      // Only the challenge of the moment is ranked: an older day from a friend's link is just for fun
+      if (!assisted && this.liveOps.isCurrentChallenge(daily)) {
+        const challengeRun = { score: this.score, wave: level, combo: m.maxCombo || 0 };
+        if (!weekly) {
+          const d = this.progress.recordDaily(daily.key, challengeRun);
+          dailyInfo.isNewBest = d.isNewBest;
+          dailyInfo.streak = d.streak;
+          dailyInfo.record = d.record;
+          highScore = d.record.score;
+          previousBest = d.previous;
+          isNewHighScore = d.isNewBest;
+        }
+        // Each (challenge, rules version, score version) is its own leaderboard: scores are never mixed across them
+        const board = daily.boardId ? this.progress.recordBoard(daily.boardId, challengeRun) : null;
+        if (board && board.record) {
+          dailyInfo.board = { id: daily.boardId, isNewBest: board.isNewBest, previous: board.previous, record: board.record };
+          if (weekly) {
+            dailyInfo.isNewBest = board.isNewBest;
+            dailyInfo.record = board.record;
+            highScore = board.record.score;
+            previousBest = board.previous;
+            isNewHighScore = board.isNewBest;
+          }
+          this.progress.save();
+        }
       } else {
         highScore = this.score;
       }
+    }
+
+    // Live operations: event progress and rewards. Settled before the cosmetics check so a granted cosmetic shows up
+    // as newly unlocked. A fault here must never stop the run from being closed out.
+    let liveSummary = null;
+    try {
+      liveSummary = this._settleLiveRun({ mode, difficulty, assisted, level, combo: m.maxCombo || 0 });
+      if (liveSummary && altered) liveSummary.unranked = true;
+    } catch (e) {
+      liveSummary = null;
     }
 
     // Boss Rush keeps its own board: best score, fastest clear and furthest boss
@@ -811,7 +851,7 @@ export class Game {
       }
     }
 
-    if (!assisted && !daily && !rush) {
+    if (!assisted && !daily && !rush && !altered) {
       this.saveHighScore(this.score);
       this.highScore = result.record.score;
     }
@@ -826,6 +866,7 @@ export class Game {
     const summary = {
       mode, difficulty, level, accuracy, seconds, victory, assisted,
       daily: dailyInfo,
+      liveOps: liveSummary,
       bossRush: rush,
       rush: rushInfo,
       cosmetics,
@@ -833,7 +874,7 @@ export class Game {
       maxCombo: m.maxCombo || 0,
       highScore,
       previousBest,
-      scoreGap: (assisted || daily || rush) ? 0 : result.scoreGap,
+      scoreGap: (assisted || daily || rush || altered) ? 0 : result.scoreGap,
       isNewHighScore: !assisted && isNewHighScore,
       isNewLevel: !assisted && !daily && !rush && result.isNewLevel,
       isNewCombo: !assisted && !daily && !rush && result.isNewCombo,
@@ -844,6 +885,31 @@ export class Game {
     };
     this._newCompanions = [];
     return summary;
+  }
+
+  /**
+   * Hand the finished run to live operations (progress towards event rewards, rewards granted). Once per run.
+   * @returns {{events: Array<Object>, granted: Array<Object>}|null} null when no event touched the run
+   */
+  _settleLiveRun({ mode, difficulty, assisted, level, combo }) {
+    const pin = this.liveRun;
+    if (!pin || pin.settled) return null;
+    const ch = this.challenge;
+    const settled = this.liveOps.settleRun({
+      pin,
+      progress: this.progress,
+      run: {
+        mode: ch ? (ch.kind === 'weekly' ? 'WEEKLY' : 'DAILY') : mode,
+        difficulty: ch ? ch.difficulty : difficulty,
+        assisted,
+        score: this.score,
+        wave: level,
+        combo,
+        storyLevelsCleared: this._storyLevelsCleared()
+      }
+    });
+    if (settled.events.some((e) => e.counted)) this.progress.save();
+    return settled.events.length ? settled : null;
   }
 
   /**
@@ -987,9 +1053,12 @@ export class Game {
     this.storyDirector.cancel();
     this._pendingLore = null;
     this._resetStoryTracking();
-    // Hearts: a daily twist can lower them; the equipped companion may add invulnerability time
-    const dailyMaxHp = this.challenge && this.challenge.modifier.maxHp;
-    this.player.maxHp = dailyMaxHp || PLAYER_CONFIG.MAX_HP;
+    // Live operations: fix which events this run is subject to, before hearts and wave rules are decided
+    this.liveRun = this._pinLiveRun();
+    this.liveEffects.set(this.liveRun ? this.liveRun.visual : this.liveOps.menuVisual());
+    // Hearts: a daily twist or an event can lower them; the equipped companion may add invulnerability time
+    const runModifier = this._runModifier();
+    this.player.maxHp = (runModifier && runModifier.maxHp) || PLAYER_CONFIG.MAX_HP;
     this.player.invulnerableBonus = this.upgrades.invulnerableBonus;
     this.upgrades.refillShield();
     this.refreshHighScore();
@@ -1020,6 +1089,7 @@ export class Game {
     this.uiManager.meta.hideUpgradePicker();
     this.uiManager.meta.renderBuffs(this.upgrades);
     this.uiManager.meta.setCountdown(0);
+    this._announceLiveRun();
 
     // "Continue Endless": put back what the autosave kept
     if (this._pendingRestore) {
@@ -1040,11 +1110,72 @@ export class Game {
       this.events.setSeed(ch.seed);
     } else {
       ws.setSeed(null);
-      ws.setModifier(null);
+      // A seasonal / random event may twist an ordinary Endless run (null when none applies)
+      ws.setModifier(this._runModifier());
       ws.setDifficulty(this.difficulty);
       this.events.setSeed(null);
     }
+    this.events.setSurpriseScale(this.liveRun ? this.liveRun.surpriseMultiplier : 1);
     ws.setBossRush(this.bossRush);
+  }
+
+  /** The rule twist of this run: the challenge's own, or what the live events add to an ordinary run */
+  _runModifier() {
+    if (this.challenge) return this.challenge.modifier;
+    return this.liveRun ? this.liveRun.modifier : null;
+  }
+
+  /** Did a live event change how this (ordinary) run plays or scores? Its score then stays out of the regular records. */
+  _liveRunAltersPlay() {
+    const pin = this.liveRun;
+    return !!pin && (pin.modifier !== null || pin.scoreMultiplier !== 1 || pin.surpriseMultiplier !== 1);
+  }
+
+  /** Story levels cleared so far (an event can require some progress) */
+  _storyLevelsCleared() {
+    let n = 0;
+    for (let level = 1; level <= 5; level++) if (this.progress.isLevelCleared(level)) n++;
+    return n;
+  }
+
+  /**
+   * Pin the run to the live events that apply to it. Live operations never stops a run from starting: any failure
+   * means "no events". A run continued from the Endless autosave began under other rules, and Boss Rush has its own
+   * board, so no event applies to either.
+   * @returns {Object|null}
+   */
+  _pinLiveRun() {
+    // Boss Rush is its own board, like the Story mystery it stays apart from: no event touches it
+    if (!this.liveOps || this._pendingRestore || this.bossRush) return null;
+    try {
+      const ch = this.challenge;
+      const pin = this.liveOps.pinRun({
+        mode: ch ? (ch.kind === 'weekly' ? 'WEEKLY' : 'DAILY') : this.waveSystem.gameMode,
+        difficulty: ch ? ch.difficulty : this.difficulty,
+        assisted: this.isAssisted(),
+        storyLevelsCleared: this._storyLevelsCleared(),
+        challenge: ch
+      });
+      if (pin) pin.pendingAnnounce = true;
+      return pin;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Tell the player which event is bending this run (canvas text: safe for server-provided names) */
+  _announceLiveRun() {
+    const pin = this.liveRun;
+    if (!pin || !pin.pendingAnnounce) return;
+    pin.pendingAnnounce = false;
+    if (this.particleSystem && pin.names.length) {
+      this.particleSystem.emitFloatingText(`🎉 ${pin.names.join(' + ')}`, this.width / 2, this.height * 0.26, '#fde68a', 22);
+    }
+  }
+
+  /** Menu / between runs: show the look of whatever event is live (or nothing) */
+  refreshLiveEffects() {
+    if (this.liveEffects && this.liveOps) this.liveEffects.set(this.liveOps.menuVisual());
   }
 
   start() {
@@ -1086,6 +1217,7 @@ export class Game {
     if (this.backgroundRenderer) {
       this.backgroundRenderer.update(dt);
     }
+    if (this.liveEffects && this.liveEffects.active) this.liveEffects.update(dt, this.width, this.height, this.quality ? this.quality.tier : 'high');
     this.stateMachine.update(dt);
   }
 
@@ -1099,6 +1231,8 @@ export class Game {
     // Render animated Level Environment (Google Doodle 2016)
     const curLevel = this.waveSystem.currentLevelIndex || 1;
     this._renderLevelBackground(curLevel);
+    // Event look (colour wash, snow, petals...): over the scenery, under ghosts and Momo
+    if (this.liveEffects && this.liveEffects.active) this.liveEffects.render(this.ctx, this.width, this.height);
 
     // Render active state
     this.stateMachine.render(this.ctx);
@@ -2368,7 +2502,8 @@ export class Game {
    * @returns {number} the points actually awarded (use this for floating text)
    */
   _addScore(points) {
-    const eventMult = this.events ? this.events.scoreMult : 1;
+    // Surprise boosts and the live event's score rule (version 2 challenges / overlays) stack
+    const eventMult = (this.events ? this.events.scoreMult : 1) * (this.liveRun ? this.liveRun.scoreMultiplier : 1);
     const awarded = this.combat.score(points, this.upgrades.scoreMultiplier, eventMult);
     this.combat.emit('score:awarded', { points: awarded });
     this.score += awarded;
@@ -2685,25 +2820,43 @@ export class Game {
   }
 
   /**
-   * Start today's Daily Challenge (or an older date from a friend's link).
-   * @param {string} [key] 'YYYY-MM-DD', defaults to today (UTC)
+   * Start the Daily Challenge of the moment (or an older date from a friend's link). The live schedule decides what
+   * that is; with none (offline, nothing scheduled) it is the built-in rotation for today's UTC date.
+   * @param {string} [key] 'YYYY-MM-DD' of a specific day
    */
-  startDaily(key = dateKey()) {
+  startDaily(key) {
     this.bossRush = false;
-    this.challenge = getDailyChallenge(key);
+    // The live schedule decides (its own seed, rules and board); offline, or with nothing scheduled, it is the
+    // built-in rotation for the date, which is exactly what this method always played
+    this.challenge = this.liveOps.dailyChallenge(key || null);
     this.waveSystem.setMode('ENDLESS');
     this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
   }
 
+  /**
+   * Start the weekly challenge, if the server has one running.
+   * @returns {boolean} false when there is none (the menu should not have offered it)
+   */
+  startWeekly() {
+    const challenge = this.liveOps.weeklyChallenge();
+    if (!challenge) return false;
+    this.bossRush = false;
+    this.challenge = challenge;
+    this.waveSystem.setMode('ENDLESS');
+    this.stateMachine.changeState(GAME_STATES.PLAYING, { resetData: true });
+    return true;
+  }
+
   /** Link that challenges a friend to beat today's best score */
   getDailyShareUrl() {
-    const key = dateKey();
+    const today = this.liveOps.dailyChallenge();
+    const key = today.key;
     const best = this.progress.getDaily(key);
     let base = 'https://arcane-paws.game/';
     try {
       if (typeof window !== 'undefined' && window.location && window.location.href) base = window.location.href;
     } catch (e) { /* keep the default */ }
-    return buildDailyChallengeUrl(base, key, best ? best.score : 0, 'Momo');
+    return buildDailyChallengeUrl(base, key, best ? best.score : 0, 'Momo', today.boardId);
   }
 
   /** Practice Mode: draw freely with accuracy feedback and no enemies */

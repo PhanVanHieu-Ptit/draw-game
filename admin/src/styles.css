@@ -182,3 +182,9 @@ h1 {
 .story-node.selected { outline: 3px solid #bd9cfc; }
 .story-node strong,.story-node span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .story-node span { margin-top: 8px; font-size: 12px; color: #ddd0eb; }
+
+.liveops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.liveops-field { margin-bottom: 12px; min-width: 0; }
+.liveops-field > label { display: block; margin-bottom: 6px; font-weight: 600; }
+.liveops-hint { font-size: 12px; margin-top: 4px; }
+.liveops-reward { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }

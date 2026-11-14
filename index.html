@@ -335,6 +335,16 @@
           </button>
         </div>
 
+        <!-- Live operations: one announcement from the server (text only, see MetaUI.renderLiveOpsBanner) -->
+        <div class="liveops-banner hidden" id="liveops-banner" role="status" aria-live="polite">
+          <span class="liveops-banner-icon" id="liveops-banner-icon">📣</span>
+          <span class="liveops-banner-body">
+            <b class="liveops-banner-title" id="liveops-banner-title"></b>
+            <span class="liveops-banner-text" id="liveops-banner-text"></span>
+          </span>
+          <button class="liveops-banner-close" id="btn-dismiss-liveops" aria-label="Ẩn thông báo">✕</button>
+        </div>
+
         <!-- Meta features -->
         <div class="menu-meta-grid">
           <button class="lore-strip" id="btn-open-lore" title="Nhật Ký Ký Ức: lần theo cái tên bị lãng quên">
@@ -352,6 +362,11 @@
             <span class="meta-tile-icon">📅</span>
             <span class="meta-tile-label">Thử Thách Ngày</span>
             <span class="meta-tile-badge" id="daily-menu-badge">MỚI</span>
+          </button>
+          <button class="meta-tile" id="btn-open-events">
+            <span class="meta-tile-icon">🎉</span>
+            <span class="meta-tile-label">Sự Kiện</span>
+            <span class="meta-tile-badge hidden" id="events-menu-badge">LIVE</span>
           </button>
           <button class="meta-tile" id="btn-open-practice">
             <span class="meta-tile-icon">🎯</span>
@@ -753,14 +768,31 @@
         </div>
         <div class="daily-friend hidden" id="daily-friend"></div>
         <div class="daily-modifier" id="daily-modifier"></div>
+        <div class="daily-meta" id="daily-meta"></div>
         <div class="daily-stats" id="daily-stats"></div>
         <div class="streak-rewards" id="daily-rewards" aria-label="Phần thưởng chuỗi ngày"></div>
         <div class="button-group daily-actions">
           <button class="btn-primary" id="btn-start-daily"><span>BẮT ĐẦU</span><span>⚔️</span></button>
+          <button class="btn-secondary hidden" id="btn-start-weekly">📆 Thử thách tuần</button>
           <button class="btn-secondary" id="btn-share-daily">🔗 Sao chép link thách đấu</button>
         </div>
         <div class="daily-history" id="daily-history"></div>
-        <p class="setting-note daily-note">Mọi người trên thế giới gặp cùng một dãy u linh trong ngày (tính theo giờ UTC). Độ khó cố định: Tiêu Chuẩn.</p>
+        <p class="setting-note daily-note" id="daily-note">Mọi người trên thế giới gặp cùng một dãy u linh trong ngày (tính theo giờ UTC). Độ khó cố định: Tiêu Chuẩn.</p>
+      </div>
+    </div>
+
+    <!-- UI Overlay: LIVE EVENTS (schedule published by the server; every string in it is rendered as text) -->
+    <div id="events-screen" class="ui-screen modal-overlay meta-layer">
+      <div class="glass-card meta-card events-card">
+        <div class="meta-header">
+          <div class="meta-title-wrap">
+            <span class="meta-badge">🎉 LỊCH SỰ KIỆN</span>
+            <h2 class="game-title meta-title">SỰ KIỆN</h2>
+          </div>
+          <button class="btn-text-skip" id="btn-close-events">ĐÓNG ✕</button>
+        </div>
+        <p class="setting-note events-status" id="events-status"></p>
+        <div id="events-body" class="events-body"></div>
       </div>
     </div>
 
