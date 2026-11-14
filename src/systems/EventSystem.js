@@ -50,6 +50,19 @@ export class EventSystem {
     this.scoreTimer = 0;
     this.speedScale = 1;
     this.speedTimer = 0;
+    this.surpriseScale = 1;
+  }
+
+  /**
+   * Live operations: how often surprises happen relative to the normal rate (0 = never, 2 = twice as likely, capped at
+   * the certainty of 1). At scale 1 nothing changes, so every existing seeded Daily Challenge plays exactly as before;
+   * at another scale the schedule is still a pure function of (seed, wave, scale), so everyone on the same challenge
+   * rules meets the same surprises.
+   * @param {number} scale 0..3
+   */
+  setSurpriseScale(scale) {
+    const n = Number(scale);
+    this.surpriseScale = Number.isFinite(n) ? Math.min(3, Math.max(0, n)) : 1;
   }
 
   /** @param {number|null} seed Daily Challenge seed, or null for ordinary randomness */
@@ -71,8 +84,8 @@ export class EventSystem {
 
     const r = this.rng;
     const kinds = [];
-    if (r() < GOLDEN_CHANCE) kinds.push('GOLDEN');
-    if (r() < EVENT_CHANCE) kinds.push(this._pickWeighted());
+    if (r() < GOLDEN_CHANCE * this.surpriseScale) kinds.push('GOLDEN');
+    if (r() < EVENT_CHANCE * this.surpriseScale) kinds.push(this._pickWeighted());
     if (kinds.length === 2 && r() < 0.5) kinds.reverse();
 
     let at = 7 + r() * 6;

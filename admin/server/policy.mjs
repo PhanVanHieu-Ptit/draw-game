@@ -13,6 +13,7 @@ export const roles = {
     ...modules.flatMap((m) => [`${m}:read`, `${m}:write`]),
     "configuration:review",
     "configuration:publish",
+    "liveops:publish",
   ],
   "Game Designer": [
     "dashboard:read",

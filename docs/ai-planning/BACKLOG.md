@@ -2194,7 +2194,7 @@ npm test
 
 | Task | Tiêu đề | Ưu tiên | Độ phức tạp (SP) | Sprint | Trạng thái |
 |---|---|---|---|---|---|
-| IPA-01 | Kiểm kê asset và dấu vết IP (docs/ASSETS.md) | P1 | S (2) | S1 | not_started |
+| IPA-01 | Kiểm kê asset và dấu vết IP (docs/ASSETS.md) | P1 | S (2) | S1 | in_progress |
 
 ###### IPA-01 — Kiểm kê asset và dấu vết IP (docs/ASSETS.md)
 
@@ -2207,7 +2207,7 @@ npm test
 | Dependencies | — |
 | Quyết định chặn | — |
 | Gap liên quan | GAP-401 |
-| Trạng thái | not_started |
+| Trạng thái | in_progress |
 
 **Mô tả.** Bằng chứng trong source: `SoundSystem.js:21` ("Extracted directly from official Google Doodle audio sheets (main.mp3, victory.mp3, initial.mp3, end.mp3)"), `momoSprites.js:4` và `Player.js:60–77` ("Extracted directly from Google Doodle level1-png-sprite.png, level1-png1-sprite.png, and main-png-sprite.png"), tiêu đề `Constants.js` ("based on Google Doodle Halloween 2016 (Magic Cat Academy)"); menu hiển thị "MAGIC CAT ACADEMY". Không có bằng chứng giấy phép nào trong repo. Đây là RỦI RO được phát hiện, KHÔNG phải kết luận pháp lý.
 

@@ -9,8 +9,13 @@
 
 | Trạng thái | Số task |
 |---|---:|
+<<<<<<< Updated upstream
 | not_started | 55 |
 | in_progress | 0 |
+=======
+| not_started | 50 |
+| in_progress | 1 |
+>>>>>>> Stashed changes
 | blocked | 1 |
 | needs_clarification | 2 |
 | needs_review | 0 |
@@ -67,7 +72,7 @@ SP hoàn thành (đã xác minh): **12 / 189** (đã xếp sprint: 12 / 168). Sp
 | ADM-03 | S1 | not_started | — | — |
 | ADM-04 | S1 | not_started | — | — |
 | FND-04 | S1 | not_started | — | — |
-| IPA-01 | S1 | not_started | — | — |
+| IPA-01 | S1 | in_progress | — | — |
 | SEC-02 | S1 | not_started | — | — |
 | SEC-03 | S1 | not_started | — | — |
 | TST-04 | S1 | not_started | — | — |

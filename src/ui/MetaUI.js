@@ -6,13 +6,14 @@ import { storyContent } from '../../shared/story/runtime.js';
  * alternative-input rune pad and the end-of-run summary. Owned by UIManager as `uiManager.meta`.
  *
  * Markup lives in index.html; this class only fills it in and wires events. Lists are rendered with
- * innerHTML from constants and numbers only. The one piece of externally supplied text (a friend's
- * name from a challenge link) is always set through textContent.
+ * innerHTML from constants and numbers only. Externally supplied text (a friend's name from a challenge link, and
+ * everything a live-operations event carries: names, descriptions, announcements, reward labels) is set through
+ * textContent, or escaped with escapeStoryText where a template string is unavoidable.
  *
  * Everything touching the DOM is guarded: the node-based tests drive Game with a minimal fake document.
  */
 
-import { RUNES, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, LEVEL_CONFIGS } from '../core/Constants.js';
+import { RUNES, ACADEMY_CHARACTERS, DIFFICULTY_LEVELS, LEVEL_CONFIGS, GAME_STATES } from '../core/Constants.js';
 import { SENSITIVITY_LEVELS } from '../GestureEngine.js';
 import { ACHIEVEMENTS, BESTIARY, achievementProgress } from '../core/Achievements.js';
 import { UPGRADES } from '../core/Upgrades.js';
@@ -20,8 +21,10 @@ import { MODES, DIFFICULTIES } from '../core/ProgressStore.js';
 import { COMPANIONS, COMPANION_ORDER, isCompanionUnlocked } from '../core/Companions.js';
 import { PRACTICE_ORDER } from '../systems/PracticeSession.js';
 import { SPELL_PHRASES, PHRASE_WINDOW } from '../core/Spells.js';
-import { TRAILS, HATS, STREAK_MILESTONES, isCosmeticUnlocked } from '../core/Cosmetics.js';
-import { dateKey, shiftDateKey, parseDailyChallengeParams, getDailyChallenge } from '../core/Challenge.js';
+import { TRAILS, HATS, STREAK_MILESTONES, isCosmeticUnlocked, getCosmetic } from '../core/Cosmetics.js';
+import { shiftDateKey, parseDailyChallengeParams } from '../core/Challenge.js';
+import { formatRemaining, formatLocalTime, summarizeRules } from '../core/LiveOps.js';
+import { parseBoardId } from '../../shared/live-ops/contract.js';
 import { loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
 
@@ -80,6 +83,16 @@ export class MetaUI {
     } catch (e) { /* ignore */ }
 
     this._bind();
+
+    // Live operations: the menu follows the schedule (a new event, midnight, a refreshed payload) without a reload
+    this._bannerKey = null;
+    if (this.game.liveOps) {
+      this.game.liveOps.onChange(() => this.refreshLiveOps());
+      if (typeof setInterval === 'function') {
+        const timer = setInterval(() => this.refreshLiveOps(), 30 * 1000);
+        if (timer && typeof timer.unref === 'function') timer.unref(); // never keep a Node test process alive
+      }
+    }
   }
 
   // ------------------------------------------------------------------ helpers
@@ -116,6 +129,14 @@ export class MetaUI {
   _html(id, html) {
     const el = this.$(id);
     if (el) el.innerHTML = html;
+  }
+
+  /** A detached element with text set through textContent (for anything the server supplied) */
+  _el(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
   }
 
   _hidden(id, hidden) {
@@ -228,6 +249,33 @@ export class MetaUI {
       g.startDaily(this._dailyKeyToPlay());
     });
     this._on('btn-share-daily', 'click', () => this._shareDaily());
+    this._on('btn-start-weekly', 'click', () => {
+      g.audioSystem.init();
+      g.audioSystem.playStart();
+      this._close('daily-screen');
+      this._close('events-screen');
+      g.startWeekly();
+    });
+
+    // Live events screen and the menu announcement
+    this._on('btn-open-events', 'click', () => { this._tap(); this.openEvents(); });
+    this._on('btn-close-events', 'click', () => this.closeEvents());
+    this._on('btn-dismiss-liveops', 'click', () => {
+      if (this._bannerKey) g.liveOps.dismissAnnouncement(this._bannerKey);
+    });
+    const eventsBody = this.$('events-body');
+    if (eventsBody && eventsBody.addEventListener) {
+      eventsBody.addEventListener('click', (e) => {
+        const btn = this._closestAttr(e.target, 'data-liveops-action');
+        if (!btn) return;
+        const action = btn.getAttribute('data-liveops-action');
+        g.audioSystem.init();
+        g.audioSystem.playStart();
+        this._close('events-screen');
+        if (action === 'weekly') g.startWeekly();
+        else if (action === 'daily') g.startDaily(null);
+      });
+    }
     const friend = this.$('daily-friend');
     if (friend && friend.addEventListener) {
       friend.addEventListener('click', (e) => {
@@ -314,7 +362,7 @@ export class MetaUI {
 
   /** Close the top-most overlay. @returns {boolean} true if something was closed */
   closeTopOverlay() {
-    for (const id of ['clip-modal', 'settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen']) {
+    for (const id of ['clip-modal', 'settings-screen', 'records-screen', 'daily-screen', 'events-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen']) {
       if (this._isOpen(id)) {
         if (id === 'clip-modal') this.closeClip();
         else this._close(id);
@@ -330,7 +378,7 @@ export class MetaUI {
 
   /** @returns {boolean} whether any meta overlay (not the upgrade picker) is open */
   hasOpenOverlay() {
-    return ['settings-screen', 'records-screen', 'daily-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen', 'clip-modal']
+    return ['settings-screen', 'records-screen', 'daily-screen', 'events-screen', 'companion-screen', 'spellbook-screen', 'lore-screen', 'wardrobe-screen', 'clip-modal']
       .some(id => this._isOpen(id));
   }
 
@@ -512,11 +560,9 @@ export class MetaUI {
     }
     this._hidden('btn-resume-endless', !save);
 
-    // Daily badge
-    const key = dateKey();
-    const today = p.getDaily(key);
-    const streak = p.dailyStreak(key);
-    this._text('daily-menu-badge', today ? (streak > 1 ? `🔥${streak}` : '✓') : 'MỚI');
+    // Daily badge, and everything live operations adds to the menu (announcement, events badge, event look)
+    this._updateDailyBadge();
+    this.refreshLiveOps();
 
     // Spellbook progress, Boss Rush clear mark and the "new in wardrobe" flag
     this._text('spellbook-menu-badge', `${p.discoveredPhraseCount()}/${SPELL_PHRASES.length}`);
@@ -533,8 +579,17 @@ export class MetaUI {
 
   // ------------------------------------------------------------------ daily challenge
 
+  /** null = "the challenge of the moment": the live schedule decides (the built-in rotation when it has nothing) */
   _dailyKeyToPlay() {
-    return dateKey();
+    return null;
+  }
+
+  _updateDailyBadge() {
+    const p = this.game.progress;
+    const key = this.game.liveOps.dailyChallenge().key;
+    const today = p.getDaily(key);
+    const streak = p.dailyStreak(key);
+    this._text('daily-menu-badge', today ? (streak > 1 ? `🔥${streak}` : '✓') : 'MỚI');
   }
 
   openDaily() {
@@ -549,18 +604,20 @@ export class MetaUI {
   renderDaily() {
     const g = this.game;
     const p = g.progress;
-    const key = dateKey();
-    const ch = getDailyChallenge(key);
+    const ch = g.liveOps.dailyChallenge();
+    const key = ch.key;
     const mod = ch.modifier;
     const today = p.getDaily(key);
 
+    // The name and description of a live challenge come from the server: always escaped
     this._html('daily-modifier', `
-      <div class="daily-mod-icon">${mod.icon}</div>
+      <div class="daily-mod-icon">${escapeStoryText(mod.icon)}</div>
       <div class="daily-mod-text">
-        <div class="daily-mod-date">${key}</div>
-        <div class="daily-mod-name">${mod.name}</div>
-        <div class="daily-mod-desc">${mod.desc}</div>
+        <div class="daily-mod-date">${escapeStoryText(key)}</div>
+        <div class="daily-mod-name">${escapeStoryText(mod.name)}</div>
+        <div class="daily-mod-desc">${escapeStoryText(mod.desc)}</div>
       </div>`);
+    this._renderDailyMeta(ch);
 
     const streak = p.dailyStreak(key);
     this._html('daily-stats', `
@@ -598,6 +655,13 @@ export class MetaUI {
         ? `⚔️ ${fc.from} thách bạn vượt ${fmt(fc.score)} điểm!`
         : `⚔️ ${fc.from} mời bạn chơi thử thách này!`;
       friendEl.appendChild(line);
+      // Scores are only comparable on the same rules and score version (the board id says which)
+      if (fc.key === key && fc.board && ch.boardId && fc.board !== ch.boardId) {
+        const warn = document.createElement('div');
+        warn.className = 'daily-friend-note';
+        warn.textContent = '⚠️ Luật hoặc cách tính điểm của thử thách đã khác lượt thách đấu này, nên điểm không so sánh trực tiếp được.';
+        friendEl.appendChild(warn);
+      }
       if (fc.key !== key) {
         const note = document.createElement('div');
         note.className = 'daily-friend-note';
@@ -617,7 +681,7 @@ export class MetaUI {
   async _shareDaily() {
     const g = this.game;
     const url = g.getDailyShareUrl();
-    const today = g.progress.getDaily(dateKey());
+    const today = g.progress.getDaily(g.liveOps.dailyChallenge().key);
     const text = today
       ? `📅 Thử Thách Hằng Ngày Arcane Paws: tôi đạt ${fmt(today.score)} điểm! Bạn có vượt được không? ${url}`
       : `📅 Thử Thách Hằng Ngày Arcane Paws — thử sức nhé! ${url}`;
@@ -627,6 +691,230 @@ export class MetaUI {
     } catch (e) {
       this.showToast(`Link: ${url}`, 'info');
     }
+  }
+
+  /** The line under the challenge: time left, rules and score version, and why a live challenge is not live */
+  _renderDailyMeta(ch) {
+    const live = this.game.liveOps;
+    const status = live.status();
+    const parts = [];
+    if (ch.source === 'liveops') {
+      parts.push(`<span>⏳ Còn <b>${formatRemaining(Date.parse(ch.endsAt) - live.now())}</b></span>`);
+      parts.push(`<span>Luật v<b>${Number(ch.rulesVersion)}</b> • Điểm v<b>${Number(ch.scoreVersion)}</b></span>`);
+      if (ch.scoreMultiplier !== 1) parts.push(`<span>✨ Điểm ×<b>${String(Number(ch.scoreMultiplier)).replace('.', ',')}</b></span>`);
+      if (ch.rewards.length) parts.push(`<span>🎁 <b>${ch.rewards.length}</b> phần thưởng (xem mục Sự Kiện)</span>`);
+      if (!status.clockTrusted) parts.push('<span class="daily-offline">Chưa xác nhận giờ với máy chủ: lượt này chưa nhận được phần thưởng sự kiện.</span>');
+    } else if (status.configured) {
+      parts.push('<span class="daily-offline">Chưa có lịch từ máy chủ: đang dùng thử thách có sẵn của game.</span>');
+    }
+    this._html('daily-meta', parts.join(''));
+
+    const weekly = live.weeklyChallenge();
+    this._hidden('btn-start-weekly', !weekly);
+    if (weekly) this._text('btn-start-weekly', `📆 Thử thách tuần: ${weekly.name}`);
+    const diff = DIFFICULTY_LEVELS[ch.difficulty] ? DIFFICULTY_LEVELS[ch.difficulty].name : ch.difficulty;
+    this._text('daily-note', ch.source === 'liveops'
+      ? `Thử thách do máy chủ công bố: mọi người chơi cùng luật và cùng dãy u linh. Độ khó cố định: ${diff}.`
+      : `Mọi người trên thế giới gặp cùng một dãy u linh trong ngày (tính theo giờ UTC). Độ khó cố định: ${diff}.`);
+  }
+
+  // ------------------------------------------------------------------ live events
+
+  /** Re-draw everything that follows the schedule. Safe to call at any time; never throws into the game. */
+  refreshLiveOps() {
+    const g = this.game;
+    if (!g.liveOps) return;
+    try {
+      this.renderLiveOpsBanner();
+      const liveCount = g.liveOps.schedule().live.length;
+      this._text('events-menu-badge', liveCount > 0 ? 'LIVE' : '');
+      this._hidden('events-menu-badge', liveCount === 0);
+      this._updateDailyBadge();
+      if (this._isOpen('events-screen')) this.renderEvents();
+      if (this._isOpen('daily-screen')) this.renderDaily();
+      // The arena takes the look of a live event on the menu only; a run keeps what it started with
+      const state = g.stateMachine && typeof g.stateMachine.getCurrentStateName === 'function' ? g.stateMachine.getCurrentStateName() : null;
+      if (state === GAME_STATES.MENU && typeof g.refreshLiveEffects === 'function') g.refreshLiveEffects();
+    } catch (e) { /* a schedule problem must never reach the player as an error */ }
+  }
+
+  /** The most important announcement, as text (title, body, time left) */
+  renderLiveOpsBanner() {
+    const el = this.$('liveops-banner');
+    if (!el) return;
+    const live = this.game.liveOps;
+    const a = live.announcements()[0];
+    if (!a) {
+      this._bannerKey = null;
+      this._hidden('liveops-banner', true);
+      return;
+    }
+    this._bannerKey = a.key;
+    if (el.setAttribute) el.setAttribute('data-tone', a.tone);
+    const now = live.now();
+    const when = a.phase === 'live'
+      ? ` (còn ${formatRemaining(Date.parse(a.endsAt) - now)})`
+      : ` (bắt đầu sau ${formatRemaining(Date.parse(a.startsAt) - now)})`;
+    this._text('liveops-banner-icon', { urgent: '⚠️', event: '🎉', info: 'ℹ️' }[a.tone] || '📣');
+    this._text('liveops-banner-title', a.title);
+    this._text('liveops-banner-text', `${a.body}${when}`);
+    this._hidden('liveops-banner', false);
+  }
+
+  openEvents() {
+    this.game.liveOps.refresh(); // answers through onChange; the screen shows what it has right now
+    this.renderEvents();
+    this._open('events-screen');
+  }
+
+  closeEvents() {
+    this._close('events-screen');
+  }
+
+  _liveStatusLine(status) {
+    if (!status.configured) return 'Chưa cấu hình máy chủ sự kiện: game dùng thử thách có sẵn.';
+    if (status.source === 'network') return status.enabled ? `Đã đồng bộ với máy chủ (bản ${status.revision}).` : 'Máy chủ đã tạm tắt các sự kiện.';
+    if (status.source === 'cache') return 'Đang dùng lịch đã lưu (ngoại tuyến). Phần thưởng sự kiện cần kết nối với máy chủ.';
+    return 'Không kết nối được máy chủ: game dùng thử thách có sẵn.';
+  }
+
+  /** Text of a reward as the player sees it (a cosmetic's name comes from the game, a badge's from the event) */
+  _rewardText(reward) {
+    if (reward.type === 'cosmetic') {
+      const [kind, id] = String(reward.ref).split(':');
+      const def = getCosmetic(kind, id);
+      return def ? `${def.icon} ${def.name}` : String(reward.ref);
+    }
+    return `${reward.ref} ${reward.label}`;
+  }
+
+  _eventCard(item, now) {
+    const { event, phase, cancelled } = item;
+    const p = this.game.progress;
+    const card = this._el('div', `event-card ${phase}${cancelled ? ' cancelled' : ''}`);
+    const head = this._el('div', 'event-card-head');
+    head.appendChild(this._el('span', 'event-card-name', event.name));
+    head.appendChild(this._el('span', 'event-kind', { daily: 'Hằng ngày', weekly: 'Hằng tuần', seasonal: 'Theo mùa', random: 'Bất chợt' }[event.kind] || event.kind));
+    let state;
+    if (cancelled) state = 'Đã hủy';
+    else if (phase === 'live') state = `Còn ${formatRemaining(Date.parse(event.endsAt) - now)}`;
+    else if (phase === 'upcoming') state = `Bắt đầu ${formatLocalTime(event.startsAt)}`;
+    else state = `Đã kết thúc ${formatLocalTime(event.endsAt)}`;
+    head.appendChild(this._el('span', 'event-state', state));
+    card.appendChild(head);
+    if (event.description) card.appendChild(this._el('p', 'event-desc', event.description));
+
+    const rules = summarizeRules(event.rules);
+    if (rules.length) {
+      const ul = this._el('ul', 'event-rules');
+      for (const line of rules) ul.appendChild(this._el('li', '', line));
+      card.appendChild(ul);
+    }
+
+    if (event.rewards.length) {
+      const granted = p.grantedRewardKeys(event.id);
+      const progress = p.getEventProgress(event.id, event.version);
+      const metric = { runs: 'số lượt chơi', bestScore: 'điểm cao nhất', bestWave: 'đợt xa nhất', bestCombo: 'combo cao nhất' };
+      const ul = this._el('ul', 'event-rewards');
+      for (const reward of event.rewards) {
+        const li = this._el('li');
+        const done = Boolean(granted[reward.id]);
+        li.appendChild(this._el('span', done ? 'done' : '', `${done ? '✓ ' : '🎁 '}${this._rewardText(reward)}`));
+        const { metric: m, threshold } = reward.condition;
+        li.appendChild(this._el('span', 'need', done ? 'đã nhận' : `${metric[m]} ${Math.min(progress[m] || 0, threshold).toLocaleString()}/${threshold.toLocaleString()}`));
+        ul.appendChild(li);
+      }
+      card.appendChild(ul);
+    }
+
+    if (phase === 'live' && !cancelled) {
+      const actions = this._el('div', 'event-actions');
+      if (event.kind === 'daily' || event.kind === 'weekly') {
+        const btn = this._el('button', 'btn-subtle', event.kind === 'weekly' ? '⚔️ Chơi thử thách tuần' : '⚔️ Chơi thử thách ngày');
+        btn.setAttribute('data-liveops-action', event.kind);
+        actions.appendChild(btn);
+      } else {
+        actions.appendChild(this._el('span', 'need', 'Tự động áp dụng khi bạn chơi Vô Tận hoặc Cốt Truyện.'));
+      }
+      card.appendChild(actions);
+    }
+    return card;
+  }
+
+  _eventsSection(title, items, now, empty) {
+    const section = this._el('section');
+    section.appendChild(this._el('h3', 'events-section-title', title));
+    if (items.length === 0) section.appendChild(this._el('p', 'events-empty', empty));
+    for (const item of items) section.appendChild(this._eventCard(item, now));
+    return section;
+  }
+
+  /** The Events screen: running, upcoming, past (the history), the player's own rewards and challenge scores */
+  renderEvents() {
+    const body = this.$('events-body');
+    if (!body || !body.appendChild) return;
+    const g = this.game;
+    const live = g.liveOps;
+    const now = live.now();
+    this._text('events-status', this._liveStatusLine(live.status()));
+    body.innerHTML = '';
+
+    const schedule = live.schedule();
+    body.appendChild(this._eventsSection('🟢 Đang diễn ra', schedule.live, now, 'Hiện chưa có sự kiện nào.'));
+    body.appendChild(this._eventsSection('🕒 Sắp diễn ra', schedule.upcoming, now, 'Chưa có sự kiện được lên lịch.'));
+
+    const rewards = g.progress.eventRewards();
+    const mine = this._el('section');
+    mine.appendChild(this._el('h3', 'events-section-title', '🎁 Phần thưởng sự kiện của bạn'));
+    if (rewards.length === 0) mine.appendChild(this._el('p', 'events-empty', 'Chưa nhận phần thưởng sự kiện nào.'));
+    else {
+      const chips = this._el('div', 'event-granted');
+      for (const r of rewards) {
+        const chip = this._el('span', '', this._rewardText(r));
+        if (r.eventName) chip.setAttribute('title', r.eventName);
+        chips.appendChild(chip);
+      }
+      mine.appendChild(chips);
+    }
+    body.appendChild(mine);
+
+    body.appendChild(this._eventsSection('📜 Lịch sử sự kiện', schedule.past.slice(0, 12), now, 'Chưa có sự kiện nào đã kết thúc.'));
+
+    const boards = g.progress.boardHistory(10);
+    if (boards.length) {
+      const section = this._el('section');
+      section.appendChild(this._el('h3', 'events-section-title', '🏁 Điểm thử thách của bạn'));
+      for (const b of boards) {
+        const id = parseBoardId(b.boardId);
+        if (!id) continue;
+        const label = `${id.kind === 'weekly' ? 'Tuần' : 'Ngày'} ${id.key} • luật v${id.version} • điểm v${id.scoreVersion}`;
+        section.appendChild(this._el('p', 'event-desc', `${label}: ${b.score.toLocaleString()} điểm (đợt ${b.wave}, combo ${b.combo})`));
+      }
+      body.appendChild(section);
+    }
+  }
+
+  /** Event line(s) of the end-of-run recap: rewards earned, or why the run did not count */
+  _liveOpsSummaryHtml(l) {
+    const refusal = (reasons) => {
+      const r = reasons[0] || '';
+      if (r === 'untrusted-clock') return 'cần kết nối với máy chủ để nhận thưởng';
+      if (r === 'rewards-disabled') return 'phần thưởng đang tạm tắt';
+      if (r === 'cancelled') return 'sự kiện đã bị hủy';
+      if (r === 'not-eligible:assisted') return 'lượt chơi có trợ năng không nhận thưởng';
+      if (r === 'version-mismatch') return 'luật sự kiện vừa thay đổi';
+      if (r.startsWith('not-eligible')) return 'lượt chơi chưa đủ điều kiện của sự kiện';
+      return 'sự kiện đã kết thúc hoặc không còn hợp lệ';
+    };
+    const lines = [];
+    for (const e of l.events) {
+      const name = escapeStoryText(e.name);
+      if (e.granted.length) lines.push(`<div>🎁 <b>${name}</b>: ${e.granted.map((g) => escapeStoryText(this._rewardText(g))).join(' • ')}</div>`);
+      else if (e.counted) lines.push(`<div>🎉 <b>${name}</b>: lượt chơi đã được tính vào sự kiện</div>`);
+      else if (e.hasRewards) lines.push(`<div class="refused">${name}: ${refusal(e.reasons)}</div>`);
+    }
+    if (l.unranked) lines.push('<div class="refused">Luật sự kiện đã đổi cách chơi hoặc cách tính điểm, nên lượt này không tính vào Kỷ Lục.</div>');
+    return lines.length ? `<div class="run-liveops">${lines.join('')}</div>` : '';
   }
 
   // ------------------------------------------------------------------ companions
@@ -1301,7 +1589,7 @@ export class MetaUI {
     const pill = (flag) => (flag ? '<span class="new-pill">KỶ LỤC MỚI</span>' : '');
     const tracked = !s.assisted;
 
-    const modeName = s.bossRush ? '💀 Boss Rush' : (s.mode === 'STORY' ? '📖 Cốt Truyện' : (s.daily ? '📅 Thử Thách Ngày' : '⚡ Vô Tận'));
+    const modeName = s.bossRush ? '💀 Boss Rush' : (s.mode === 'STORY' ? '📖 Cốt Truyện' : (s.daily ? (s.daily.kind === 'weekly' ? '📆 Thử Thách Tuần' : '📅 Thử Thách Ngày') : '⚡ Vô Tận'));
     let html = `<div class="rs-modeline">${modeName} • ${DIFFICULTY_LEVELS[s.difficulty] ? DIFFICULTY_LEVELS[s.difficulty].badge : ''}</div>`;
 
     if (tracked) {
@@ -1310,7 +1598,7 @@ export class MetaUI {
       const rRec = s.rush && s.rush.record;
       const bestLevel = s.bossRush ? (rRec ? rRec.level : s.level) : (s.daily ? (dRec ? dRec.wave : s.level) : (s.record ? s.record.level : s.level));
       const bestCombo = s.bossRush ? s.maxCombo : (s.daily ? (dRec ? dRec.combo : s.maxCombo) : (s.record ? s.record.combo : s.maxCombo));
-      const bestWord = s.daily ? 'Tốt nhất hôm nay' : 'Kỷ lục';
+      const bestWord = s.daily ? (s.daily.kind === 'weekly' ? 'Tốt nhất tuần này' : 'Tốt nhất hôm nay') : 'Kỷ lục';
       html += `<div class="rs-grid">
         <div class="rs-item"><span class="rs-label">Điểm</span><span class="rs-val">${fmt(s.score)}${pill(s.isNewHighScore)}</span><span class="rs-sub">${bestWord}: ${fmt(s.highScore)}</span></div>
         <div class="rs-item"><span class="rs-label">${unit} đạt được</span><span class="rs-val">${s.level}${pill(s.isNewLevel)}</span><span class="rs-sub">${bestWord}: ${bestLevel}</span></div>
@@ -1329,8 +1617,10 @@ export class MetaUI {
     }
 
     if (s.daily) {
-      html += `<div class="rs-daily">📅 Thử thách ${s.daily.key}: <b>${fmt(s.score)}</b> điểm${s.daily.streak > 1 ? ` • Chuỗi <b>${s.daily.streak}</b> ngày 🔥` : ''}</div>`;
+      const weekly = s.daily.kind === 'weekly';
+      html += `<div class="rs-daily">${weekly ? '📆 Thử thách tuần' : '📅 Thử thách'} ${escapeStoryText(s.daily.key)}: <b>${fmt(s.score)}</b> điểm${s.daily.streak > 1 ? ` • Chuỗi <b>${s.daily.streak}</b> ngày 🔥` : ''}</div>`;
     }
+    if (s.liveOps) html += this._liveOpsSummaryHtml(s.liveOps);
 
     const rp = s.replay;
     if (rp) {

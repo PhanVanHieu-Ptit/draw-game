@@ -27,6 +27,9 @@ export class MenuState extends State {
     // Back at the menu: the next run is an ordinary one unless a daily challenge is started again
     this.game.challenge = null;
     this.game.bossRush = false;
+    // Between runs the arena shows the look of whatever event is live; no run is pinned any more
+    this.game.liveRun = null;
+    if (typeof this.game.refreshLiveEffects === 'function') this.game.refreshLiveEffects();
     this.game.uiManager.showScreen(GAME_STATES.MENU);
   }
 

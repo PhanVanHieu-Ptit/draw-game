@@ -18,6 +18,7 @@ import { DEFAULT_COMPANION, COMPANIONS } from './Companions.js';
 import { shiftDateKey, isValidDateKey } from './Challenge.js';
 import { SPELL_PHRASES } from './Spells.js';
 import { getCosmetic, DEFAULT_TRAIL, DEFAULT_HAT, TRAILS, HATS } from './Cosmetics.js';
+import { RUN_CAPS, REWARD_TYPES, LIMITS as LIVEOPS_LIMITS, emptyProgress as emptyEventProgress, applyRun as applyEventRun, grantableCosmetics, parseBoardId } from '../../shared/live-ops/contract.js';
 
 export const MODES = ['STORY', 'ENDLESS'];
 export const DIFFICULTIES = ['NORMAL', 'HARDCORE', 'INFERNO'];
@@ -48,6 +49,25 @@ export function masteryThreshold(rune) {
 }
 /** Daily results older than this many days are dropped to keep the save small */
 const DAILY_KEEP_DAYS = 90;
+/** Live-operations bookkeeping is capped so a long-lived save stays small (oldest entries go first) */
+const LIVEOPS_KEEP = { events: 60, boards: 120, granted: 300 };
+const EVENT_ID = /^[a-z0-9][a-z0-9-]{1,47}$/;
+const REWARD_ID = /^[a-z0-9][a-z0-9-]{1,31}$/;
+const NO_CONTROL = /^[^\u0000-\u001f\u007f]*$/;
+
+function emptyLiveOps() {
+  // events: eventId -> {version, runs, bestScore, bestWave, bestCombo, at}; granted: 'eventId:rewardId' -> reward;
+  // boards: boardId ('daily:2026-11-14:r3:s1') -> best result on that exact leaderboard
+  return { events: {}, granted: {}, boards: {} };
+}
+
+/** Keep the newest `keep` entries of an object map ordered by their numeric `at` */
+function pruneByAt(map, keep) {
+  const keys = Object.keys(map);
+  if (keys.length <= keep) return;
+  keys.sort((a, b) => (map[b].at || 0) - (map[a].at || 0));
+  for (const k of keys.slice(keep)) delete map[k];
+}
 
 function emptyRecord() {
   return { score: 0, level: 0, combo: 0, accuracy: 0, plays: 0, wins: 0, lastPlayed: 0 };
@@ -112,7 +132,8 @@ function freshData() {
     cosmetics: { trail: DEFAULT_TRAIL, hat: DEFAULT_HAT, seen: {} },
     rush: emptyRush(),
     storyState: sanitizeStoryState(),
-    lore: emptyLore()
+    lore: emptyLore(),
+    liveops: emptyLiveOps()
   };
 }
 
@@ -269,6 +290,8 @@ export class ProgressStore {
       }
     }
 
+    if (parsed.liveops && typeof parsed.liveops === 'object') this._mergeLiveOps(parsed.liveops);
+
     if (parsed.daily && typeof parsed.daily === 'object') {
       for (const [key, src] of Object.entries(parsed.daily)) {
         if (!isValidDateKey(key) || !src || typeof src !== 'object') continue;
@@ -280,6 +303,58 @@ export class ProgressStore {
         };
       }
     }
+  }
+
+  /**
+   * Live-operations state from untrusted JSON (localStorage is editable). Anything malformed is dropped; a granted
+   * cosmetic must still be a real, grantable wardrobe item, so a hand-edited save cannot invent one.
+   */
+  _mergeLiveOps(src) {
+    const out = this.data.liveops;
+    const int = (n, cap) => Math.min(cap, Math.round(nonNegative(n)));
+    const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+    if (isObj(src.events)) {
+      for (const [id, e] of Object.entries(src.events)) {
+        if (!EVENT_ID.test(id) || !isObj(e)) continue;
+        out.events[id] = {
+          version: Math.max(1, int(e.version, 1000000)),
+          runs: int(e.runs, 1000000),
+          bestScore: int(e.bestScore, RUN_CAPS.score),
+          bestWave: int(e.bestWave, RUN_CAPS.wave),
+          bestCombo: int(e.bestCombo, RUN_CAPS.combo),
+          at: int(e.at, 8.64e15)
+        };
+      }
+    }
+    if (isObj(src.granted)) {
+      const cosmetics = new Set(grantableCosmetics());
+      for (const [key, g] of Object.entries(src.granted)) {
+        if (!isObj(g) || typeof g.eventId !== 'string' || typeof g.rewardId !== 'string') continue;
+        if (!EVENT_ID.test(g.eventId) || !REWARD_ID.test(g.rewardId) || key !== `${g.eventId}:${g.rewardId}`) continue;
+        if (!REWARD_TYPES.includes(g.type) || typeof g.ref !== 'string') continue;
+        if (g.type === 'cosmetic' && !cosmetics.has(g.ref)) continue;
+        if (g.type === 'badge' && (g.ref.length < 1 || g.ref.length > 8 || !NO_CONTROL.test(g.ref))) continue;
+        const label = typeof g.label === 'string' && g.label.length <= LIVEOPS_LIMITS.badgeLabel && NO_CONTROL.test(g.label) ? g.label : '';
+        if (g.type === 'badge' && !label.trim()) continue;
+        out.granted[key] = {
+          eventId: g.eventId, rewardId: g.rewardId, type: g.type, ref: g.ref, label,
+          eventName: typeof g.eventName === 'string' && g.eventName.length <= LIVEOPS_LIMITS.name && NO_CONTROL.test(g.eventName) ? g.eventName : '',
+          at: int(g.at, 8.64e15)
+        };
+      }
+    }
+    if (isObj(src.boards)) {
+      for (const [id, b] of Object.entries(src.boards)) {
+        if (!parseBoardId(id) || !isObj(b)) continue;
+        out.boards[id] = {
+          score: int(b.score, RUN_CAPS.score), wave: int(b.wave, RUN_CAPS.wave), combo: int(b.combo, RUN_CAPS.combo),
+          plays: Math.max(1, int(b.plays, 1000000)), at: int(b.at, 8.64e15)
+        };
+      }
+    }
+    pruneByAt(out.events, LIVEOPS_KEEP.events);
+    pruneByAt(out.granted, LIVEOPS_KEEP.granted);
+    pruneByAt(out.boards, LIVEOPS_KEEP.boards);
   }
 
   save() {
@@ -596,6 +671,103 @@ export class ProgressStore {
       cursor = shiftDateKey(cursor, -1);
     }
     return streak;
+  }
+
+  // ------------------------------------------------------------------ live operations
+
+  /**
+   * Progress towards an event's rewards. Progress belongs to one version of the event's rules, so when `version` is given
+   * and differs from the stored one the answer is "nothing yet".
+   * @returns {{runs:number, bestScore:number, bestWave:number, bestCombo:number}}
+   */
+  getEventProgress(eventId, version) {
+    const e = this.data.liveops.events[eventId];
+    return e && (version === undefined || e.version === version) ? { runs: e.runs, bestScore: e.bestScore, bestWave: e.bestWave, bestCombo: e.bestCombo } : emptyEventProgress();
+  }
+
+  /**
+   * Fold a run that took part in an event into that event's progress. Progress belongs to one version of the event's
+   * rules: when the rules change, the count starts again (rewards already granted stay granted).
+   * @returns {{runs:number, bestScore:number, bestWave:number, bestCombo:number}} the new progress
+   */
+  applyEventRun(eventId, version, run, nowMs = Date.now()) {
+    if (!EVENT_ID.test(eventId)) return emptyEventProgress();
+    const prev = this.data.liveops.events[eventId];
+    const base = prev && prev.version === version ? prev : emptyEventProgress();
+    const next = applyEventRun(base, run);
+    this.data.liveops.events[eventId] = { version, ...next, at: Math.round(nowMs) };
+    pruneByAt(this.data.liveops.events, LIVEOPS_KEEP.events);
+    return { ...next };
+  }
+
+  /** @returns {Record<string, true>} reward key ('eventId:rewardId') -> true, for evaluateRewards */
+  grantedRewardKeys(eventId) {
+    const out = {};
+    for (const g of Object.values(this.data.liveops.granted)) if (g.eventId === eventId) out[g.rewardId] = true;
+    return out;
+  }
+
+  /**
+   * Record a reward the player has earned. Idempotent: a reward is granted once, ever.
+   * @param {{eventId:string, rewardId:string, type:'cosmetic'|'badge', ref:string, label:string, eventName?:string}} reward
+   * @returns {boolean} true when it was newly granted
+   */
+  grantEventReward(reward, nowMs = Date.now()) {
+    const key = `${reward.eventId}:${reward.rewardId}`;
+    if (!EVENT_ID.test(reward.eventId) || !REWARD_ID.test(reward.rewardId) || !REWARD_TYPES.includes(reward.type)) return false;
+    if (this.data.liveops.granted[key]) return false;
+    if (reward.type === 'cosmetic' && !grantableCosmetics().includes(reward.ref)) return false;
+    this.data.liveops.granted[key] = {
+      eventId: reward.eventId, rewardId: reward.rewardId, type: reward.type, ref: String(reward.ref),
+      label: String(reward.label || ''), eventName: String(reward.eventName || '').slice(0, LIVEOPS_LIMITS.name), at: Math.round(nowMs)
+    };
+    pruneByAt(this.data.liveops.granted, LIVEOPS_KEEP.granted);
+    return true;
+  }
+
+  /** @param {string} ref 'trail:frost' or 'hat:crown': is it owned through an event reward? */
+  hasEventCosmetic(ref) {
+    return Object.values(this.data.liveops.granted).some((g) => g.type === 'cosmetic' && g.ref === ref);
+  }
+
+  /** @returns {Array<Object>} granted rewards, newest first */
+  eventRewards() {
+    return Object.values(this.data.liveops.granted).sort((a, b) => b.at - a.at).map((g) => ({ ...g }));
+  }
+
+  /** @returns {{score:number, wave:number, combo:number, plays:number, at:number}|null} best on one exact leaderboard */
+  getBoard(boardId) {
+    const b = this.data.liveops.boards[boardId];
+    return b ? { ...b } : null;
+  }
+
+  /**
+   * Keep the best result per leaderboard. A board id carries the rules and score versions, so a changed challenge
+   * starts a fresh board instead of mixing incomparable scores.
+   * @returns {{isNewBest: boolean, previous: number, record: Object|null}}
+   */
+  recordBoard(boardId, run, nowMs = Date.now()) {
+    if (!parseBoardId(boardId)) return { isNewBest: false, previous: 0, record: null };
+    const prev = this.data.liveops.boards[boardId];
+    const score = Math.min(RUN_CAPS.score, Math.max(0, Math.round(nonNegative(run.score))));
+    const previous = prev ? prev.score : 0;
+    this.data.liveops.boards[boardId] = {
+      score: Math.max(previous, score),
+      wave: Math.max(prev ? prev.wave : 0, Math.min(RUN_CAPS.wave, Math.round(nonNegative(run.wave)))),
+      combo: Math.max(prev ? prev.combo : 0, Math.min(RUN_CAPS.combo, Math.round(nonNegative(run.combo)))),
+      plays: (prev ? prev.plays : 0) + 1,
+      at: Math.round(nowMs)
+    };
+    pruneByAt(this.data.liveops.boards, LIVEOPS_KEEP.boards);
+    return { isNewBest: score > previous, previous, record: { ...this.data.liveops.boards[boardId] } };
+  }
+
+  /** @returns {Array<{boardId:string, score:number, wave:number, combo:number, plays:number, at:number}>} newest first */
+  boardHistory(limit = 20) {
+    return Object.entries(this.data.liveops.boards)
+      .map(([boardId, b]) => ({ boardId, ...b }))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, limit);
   }
 
   // ------------------------------------------------------------------ spell phrases
