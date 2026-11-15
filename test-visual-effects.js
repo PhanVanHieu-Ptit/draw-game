@@ -211,7 +211,8 @@ console.log('\n--- 9. Floating announcements vs ghosts ---');
   const bannerTotal = INTRO_TIMING.READY_MS + INTRO_TIMING.DRAW_MS;
   assert(INTRO_TIMING.DRAW_MS <= 800, 'The DRAW! cue is short (<= 0.8 s)');
   assert(INTRO_TIMING.FIRST_SPAWN_S * 1000 > bannerTotal, 'The first ghost spawns after the stage banner has gone');
-  assert(0.45 * 1000 + INTRO_TIMING.BOSS_WARNING_MS < 2200, 'The boss warning banner ends before the boss is let in (2.2 s hold)');
+  assert(INTRO_TIMING.BOSS_WARNING_MS < INTRO_TIMING.BOSS_ENTRANCE_S * 1000, 'The boss warning banner ends before the boss is let in');
+  assert(INTRO_TIMING.BOSS_ENTRANCE_S <= 1.2, 'Clearing a wave holds the boss for at most 1.2s');
 }
 
 console.log(`\n========================================`);

@@ -795,7 +795,8 @@ export const PLAYER_CONFIG = {
 export const INTRO_TIMING = {
   READY_MS: 1000,          // "CHUẨN BỊ SẴN SÀNG" before the DRAW cue
   DRAW_MS: 700,            // the "VẼ!" cue
-  BOSS_WARNING_MS: 1500,   // boss warning banner; must end before the boss spawns (2.2 s warning - 0.45 s delay)
+  BOSS_WARNING_MS: 900,    // short warning banner, shown immediately when the last minion falls
+  BOSS_ENTRANCE_S: 1.2,    // let the banner clear before the boss arrives
   FIRST_SPAWN_S: 2.3       // first ghost of a stage: banner (READY + DRAW = 1.7 s) + a short breather
 };
 

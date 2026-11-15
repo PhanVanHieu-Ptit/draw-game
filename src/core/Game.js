@@ -8,7 +8,7 @@ import { freezeConfig, defaults, SCHEMA_VERSION } from '../../shared/game-config
  * exact deltaTime scaling across high-refresh monitors (60Hz, 120Hz, 144Hz), and Retina DPR calibration.
  */
 
-import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS, PLAYER_CONFIG, ACADEMY_CHARACTERS } from './Constants.js';
+import { GAME_STATES, RUNES, COMBO_CONFIG, STORAGE_KEYS, PLAYER_CONFIG, ACADEMY_CHARACTERS, INTRO_TIMING } from './Constants.js';
 import { CombatSystem, comboMultiplier, tickCombo } from '../combat/CombatSystem.js';
 import { StateMachine } from './StateMachine.js';
 import { SettingsStore, AUDIO_SCALE } from './Settings.js';
@@ -1334,12 +1334,14 @@ export class Game {
     const livingEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isGolden).length;
     const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost && !e.isGolden).length;
 
-    // Boss Entrance Build-up Delay: when all wave minions have been cleared in Story Mode,
-    // pause briefly ("từ từ", ~2.2s) with warning banner and ominous ambience before Boss appears
+    // Brief warning after clearing a story wave. Boss Rush and the final stage start immediately.
     const isPreBossClear = Boolean(this.waveSystem
       && this.waveSystem.gameMode === 'STORY'
       && this.waveSystem.levelData
       && this.waveSystem.currentLevelIndex !== 5
+      && this.waveSystem.levelData.bossType !== 'BOSS_MASTER'
+      && this.waveSystem.totalEnemiesInWave > 0
+      && !this.waveSystem.isIntermission
       && !this.waveSystem.isBossSpawned
       && this.waveSystem.enemiesSpawnedInWave >= this.waveSystem.totalEnemiesInWave
       && hostileEnemiesCount === 0);
@@ -1348,7 +1350,7 @@ export class Game {
     if (isPreBossClear) {
       if (!this.bossEntranceWarningActive) {
         this.bossEntranceWarningActive = true;
-        this.bossEntranceWarningTimer = 2.2;
+        this.bossEntranceWarningTimer = INTRO_TIMING.BOSS_ENTRANCE_S;
 
         // Visual & audio feedback: All minions defeated!
         if (this.particleSystem) {
@@ -1358,20 +1360,14 @@ export class Game {
           this.audioSystem.playCatPurr();
         }
 
-        // After 450ms, trigger Boss Warning Banner
-        setTimeout(() => {
-          if (this.stateMachine && this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
-            const bossName = this.waveSystem.levelData ? this.waveSystem.levelData.bossName : 'TRÙM ĐANG ĐẾN';
-            const enName = this.waveSystem.levelData ? this.waveSystem.levelData.enName : 'BOSS APPROACHING';
-            if (this.uiManager && typeof this.uiManager.showBossWarning === 'function') {
-              this.uiManager.showBossWarning(bossName, enName);
-            }
-            this.triggerShake(12, 1.2);
-            if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
-              this.audioSystem.soundBossCast();
-            }
-          }
-        }, 450);
+        const { bossName, enName } = this.waveSystem.levelData;
+        if (this.uiManager && typeof this.uiManager.showBossWarning === 'function') {
+          this.uiManager.showBossWarning(bossName, enName);
+        }
+        this.triggerShake(12, INTRO_TIMING.BOSS_ENTRANCE_S);
+        if (this.audioSystem && typeof this.audioSystem.soundBossCast === 'function') {
+          this.audioSystem.soundBossCast();
+        }
       }
 
       this.bossEntranceWarningTimer -= dt;

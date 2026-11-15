@@ -3,7 +3,7 @@ import { CombatSystem } from '../src/combat/CombatSystem.js';
  * @file test-boss-spawn-deadlock-prevention.js
  * @description Verifies deadlock prevention for Boss spawning:
  * 1. Boss spawns when hostile minions are 0 even if a Heart Ghost is alive.
- * 2. Boss spawns after 2.5s grace timer when wave finished spawning but slow minions linger.
+ * 2. Boss spawns within 12s after wave spawning finishes if slow minions linger.
  * 3. Heart Ghost has a 14s lifetime and gentle approach motion.
  * 4. Touching Heart Ghost heals player without damage.
  * 5. Boss entrance cleansing shockwave cleanses lingering minions and converts Heart Ghost.
@@ -60,7 +60,7 @@ assert(clearedBossResult !== null, 'Boss spawns when all hostile minions are eli
 assert(clearedBossResult.isBoss === true, 'Spawned entity is Boss');
 assert(waveSys2.isBossSpawned === true, 'isBossSpawned is now true');
 
-// Test 1C: Emergency failsafe timeout (45s) in case a minion got lost in space
+// Test 1C: A lingering minion must not hold the boss back for the old 45s timeout.
 const waveSys3 = new WaveSystem();
 waveSys3.initLevel(1);
 let spawned3 = 0;
@@ -68,10 +68,18 @@ while (spawned3 < waveSys3.totalEnemiesInWave) {
   const cfg = waveSys3.update(0.01, 5, 1, 1);
   if (cfg) spawned3++;
 }
-let forcedBossResult = waveSys3.update(46.0, 5, 1, 1);
-assert(forcedBossResult !== null, 'Emergency failsafe spawns Boss after 45s');
+for (let frame = 0; frame < 11 * 60; frame++) {
+  assert(waveSys3.update(1 / 60, 5, 1, 1) === null, 'Player has time to fight the remaining minion');
+}
+let forcedBossResult = null;
+for (let frame = 0; frame < 61 && !forcedBossResult; frame++) {
+  forcedBossResult = waveSys3.update(1 / 60, 5, 1, 1);
+}
+assert(forcedBossResult !== null, 'A lingering minion cannot delay Boss for more than 12s');
 assert(forcedBossResult.isBoss === true, 'Emergency spawn entity is Boss');
 assert(waveSys3.isBossSpawned === true, 'isBossSpawned is true after emergency timeout');
+waveSys3.initLevel(2);
+assert(waveSys3.bossSpawnGraceTimer === 12, 'Each new level resets the bounded grace timer');
 
 // -------------------------------------------------------------------------
 // 2. HEART GHOST LIFETIME & DRIFT
