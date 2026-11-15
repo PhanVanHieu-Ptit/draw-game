@@ -8,6 +8,9 @@
 import { RUNES, LEVEL_CONFIGS, ENEMY_TYPES, DIFFICULTY_LEVELS, INTRO_TIMING } from '../core/Constants.js';
 import { waveRng } from '../core/Challenge.js';
 
+// Leave time to clear the last minions without a long stall if one is off screen or moving slowly.
+const BOSS_SPAWN_GRACE_S = 12;
+
 export class WaveSystem {
   constructor() {
     this.gameMode = 'STORY'; // 'STORY' | 'ENDLESS'
@@ -46,7 +49,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
-    this.bossSpawnGraceTimer = 45.0; // Emergency failsafe window (only if a minion is somehow lost for 45s)
+    this.bossSpawnGraceTimer = BOSS_SPAWN_GRACE_S;
 
     // Event hooks
     this.onWaveStart = null;
@@ -163,7 +166,7 @@ export class WaveSystem {
     this.isBossSpawned = false;
     this.isBossDefeated = false;
     this.bossMinionSpawnTimer = 0;
-    this.bossSpawnGraceTimer = 45.0;
+    this.bossSpawnGraceTimer = BOSS_SPAWN_GRACE_S;
     this.isIntermission = false;
     this.intermissionTimer = 0;
     this.intermissionHold = false;
@@ -266,10 +269,8 @@ export class WaveSystem {
           shouldSpawnBoss = true;
         } else if (hostileEnemiesCount === 0) {
           shouldSpawnBoss = true;
-        } else {
-          // As long as hostile minions linger, the player is actively fighting them.
-          // The boss must NOT cut in early while there are still small ghosts to defeat!
-          // Emergency failsafe only triggers if a stray minion somehow gets lost for >45s.
+        } else if (!this.isBossSpawned) {
+          // Allow a short cleanup window, then let the boss's entrance shockwave clear stragglers.
           this.bossSpawnGraceTimer -= dt;
           if (this.bossSpawnGraceTimer <= 0) {
             shouldSpawnBoss = true;

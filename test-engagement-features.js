@@ -316,6 +316,10 @@ console.log('\n--- 3. Golden ghost and boss tricks ---');
   const calm = boss('BOSS_COACH');
   calm.gimmickTimer = 999;
   coach.gimmickTimer = 0.01;
+  // The sprint fires seconds after the boss walked in: compare two bosses that are already advancing
+  // (the fast entrance glide has its own test in scripts/test-boss-gradual-arrival.js)
+  coach.isEntering = false;
+  calm.isEntering = false;
   coach.update(0.05, player); // sprint begins
   assert(coach.sprintTimer > 0 && coach.gimmickEvent === 'SPRINT', 'the Coach announces his sprint');
   coach.gimmickEvent = null;

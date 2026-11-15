@@ -1210,7 +1210,7 @@ export class UIManager {
       if (this.levelTransitionBanner) {
         this.levelTransitionBanner.className = 'level-transition-banner';
       }
-    }, INTRO_TIMING.BOSS_WARNING_MS); // gone before the boss walks in (Game holds the boss back for 2.2 s)
+    }, INTRO_TIMING.BOSS_WARNING_MS); // clears before INTRO_TIMING.BOSS_ENTRANCE_S elapses
   }
 
   // =========================================================================

@@ -26,6 +26,15 @@ export const BOSS_GIMMICKS = {
   BOSS_MASTER: { kind: 'flicker', visible: 1.5, hidden: 2.3, name: 'Bóng Tối Chập Chờn' }
 };
 
+/**
+ * A level boss is let in from above the screen. At its advance speed (~26 px/s) it used to spend ~3 s completely
+ * off-screen and ~7 s in all before it was fully in view, on top of the 2.2 s warning. So it now glides in fast
+ * (BOSS_ENTRANCE_SPEED), easing out until it has come BOSS_ENTRANCE_DEPTH radii down, then advances as before.
+ */
+export const BOSS_ENTRANCE_SPEED = 190;  // px/s at the start of the glide
+export const BOSS_ENTRANCE_DEPTH = 1.2;  // in boss radii: where the glide hands over to the normal advance
+const BOSS_ENTRANCE_EASE = 4;            // 1/s: the glide slows to (remaining distance x this) as it nears the end
+
 const HIDDEN_RUNE = { symbol: '?', color: '#94a3b8', glow: '#64748b' };
 
 // ---------------------------------------------------------------------------------------------
@@ -259,6 +268,7 @@ export class Enemy extends Entity {
     this.hideTimer = 0;
     this.sprintTimer = 0;
     this._flickerStarted = false;
+    this.isEntering = false;
 
     if (config.type || config.isHeartGhost || config.isFreezeGhost || config.isBlastGhost || config.symbolQueue) {
       this.init(config);
@@ -430,6 +440,9 @@ export class Enemy extends Entity {
       this.phaseClearedOnRetreat = false;
     }
 
+    // Level bosses (not the final one, which stands on screen from the start) glide in from above the edge
+    this.isEntering = this.isBoss && !this.isFinalBoss && this.y < 0;
+
     if (config.targetPlayerPos) {
       this.targetPlayerPos.x = config.targetPlayerPos.x;
       this.targetPlayerPos.y = config.targetPlayerPos.y;
@@ -477,6 +490,7 @@ export class Enemy extends Entity {
     this.targetPlayerPos.y = 0;
     this.isRetreating = false;
     this.isReEntering = false;
+    this.isEntering = false;
     this.retreatTimer = 0;
     this.reEnterTimer = 0;
     this.isBoss = false;
@@ -807,6 +821,7 @@ export class Enemy extends Entity {
     this.symbolsHidden = false;
     this.hideTimer = 0;
     this.sprintTimer = 0;
+    this.isEntering = false;
     this.isRetreating = true;
     this.phaseClearedOnRetreat = Boolean(isPhaseCleared);
     this.retreatTimer = 1.35;
@@ -1009,6 +1024,18 @@ export class Enemy extends Entity {
         this.y += (ny * currentSpeed + py * wave) * dt;
       }
       return;
+    }
+
+    // A level boss coming in from above the screen: fast straight glide that eases into its normal advance
+    if (this.isEntering) {
+      const remaining = this.radius * BOSS_ENTRANCE_DEPTH - this.y;
+      const glide = Math.min(BOSS_ENTRANCE_SPEED, remaining * BOSS_ENTRANCE_EASE);
+      if (glide <= this.speed) {
+        this.isEntering = false; // close enough: carry on with the regular advance below
+      } else {
+        this.y += glide * (this.slowTimer > 0 ? this.slowFactor : 1.0) * thawMult * (this.combatSpeedScale ?? 1) * dt;
+        return;
+      }
     }
 
     // Heading vector to player (for normal minions and other bosses)
