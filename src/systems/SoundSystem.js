@@ -60,6 +60,26 @@ export const AUDIO_SPRITES = {
   combo_fizzle: { file: 'main', start: 57.571723, duration: 1.741497 }           // Legacy alias for combo fizzle
 };
 
+/**
+ * Folders the music files are looked for in, best guess first. The first one that works is remembered and tried first
+ * for the remaining tracks, so a host with a different layout costs one miss instead of one per track.
+ * Own-origin copies only: never fall back to another site's server (tests/no-hotlinks.test.js).
+ */
+const AUDIO_PATHS = ['/audio/', './audio/', 'audio/', '/', './assets/audio/', 'assets/audio/', '/assets/audio/'];
+
+/**
+ * Order the music files are fetched in. They are fetched ONE AT A TIME: started together they share the bandwidth, so
+ * on a slow connection the track the first fight needs ('main') arrives last. The small intro goes first, then the
+ * fight music, then the two fanfares that are only needed at the end of a run or a boss fight.
+ */
+const PRELOAD_ORDER = ['initial', 'main', 'victory', 'end'];
+
+/**
+ * A track that could not be loaded from anywhere is not asked for again for this long. Without it, every sound effect
+ * that maps to a missing file (a host without the mp3s, the file:// standalone) re-ran up to seven failing requests.
+ */
+const TRACK_RETRY_MS = 60000;
+
 export class SoundSystem {
   /**
    * @param {Object} [options={}]
@@ -119,6 +139,14 @@ export class SoundSystem {
     /** Playback speed of the music (1 = normal). Raised while the player is on their last heart. */
     this._bgmRate = 1;
     this._loadingTracks = {};
+    /** name -> Date.now() of the last load that failed everywhere (see TRACK_RETRY_MS) */
+    this._trackFailedAt = {};
+    /** Folder that served the last track successfully (see AUDIO_PATHS) */
+    this._audioPathHint = null;
+    /** The one-at-a-time preload in progress, so repeated unlock events do not start another */
+    this._preloadChain = null;
+    /** True while the audio thread is stopped because the page is hidden */
+    this._suspendedForHidden = false;
     this._currentOneShots = [];
 
     // Real domestic cat recording buffer
@@ -144,7 +172,7 @@ export class SoundSystem {
    */
   init() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') {
+      if (this.ctx.state === 'suspended' && !this._suspendedForHidden) {
         this.ctx.resume().catch(() => {});
       }
       return this.ctx;
@@ -219,6 +247,8 @@ export class SoundSystem {
    */
   _ensureReady() {
     if (this.isMuted) return false;
+    // Page hidden: a late timer (a meow scheduled before the tab was left) must not wake the audio thread again
+    if (this._suspendedForHidden) return false;
 
     if (!this.ctx) {
       this.init();
@@ -273,6 +303,32 @@ export class SoundSystem {
     unlockEvents.forEach(evt => {
       window.addEventListener(evt, this._unlockHandler, { capture: true, passive: true });
     });
+  }
+
+  /**
+   * The page was hidden (tab switch, screen lock, app backgrounded): stop the audio thread so a hidden game costs
+   * no CPU or battery and cannot make noise. Harmless before audio was ever started.
+   */
+  suspendForHidden() {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
+    this._suspendedForHidden = true;
+    try {
+      const p = ctx.suspend();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) { /* a context that cannot be suspended just keeps running */ }
+  }
+
+  /** The page is visible again: restart the audio thread if (and only if) we were the ones who stopped it */
+  resumeFromHidden() {
+    if (!this._suspendedForHidden) return;
+    this._suspendedForHidden = false;
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'suspended' || typeof ctx.resume !== 'function') return;
+    try {
+      const p = ctx.resume();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) { /* the unlock handlers will restart it on the next gesture */ }
   }
 
   /**
@@ -1753,9 +1809,11 @@ export class SoundSystem {
   preloadAudio() {
     this._preloadRealCatAudio();
     if (typeof window === 'undefined') return;
-    ['main', 'initial', 'victory', 'end'].forEach(name => {
-      this._loadAudioTrack(name).catch(() => {});
-    });
+    // init() and every unlock gesture call this: one chain at a time (see PRELOAD_ORDER for why it is sequential)
+    if (this._preloadChain) return;
+    this._preloadChain = PRELOAD_ORDER
+      .reduce((chain, name) => chain.then(() => this._loadAudioTrack(name)).catch(() => null), Promise.resolve())
+      .then(() => { this._preloadChain = null; });
   }
 
   /**
@@ -1799,26 +1857,25 @@ export class SoundSystem {
    */
   async _loadAudioTrack(name) {
     if (this._audioBuffers[name]) return this._audioBuffers[name];
+    // Standalone uses the procedural soundtrack. Local fetches are rejected by
+    // browser file-origin rules, so avoid both the request and repeated retries.
+    if (typeof location !== 'undefined' && location?.protocol === 'file:') return null;
     if (this._loadingTracks[name]) return this._loadingTracks[name];
+    // Failed everywhere a moment ago: do not repeat up to seven failing requests for every sound effect that wants it
+    const failedAt = this._trackFailedAt[name];
+    if (failedAt !== undefined && Date.now() - failedAt < TRACK_RETRY_MS) return null;
     if (!this.ctx) {
       this.init();
     }
     if (!this.ctx) return null;
 
     const promise = (async () => {
-      const candidates = [
-        `/audio/${name}.mp3`,
-        `./audio/${name}.mp3`,
-        `audio/${name}.mp3`,
-        `/${name}.mp3`,
-        `./assets/audio/${name}.mp3`,
-        `assets/audio/${name}.mp3`,
-        `/assets/audio/${name}.mp3`
-        // Own-origin copies only: never fall back to another site's server (tests/no-hotlinks.test.js).
-        // If none loads, this returns null and the synthesized sounds are used instead.
-      ];
+      // The folder that worked for the previous track goes first. If none loads, this returns null and the
+      // synthesized sounds are used instead.
+      const paths = this._audioPathHint ? [this._audioPathHint, ...AUDIO_PATHS.filter((p) => p !== this._audioPathHint)] : AUDIO_PATHS;
 
-      for (const url of candidates) {
+      for (const base of paths) {
+        const url = `${base}${name}.mp3`;
         try {
           const resp = await fetch(url);
           if (resp && resp.ok) {
@@ -1826,6 +1883,8 @@ export class SoundSystem {
             if (this.ctx) {
               const audioBuf = await this.ctx.decodeAudioData(arrayBuf);
               this._audioBuffers[name] = audioBuf;
+              this._audioPathHint = base;
+              delete this._trackFailedAt[name];
               delete this._loadingTracks[name];
 
               // If BGM is playing and we just loaded 'main', switch to buffer
@@ -1838,9 +1897,10 @@ export class SoundSystem {
             }
           }
         } catch (e) {
-          // Continue to next candidate URL
+          // Otherwise continue to the next candidate folder
         }
       }
+      this._trackFailedAt[name] = Date.now();
       delete this._loadingTracks[name];
       return null;
     })();

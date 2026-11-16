@@ -81,12 +81,28 @@ export class SettingsStore {
   constructor(storage, defaults = {}) {
     this._storage = storage !== undefined ? storage : SettingsStore._defaultStorage();
     this._listeners = [];
-    this._values = { ...DEFAULT_SETTINGS };
+    this._values = SettingsStore.effectiveDefaults();
     for (const [key, value] of Object.entries(defaults)) {
       const clean = sanitizeSetting(key, value);
       if (clean !== undefined) this._values[key] = clean;
     }
     this._load();
+  }
+
+  /**
+   * The defaults for THIS player: the shipped ones, except that a device whose OS asks for reduced motion starts with
+   * screen shake off. A choice the player saved always wins over this (see _load).
+   * @returns {Object}
+   */
+  static effectiveDefaults() {
+    const values = { ...DEFAULT_SETTINGS };
+    try {
+      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        values.screenShake = false;
+      }
+    } catch (e) { /* no matchMedia: motion stays on */ }
+    return values;
   }
 
   static _defaultStorage() {
@@ -142,8 +158,9 @@ export class SettingsStore {
 
   /** Restore every setting to its default and notify listeners of each change. */
   reset() {
+    const defaults = SettingsStore.effectiveDefaults();
     for (const key of Object.keys(DEFAULT_SETTINGS)) {
-      this.set(key, DEFAULT_SETTINGS[key]);
+      this.set(key, defaults[key]);
     }
   }
 

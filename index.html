@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="color-scheme" content="dark">
@@ -10,9 +10,14 @@
   <meta name="theme-color" content="#07050d">
   <title>Magic Cat Academy: Arcane Paws | Gesture Defense</title>
   <meta name="description" content="Trò chơi vẽ cử chỉ ma pháp Arcade phòng thủ phong cách Magic Cat Academy. Cùng chú mèo Momo trải qua 5 màn chơi trường học phép thuật để tiêu diệt u linh và lấy lại cuốn sách thần chú!">
+  <!-- Web fonts are an enhancement, so they must never hold the first paint: a plain stylesheet link blocks rendering
+       until the font host answers (seconds on a weak network, until the timeout when offline). Preloading the
+       stylesheet and applying it on load keeps it off the critical path; `display=swap` shows system fonts meanwhile
+       and swaps the web fonts in. Offline or from file:// the game simply keeps the system fonts. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap"></noscript>
   <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
@@ -672,7 +677,7 @@
             <label class="setting-row"><span class="setting-label">🐱 Tiếng mèo</span>
               <input type="range" min="0" max="100" step="5" data-setting="catVolume"><output class="setting-out" data-out="catVolume"></output></label>
             <label class="setting-row"><span class="setting-label">Tắt toàn bộ âm thanh</span>
-              <input type="checkbox" class="switch" data-setting="muted"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="muted"></label>
           </section>
 
           <section class="settings-group">
@@ -685,15 +690,15 @@
               </div></div>
             <p class="setting-note" id="sensitivity-note"></p>
             <label class="setting-row"><span class="setting-label">Gợi ý khi vẽ sai (hiện nét mẫu)</span>
-              <input type="checkbox" class="switch" data-setting="missHints"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="missHints"></label>
           </section>
 
           <section class="settings-group">
             <h3 class="settings-heading">📳 Cảm giác</h3>
             <label class="setting-row"><span class="setting-label">Rung (haptic)</span>
-              <input type="checkbox" class="switch" data-setting="haptics"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="haptics"></label>
             <label class="setting-row"><span class="setting-label">Rung màn hình (screen shake)</span>
-              <input type="checkbox" class="switch" data-setting="screenShake"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="screenShake"></label>
           </section>
 
           <section class="settings-group">
@@ -711,21 +716,21 @@
           <section class="settings-group">
             <h3 class="settings-heading">🎭 Cốt truyện</h3>
             <label class="setting-row"><span class="setting-label">Lời thoại nhân vật trong trận</span>
-              <input type="checkbox" class="switch" data-setting="storyLines"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="storyLines"></label>
             <p class="setting-note">Đối thoại giữa các màn, tiếng thì thầm của Cổ Thư và lời động viên của đồng hành. Tắt đi nếu bạn muốn chơi liền mạch; Mảnh Ký Ức vẫn được ghi vào Nhật Ký.</p>
           </section>
 
           <section class="settings-group">
             <h3 class="settings-heading">🎬 Khoảnh khắc đỉnh cao</h3>
             <label class="setting-row"><span class="setting-label">Ghi lại đoạn combo hay nhất để lưu / chia sẻ</span>
-              <input type="checkbox" class="switch" data-setting="highlight"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="highlight"></label>
             <p class="setting-note">Game ghi hình sân đấu (tối đa vài giây gần nhất) và giữ lại đoạn kịch tính nhất. Tốn thêm hiệu năng nên tự tắt trên máy yếu / điện thoại cấu hình thấp.</p>
           </section>
 
           <section class="settings-group">
             <h3 class="settings-heading">♿ Trợ năng</h3>
             <label class="setting-row"><span class="setting-label">Chế độ mù màu (thêm hoa văn cho ấn ký)</span>
-              <input type="checkbox" class="switch" data-setting="colorBlind"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="colorBlind"></label>
             <div class="setting-row"><span class="setting-label">Hỗ trợ giảm tốc u linh</span>
               <div class="seg" data-setting="assist">
                 <button type="button" data-value="0">Tắt</button>
@@ -733,7 +738,7 @@
                 <button type="button" data-value="30">-30%</button>
               </div></div>
             <label class="setting-row"><span class="setting-label">Nút ấn ký thay thế (phím 1–8 hoặc chạm nút)</span>
-              <input type="checkbox" class="switch" data-setting="altInput"></label>
+              <input type="checkbox" role="switch" class="switch" data-setting="altInput"></label>
             <p class="setting-note">Giảm tốc u linh (hoặc dùng nút thay thế trong lượt chơi) giúp mọi người cùng chơi được, nhưng lượt đó <strong>không tính vào bảng điểm</strong>.</p>
           </section>
         </div>

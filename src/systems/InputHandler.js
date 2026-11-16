@@ -79,15 +79,21 @@ export class InputHandler {
 
   setEnabled(enabled) {
     this.isEnabled = enabled;
-    if (!enabled) {
-      this.isDrawing = false;
-      this._mapping = null;
-      this.currentPoints = [];
-      this.lastPoint = null;
-      if (this.soundSystem && typeof this.soundSystem.stopDraw === 'function') {
-        this.soundSystem.stopDraw();
-      }
-    }
+    if (!enabled) this.cancelStroke();
+  }
+
+  /** Discard an interrupted stroke without casting, including any held pointer capture. */
+  cancelStroke() {
+    const id = this.activePointerId;
+    this.activePointerId = null;
+    this.isDrawing = false;
+    this._mapping = null;
+    this.currentPoints = [];
+    this.lastPoint = null;
+    try {
+      if (id != null && this.canvas.hasPointerCapture?.(id)) this.canvas.releasePointerCapture(id);
+    } catch (e) { /* Pointer may already have been released by the browser. */ }
+    this.soundSystem?.stopDraw?.();
   }
 
   /**
@@ -152,11 +158,9 @@ export class InputHandler {
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // Block iOS Safari page zoom gestures
-    if (typeof document !== 'undefined') {
-      document.addEventListener('gesturestart', preventDefaultTouch, { passive: false });
-      document.addEventListener('gesturechange', preventDefaultTouch, { passive: false });
-      document.addEventListener('gestureend', preventDefaultTouch, { passive: false });
-    }
+    this.canvas.addEventListener('gesturestart', preventDefaultTouch, { passive: false });
+    this.canvas.addEventListener('gesturechange', preventDefaultTouch, { passive: false });
+    this.canvas.addEventListener('gestureend', preventDefaultTouch, { passive: false });
   }
 
   _bindEvents() {
@@ -504,33 +508,29 @@ export class InputHandler {
       ctx.lineTo(points[lastIdx].x, points[lastIdx].y);
     };
 
+    traceSmoothPath();
     if (this.glow) {
       // Layer 1: Wide Ambient Glow
       ctx.shadowColor = glowColor;
       ctx.shadowBlur = 22 * strokeScale;
       ctx.lineWidth = 8.5 * strokeScale;
       ctx.strokeStyle = glowColor;
-      traceSmoothPath();
       ctx.stroke();
 
       // Layer 2: Medium Radiant Glow
       ctx.shadowBlur = 10 * strokeScale;
       ctx.lineWidth = 4.8 * strokeScale;
       ctx.strokeStyle = midColor;
-      traceSmoothPath();
       ctx.stroke();
 
       // Layer 3: Inner bright white hot core
       ctx.shadowBlur = 0;
       ctx.lineWidth = 2.4 * strokeScale;
       ctx.strokeStyle = '#ffffff';
-      traceSmoothPath();
       ctx.stroke();
     } else {
       // Shadow-free neon: stacked translucent strokes fake the glow at a fraction of the cost.
       // The path is traced once and stroked repeatedly.
-      traceSmoothPath();
-
       ctx.globalAlpha = alpha * 0.22;
       ctx.lineWidth = 17 * strokeScale;
       ctx.strokeStyle = glowColor;
@@ -554,7 +554,7 @@ export class InputHandler {
   }
 
   clear() {
-    this.currentPoints = [];
+    this.cancelStroke();
     this.lastStroke = null;
     this.activePointerId = null;
     this.lastPoint = null;

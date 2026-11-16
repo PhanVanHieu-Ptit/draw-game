@@ -29,7 +29,12 @@
     { "id": "test-runner", "file": "tests/run-tests.test.js", "area": "tooling" },
     { "id": "no-hotlinks", "file": "tests/no-hotlinks.test.js", "area": "security" },
     { "id": "live-ops-contract", "file": "tests/live-ops-contract.test.js", "area": "liveops" },
-    { "id": "live-ops-client", "file": "tests/live-ops-client.test.js", "area": "liveops" }
+    { "id": "live-ops-client", "file": "tests/live-ops-client.test.js", "area": "liveops" },
+    { "id": "audio-loading", "file": "tests/audio-loading.test.js", "area": "performance" },
+    { "id": "accessibility", "file": "tests/accessibility.test.js", "area": "accessibility" },
+    { "id": "load-performance", "file": "tests/load-performance.test.js", "area": "performance" },
+    { "id": "runtime-lifecycle", "file": "tests/runtime-lifecycle.test.js", "area": "performance" },
+    { "id": "particle-sprites", "file": "tests/particle-sprites.test.js", "area": "performance" }
   ],
   "quarantine": [
     {
