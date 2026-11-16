@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="color-scheme" content="dark">
@@ -19,11 +19,14 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap"></noscript>
   <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./styles/responsive.css">
 </head>
 <body>
   <div id="game-wrapper">
     <!-- Main HTML5 Canvas -->
-    <canvas id="gameCanvas"></canvas>
+    <div id="game-arena">
+      <canvas id="gameCanvas"></canvas>
+    </div>
 
     <!-- Level Transition Banner (Ready... Set... Draw!) -->
     <div id="level-transition-banner" class="level-transition-banner">
@@ -150,6 +153,7 @@
 
     <!-- UI Overlay: PLAYING HUD -->
     <div id="hud-playing" class="ui-screen">
+      <div class="hud-dock">
       <div class="hud-top-bar">
         <!-- Player Hearts -->
         <div class="hud-hearts-panel" id="hearts-container">
@@ -162,7 +166,14 @@
 
         <!-- Center Score, Stage & Level Info -->
         <div class="hud-center-panel">
+          <div class="hud-score-row">
           <div class="score-counter" id="score-val">0</div>
+          <span class="hud-timer" id="hud-timer" aria-label="Thời gian lượt chơi">0:00</span>
+          <div class="combo-container" id="combo-badge">
+            <span class="combo-mult" id="combo-mult">x1</span>
+            <div class="combo-bar-wrap"><div class="combo-bar" id="combo-bar"></div></div>
+          </div>
+          </div>
           <div class="wave-badge-row">
             <div class="wave-badge" id="wave-badge">CẤP 1: THƯ VIỆN</div>
             <div class="hud-diff-pill" id="hud-diff-pill">🔥 TIÊU CHUẨN</div>
@@ -172,25 +183,19 @@
 
         <!-- Right Controls & Combo -->
         <div class="hud-right-panel">
-          <div class="combo-container" id="combo-badge">
-            <span class="combo-mult" id="combo-mult">x1</span>
-            <div class="combo-bar-wrap">
-              <div class="combo-bar" id="combo-bar"></div>
-            </div>
-          </div>
           <button class="icon-btn" id="btn-tutorial" title="Xem hướng dẫn cách chơi">❓</button>
           <button class="icon-btn" id="btn-mute" title="Bật/Tắt âm thanh">🔊</button>
           <button class="icon-btn" id="btn-pause" title="Tạm dừng trận đấu (ESC)">⏸️</button>
         </div>
       </div>
 
+      <div class="hud-status-bar">
       <!-- Run upgrades + equipped companion passive -->
       <div id="buff-row" class="buff-row" aria-label="Nâng cấp đang có"></div>
       <div id="boost-pill" class="boost-pill hidden" aria-live="polite"></div>
-      <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
 
       <!-- Stage Companion & Mentor Banner -->
-      <div id="hud-companion-badge" class="hud-companion-badge" title="Đồng minh hỗ trợ màn này • Bấm để nghe lời thoại">
+      <button type="button" id="hud-companion-badge" class="hud-companion-badge" title="Đồng minh hỗ trợ màn này • Bấm để nghe lời thoại">
         <div class="companion-avatar-wrap" id="companion-avatar-wrap"></div>
         <div class="companion-meta">
           <div class="companion-title-row">
@@ -199,6 +204,8 @@
           </div>
           <span class="companion-desc" id="companion-desc">Chỉ dẫn Cổ Ngữ [—] và [|]</span>
         </div>
+      </button>
+      </div>
       </div>
 
       <!-- In-Game Character Dialogue Speech Bubble -->
@@ -218,6 +225,7 @@
 
       <!-- Bottom Gesture Feedback Pill + miss hint -->
       <div class="hud-bottom-bar">
+        <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
         <!-- Strokes of a Spell Phrase in progress (hidden when the chain is empty) -->
         <div class="phrase-chain hidden" id="phrase-chain" aria-live="polite"></div>
         <div class="gesture-pill" id="gesture-feedback">ARCANE SLASH</div>

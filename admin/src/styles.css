@@ -171,7 +171,7 @@ h1 {
   }
 }
 
-.gameplay-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.gameplay-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
 .gameplay-fields > div { min-width: 0; }
 .gameplay-fields label { display: block; margin-bottom: 6px; font-weight: 600; }
 .gameplay-fields > div:has(.ant-space-vertical), .gameplay-fields > div:has(> .gameplay-fields) { grid-column: 1 / -1; }
@@ -183,8 +183,49 @@ h1 {
 .story-node strong,.story-node span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .story-node span { margin-top: 8px; font-size: 12px; color: #ddd0eb; }
 
-.liveops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.liveops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px 16px; }
 .liveops-field { margin-bottom: 12px; min-width: 0; }
 .liveops-field > label { display: block; margin-bottom: 6px; font-weight: 600; }
 .liveops-hint { font-size: 12px; margin-top: 4px; }
 .liveops-reward { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+
+/* Bound the application shell; wide tables and the story map scroll inside their panels. */
+html { scroll-padding-block: 20px; }
+body { overflow-wrap: anywhere; }
+#root, .app-layout, .app-layout > .ant-layout, .content { min-width: 0; }
+.app-layout { min-height: 100dvh; }
+.desktop-sidebar { height: 100dvh; overflow-y: auto; }
+.content { container: admin-content / inline-size; }
+.content :is(.ant-space-item, .ant-col, .ant-card, .ant-card-body, .ant-tabs, .ant-form-item-control, .ant-form-item-control-input-content) { min-width: 0; max-width: 100%; }
+.content .ant-space { max-width: 100%; }
+.content .ant-space:not(.ant-space-vertical) { flex-wrap: wrap; }
+.content :is(.ant-select, .ant-input, .ant-input-affix-wrapper, .ant-input-number, canvas) { max-width: 100%; }
+.content .ant-select { min-width: 0 !important; }
+.ant-table-wrapper { min-width: 0; max-width: 100%; }
+.ant-table-content { overflow-x: auto; overscroll-behavior-x: contain; }
+.ant-table-content > table { min-width: 600px; }
+.content pre, .ant-modal pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.page-heading { gap: 16px; }
+.topbar { padding-top: max(16px, env(safe-area-inset-top)); padding-right: max(24px, env(safe-area-inset-right)); padding-left: max(24px, env(safe-area-inset-left)); }
+.footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+.story-viewport { height: clamp(280px, 65dvh, 680px); max-width: 100%; overscroll-behavior: contain; }
+.ant-drawer-body { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.center { min-height: 100dvh; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+
+@container admin-content (max-width: 680px) {
+  .ant-card-body { padding: 16px; }
+  .ant-card-head { padding-inline: 16px; }
+  .page-heading { flex-wrap: wrap; }
+  .ant-form-item-label { white-space: normal; }
+  .ant-space-item { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 600px), (pointer: coarse) {
+  .ant-btn { min-height: 44px; height: auto; white-space: normal; }
+  .ant-input, .ant-input-number-input, .ant-select-selector { font-size: 16px !important; }
+  .ant-input-number-input { min-height: 42px; }
+  .ant-select-single { height: 44px; }
+  .ant-menu-item { min-height: 44px; }
+  .content { padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+  .topbar { gap: 8px; }
+}

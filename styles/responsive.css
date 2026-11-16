@@ -1,0 +1,790 @@
+/* Responsive composition. Arena coordinates remain CSS pixels; DPR only changes its backing store. */
+#game-wrapper {
+  --hud-height: 116px;
+  --feedback-height: 96px;
+  --edge: 16px;
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+  container: game / inline-size;
+}
+
+#game-arena {
+  position: absolute;
+  inset: calc(var(--sat) + var(--hud-height)) max(var(--edge), var(--sar))
+    calc(var(--sab) + var(--feedback-height)) max(var(--edge), var(--sal));
+  overflow: hidden;
+  border: 1px solid var(--panel-border-inner);
+  border-radius: 20px;
+  background: var(--bg-dark);
+  touch-action: none;
+}
+
+#hud-playing {
+  padding: calc(var(--sat) + 8px) max(var(--edge), var(--sar))
+    calc(var(--sab) + 12px) max(var(--edge), var(--sal));
+}
+
+.hud-dock {
+  width: 100%;
+  min-width: 0;
+}
+.hud-top-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-areas: 'hearts center controls';
+  gap: 8px;
+  align-items: center;
+  min-height: 56px;
+}
+.hud-hearts-panel {
+  grid-area: hearts;
+  justify-self: start;
+  min-width: 0;
+  padding: 8px 10px;
+  gap: 3px;
+}
+.heart-icon {
+  font-size: clamp(0.85rem, 1.6vw, 1.2rem);
+}
+.hud-center-panel {
+  grid-area: center;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  gap: 3px;
+  overflow: visible;
+}
+.hud-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.score-counter {
+  font-size: clamp(1.2rem, 2.6vw, 1.85rem);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.hud-timer {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.combo-container {
+  position: static;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 2px;
+  transform: none;
+}
+.combo-mult {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.combo-bar-wrap {
+  width: 72px;
+  max-width: 100%;
+  height: 4px;
+}
+.wave-badge-row {
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+}
+.wave-badge {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+.hud-diff-pill {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+.level-sub-badge {
+  display: none;
+}
+.hud-right-panel {
+  grid-area: controls;
+  justify-self: end;
+  gap: 6px;
+}
+.icon-btn {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.hud-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 4px;
+  min-width: 0;
+}
+.hud-status-bar .hud-companion-badge {
+  position: static;
+  order: -1;
+  flex: 0 1 auto;
+  max-width: min(46%, 360px);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 10px 4px 5px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  pointer-events: auto;
+  transform: none;
+}
+.companion-meta {
+  min-width: 0;
+}
+.companion-title-row {
+  min-width: 0;
+}
+.companion-tag,
+.companion-desc {
+  display: none;
+}
+.companion-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+.companion-avatar-wrap {
+  width: 28px;
+  height: 28px;
+}
+.hud-status-bar .buff-row {
+  position: static;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  pointer-events: auto;
+  touch-action: pan-x;
+}
+.buff-chip {
+  flex: 0 0 auto;
+  pointer-events: none;
+  font-size: 0.9rem;
+}
+.hud-status-bar .boost-pill {
+  position: static;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+  animation: none;
+}
+.hud-bottom-bar {
+  height: calc(var(--feedback-height) - 16px);
+  min-height: 0;
+  padding: 0;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.hud-bottom-bar .assist-badge {
+  position: static;
+  transform: none;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  font-size: 0.65rem;
+}
+#gesture-feedback {
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+#gesture-feedback:not(.show),
+.gesture-hint:not(.show) {
+  display: none;
+}
+.gesture-hint {
+  max-width: min(100%, 560px);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+.phrase-chain {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.rune-pad {
+  grid-template-columns: repeat(8, minmax(44px, 50px));
+  gap: 6px;
+  max-width: 100%;
+}
+.rune-pad-btn {
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+#game-wrapper:has(#rune-pad:not(.hidden)) {
+  --feedback-height: 144px;
+}
+
+/* One scroll surface per dialog; safe-area padding is subtracted before sizing the card. */
+.modal-overlay {
+  padding: calc(var(--sat) + 12px) calc(var(--sar) + 12px)
+    calc(var(--sab) + 12px) calc(var(--sal) + 12px);
+  overflow: hidden;
+}
+.modal-overlay > .glass-card {
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  margin: 0;
+  flex-shrink: 1;
+}
+.glass-card {
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  scroll-padding-block: 16px;
+}
+.glass-card > * {
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+.glass-card :is(button, input, select, textarea) {
+  max-width: 100%;
+}
+button {
+  touch-action: manipulation;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+:is(
+  .btn-primary,
+  .btn-secondary,
+  .btn-gold,
+  .btn-subtle,
+  .btn-text-skip,
+  .story-chap-btn,
+  .story-nav-btn,
+  .pause-diff-btn,
+  .tutorial-tab-btn,
+  .codex-tab-btn,
+  .seg button
+) {
+  min-height: 44px;
+}
+.stage-btn,
+.diff-btn {
+  min-height: 60px;
+}
+.stage-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.difficulty-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.stage-btn,
+.diff-btn,
+.diff-meta {
+  min-width: 0;
+}
+.stage-name,
+.diff-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.game-title {
+  font-size: clamp(1.35rem, 4.2vw, 2.1rem);
+  overflow-wrap: anywhere;
+}
+.meta-header,
+.story-header,
+.tutorial-header {
+  min-width: 0;
+  align-items: center;
+}
+.meta-title-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.meta-header .btn-text-skip {
+  flex: 0 0 auto;
+}
+.meta-title {
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+}
+.story-chapter-bar,
+.pause-diff-buttons,
+.codex-tabs {
+  flex-wrap: wrap;
+}
+.story-canvas-wrap {
+  aspect-ratio: 2;
+  height: auto;
+}
+#storyCanvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.companion-grid,
+.wardrobe-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.companion-item {
+  min-width: 0;
+}
+.companion-item > * {
+  min-width: 0;
+}
+.settings-card {
+  container: settings / inline-size;
+}
+.setting-row {
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+.setting-label {
+  min-width: 0;
+}
+.settings-group input[type='range'] {
+  min-width: 70px;
+}
+.setting-row .seg {
+  display: flex;
+  flex-wrap: wrap;
+}
+.setting-row .seg button {
+  flex: 1 1 auto;
+}
+
+/* Keep the mode choice near the title, and let the menu grow by columns on roomy screens. */
+.menu-card {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  padding: 22px;
+  font-size: 0.9rem;
+}
+.menu-card > .game-title {
+  order: -3;
+}
+.menu-card > .game-subtitle {
+  order: -2;
+}
+.menu-card > .menu-primary-actions {
+  order: -1;
+  position: static;
+  padding: 0;
+  margin: 4px 0 16px;
+  background: none;
+}
+.menu-primary-actions > button {
+  width: 100%;
+}
+.menu-card .menu-meta-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.menu-card .menu-action-buttons {
+  width: 100%;
+  flex-wrap: wrap;
+}
+.menu-card .btn-subtle {
+  white-space: normal;
+}
+.menu-card .high-score-tag {
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.menu-card .liveops-banner {
+  min-width: 0;
+}
+.menu-card .rune-guide-grid {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@container game (min-width: 740px) {
+  .menu-card {
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'title title' 'subtitle subtitle' 'stages actions'
+      'difficulty tiles' 'runes tiles' 'banner banner' 'links links' 'record record';
+    gap: 10px 24px;
+    align-items: start;
+    align-content: start;
+    justify-items: stretch;
+  }
+  .menu-card > .game-title {
+    grid-area: title;
+  }
+  .menu-card > .game-subtitle {
+    grid-area: subtitle;
+    margin-bottom: 4px;
+  }
+  .menu-card > .stage-selector-container {
+    grid-area: stages;
+    margin: 0;
+  }
+  .menu-card > .difficulty-selector-container {
+    grid-area: difficulty;
+    margin: 0;
+  }
+  .menu-card > .rune-guide-grid {
+    grid-area: runes;
+    margin: 0;
+  }
+  .menu-card > .menu-primary-actions {
+    grid-area: actions;
+    flex-direction: column;
+    margin: 0;
+    gap: 8px;
+  }
+  .menu-card > .menu-meta-grid {
+    grid-area: tiles;
+    margin: 0;
+  }
+  .menu-card > .liveops-banner {
+    grid-area: banner;
+  }
+  .menu-card > .menu-action-buttons {
+    grid-area: links;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    gap: 8px;
+  }
+  .menu-card > .high-score-tag {
+    grid-area: record;
+    margin: 0;
+    justify-content: center;
+  }
+  .menu-card
+    .menu-primary-actions
+    :is(.btn-primary, .btn-secondary, .btn-gold) {
+    width: 100%;
+    min-height: 48px;
+    font-size: 0.85rem;
+    white-space: normal;
+  }
+  .menu-card .meta-tile {
+    min-height: 62px;
+    flex-direction: column;
+  }
+  .menu-card .meta-tile-label {
+    font-size: 0.72rem;
+  }
+  .menu-card .stage-name {
+    font-size: 0.68rem;
+  }
+}
+
+@container settings (min-width: 520px) {
+  .settings-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .settings-group:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Narrow screens: health and controls first, then score, clock and combo. */
+@media (max-width: 600px) {
+  #game-wrapper {
+    --edge: 10px;
+    --hud-height: 148px;
+  }
+  .hud-top-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'hearts controls' 'center center';
+    gap: 4px 8px;
+    min-height: 84px;
+  }
+  .hud-center-panel {
+    justify-self: stretch;
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .hud-score-row {
+    gap: 10px;
+  }
+  .score-counter {
+    font-size: 1.15rem;
+  }
+  .wave-badge-row {
+    justify-self: center;
+  }
+  .wave-badge {
+    font-size: 0.6rem;
+    padding: 2px 7px;
+  }
+  .hud-diff-pill {
+    font-size: 0.55rem;
+    padding: 2px 6px;
+  }
+  .hud-status-bar {
+    gap: 5px;
+  }
+  .hud-status-bar .hud-companion-badge {
+    max-width: 42%;
+    gap: 5px;
+    padding-right: 6px;
+  }
+  .companion-name {
+    font-size: 0.65rem;
+  }
+  .hud-hearts-panel {
+    padding: 6px;
+    gap: 1px;
+  }
+  .heart-icon {
+    font-size: 0.95rem;
+  }
+  .combo-mult {
+    font-size: 0.65rem;
+  }
+  .combo-bar-wrap {
+    width: 60px;
+  }
+  .glass-card,
+  .meta-card {
+    padding: 16px 14px;
+    border-radius: 18px;
+  }
+  .stage-name {
+    font-size: 0.65rem;
+    line-height: 1.3;
+  }
+  .diff-btn {
+    flex-direction: column;
+    padding: 8px 4px;
+  }
+  .diff-meta {
+    align-items: center;
+  }
+  .diff-name {
+    font-size: 0.66rem;
+  }
+  .rune-pad {
+    grid-template-columns: repeat(4, minmax(44px, 56px));
+  }
+  #game-wrapper:has(#rune-pad:not(.hidden)) {
+    --feedback-height: 184px;
+  }
+  .menu-card .menu-primary-actions {
+    gap: 8px;
+  }
+  .menu-card .btn-primary,
+  .menu-card .btn-secondary {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+  .menu-card .game-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+  }
+}
+
+/* Practice uses the same bounded arena and a 44px rune picker. */
+#practice-screen {
+  padding: calc(var(--sat) + 8px) max(var(--edge), var(--sar))
+    calc(var(--sab) + 12px) max(var(--edge), var(--sal));
+}
+.practice-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 44px 44px;
+  gap: 6px;
+  min-height: 44px;
+}
+.practice-title {
+  text-align: center;
+  font-size: 0.9rem;
+}
+.practice-exit {
+  white-space: nowrap;
+}
+.practice-runes {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(44px, 64px));
+  gap: 6px;
+  margin-top: 8px;
+}
+.practice-rune {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+}
+.practice-bottom {
+  max-height: 140px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  gap: 5px;
+}
+#game-wrapper:has(#practice-screen.active) {
+  --hud-height: 116px;
+  --feedback-height: 160px;
+}
+@media (max-width: 600px) {
+  .practice-top {
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+  }
+  .practice-title {
+    display: none;
+  }
+  .practice-exit {
+    justify-self: start;
+  }
+  .practice-runes {
+    grid-template-columns: repeat(4, minmax(44px, 64px));
+  }
+  #game-wrapper:has(#practice-screen.active) {
+    --hud-height: 160px;
+  }
+  .practice-tip {
+    font-size: 0.75rem;
+  }
+  .practice-verdict {
+    font-size: 0.8rem;
+  }
+}
+
+/* Height, rather than a device name, determines the compact landscape layout. */
+@media (orientation: landscape) and (max-height: 520px) {
+  #game-wrapper {
+    --hud-height: 104px;
+    --feedback-height: 52px;
+    --edge: 12px;
+  }
+  .hud-top-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+    grid-template-areas: 'hearts center controls';
+    min-height: 44px;
+  }
+  .hud-center-panel {
+    display: flex;
+  }
+  .hud-score-row {
+    gap: 8px;
+  }
+  .score-counter {
+    font-size: 1.1rem;
+  }
+  .hud-timer {
+    font-size: 0.7rem;
+  }
+  .hud-status-bar {
+    margin-top: 4px;
+  }
+  .hud-status-bar .hud-companion-badge {
+    max-width: 35%;
+  }
+  .gesture-hint {
+    max-width: 60%;
+    font-size: 0.68rem;
+  }
+  .hud-bottom-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: end;
+    justify-content: center;
+  }
+  #game-wrapper:has(#rune-pad:not(.hidden)) {
+    --feedback-height: 104px;
+  }
+  .rune-pad {
+    grid-template-columns: repeat(8, minmax(44px, 50px));
+  }
+  .practice-bottom {
+    max-height: 76px;
+    gap: 3px;
+  }
+  .practice-tip {
+    font-size: 0.7rem;
+  }
+  .practice-progress {
+    display: none;
+  }
+  .practice-verdict {
+    font-size: 0.7rem;
+  }
+  .practice-runes {
+    grid-template-columns: repeat(8, minmax(44px, 56px));
+  }
+  #game-wrapper:has(#practice-screen.active) {
+    --hud-height: 112px;
+    --feedback-height: 96px;
+  }
+  .tutorial-overlay {
+    top: calc(var(--sat) + var(--hud-height));
+    bottom: calc(var(--sab) + 8px);
+    height: auto;
+  }
+  .tutorial-card {
+    max-height: 100%;
+  }
+}
+
+.tutorial-overlay {
+  top: calc(var(--sat) + var(--hud-height) + 8px);
+  bottom: calc(var(--sab) + 12px);
+  padding-inline: max(12px, var(--sal)) max(12px, var(--sar));
+}
+.tutorial-card {
+  max-height: 100%;
+}
+.dialogue-toast {
+  top: calc(var(--sat) + var(--hud-height) + 8px);
+  max-width: min(560px, calc(100% - 32px - var(--sal) - var(--sar)));
+}
+.toast-stack {
+  top: calc(var(--sat) + var(--hud-height) + 8px);
+  width: min(90%, 380px);
+}
+.toast-stack .toast {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+}
+.level-transition-banner {
+  top: calc(var(--sat) + var(--hud-height) + 12px);
+  max-width: calc(100% - 32px);
+  pointer-events: none;
+}
+.level-transition-banner,
+.level-transition-banner.show {
+  transform: translateX(-50%);
+}
+#game-wrapper:not(:has(#hud-playing.active)) .level-transition-banner {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-companion-badge,
+  .combo-container {
+    transition: none;
+  }
+}

@@ -3,6 +3,8 @@ import { Game } from '../src/core/Game.js';
 import { InputHandler } from '../src/systems/InputHandler.js';
 import { GAME_STATES } from '../src/core/Constants.js';
 import { StateMachine } from '../src/core/StateMachine.js';
+import { Enemy } from '../src/entities/Enemy.js';
+import { PracticeSession } from '../src/systems/PracticeSession.js';
 
 let checks = 0;
 function check(name, fn) { fn(); checks++; console.log(`  ✅ PASS: ${name}`); }
@@ -77,6 +79,42 @@ try {
     listeners.get('lostpointercapture')(ev('lostpointercapture', 200, 1));
     assert.equal(input.isDrawing, true); assert.equal(input.currentPoints[0].x, 300);
     listeners.get('pointerup')(ev('pointerup', 400, 2)); assert.equal(casts, 1);
+  });
+  check('offset arena maps client points to logical pixels independently of backing density', () => {
+    let rect = { left: 160, top: 116, width: 800, height: 400 };
+    let dims = { width: 800, height: 400 };
+    const input = new InputHandler({ addEventListener() {}, getBoundingClientRect: () => rect }, {}, null, null, null, () => dims);
+    assert.deepEqual(input._getCanvasPoint({ clientX: 560, clientY: 316, timeStamp: 1 }), { x: 400, y: 200, timestamp: 1 });
+    rect = { left: 10, top: 148, width: 300, height: 200 };
+    dims = { width: 600, height: 400 };
+    assert.deepEqual(input._getCanvasPoint({ clientX: 160, clientY: 248, timeStamp: 2 }), { x: 300, y: 200, timestamp: 2 });
+  });
+  check('container resizing preserves entity positions and does not mistake HUD changes for rotation', () => {
+    let cancelled = 0, paused = 0;
+    const g = Object.create(Game.prototype);
+    const parent = { clientWidth: 300, clientHeight: 230 };
+    window.innerWidth = 320; window.innerHeight = 568;
+    const enemy = { x: 150, y: 160, radius: 24, updateCanvasDimensions(w, h) { this.canvasWidth = w; this.canvasHeight = h; } };
+    Object.assign(g, { width: 300, height: 320, lightScale: 0.5, _wasPortrait: true,
+      canvas: { parentElement: parent, style: {}, getBoundingClientRect: () => ({ left: 10, top: 148 }) },
+      player: { resize() {} }, enemies: [enemy], projectiles: [{ x: 30, y: 80, history: [{ x: 20, y: 40 }] }],
+      inputHandler: { cancelStroke() { cancelled++; } }, _pauseIfPlaying() { paused++; }, quality: { getDprCap: () => 2 }
+    });
+    g.resize();
+    assert.equal(cancelled, 1); assert.equal(paused, 0); assert.equal(enemy.radius, 24);
+    assert.equal(enemy.y, 115); assert.equal(g.projectiles[0].y, 57.5);
+    assert.equal(enemy.canvasHeight, 230);
+    g.canvas.getBoundingClientRect = () => ({ left: 20, top: 148 }); g.resize();
+    assert.equal(cancelled, 2, 'moving the arena invalidates a captured mapping even at the same size');
+  });
+  check('practice guide and final boss fit a short landscape arena', () => {
+    const practice = Object.create(PracticeSession.prototype);
+    practice.game = { width: 640, height: 170 };
+    const layout = practice.getLayout();
+    assert.ok(layout.cy - layout.size / 2 >= 0 && layout.cy + layout.size / 2 <= 170);
+    const boss = new Enemy({ type: 'BOSS_MASTER', canvasWidth: 640, canvasHeight: 170 });
+    assert.ok(boss.bossHeight <= 170 * 0.88 + 0.01);
+    assert.ok(Math.abs(boss.bossHeight / boss.radius - 3.1) < 0.001);
   });
 } finally {
   for (const [key, desc] of Object.entries(saved)) { if (desc) Object.defineProperty(globalThis, key, desc); else delete globalThis[key]; }

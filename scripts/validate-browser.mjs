@@ -36,12 +36,12 @@ try {
       await screenshot(page, `${profile}-menu`);
       row.layout = await page.eval(`(() => {
         const g = __ARCANE_GAME__, wrapper = document.getElementById('game-wrapper'), canvas = g.canvas;
-        return { viewport: [innerWidth, innerHeight], canvas: [g.width, g.height], scrollWidth: document.documentElement.scrollWidth,
+        return { viewport: [innerWidth, innerHeight], canvas: [g.width, g.height], arena: [canvas.parentElement.clientWidth, canvas.parentElement.clientHeight], scrollWidth: document.documentElement.scrollWidth,
           wrapperTouch: getComputedStyle(wrapper).touchAction, canvasTouch: getComputedStyle(canvas).touchAction,
           viewportMeta: document.querySelector('meta[name=viewport]').content };
       })()`);
       check('noHorizontalOverflow', row.layout.scrollWidth <= row.layout.viewport[0]);
-      check('canvasMatchesViewport', row.layout.canvas.every((v, i) => v === row.layout.viewport[i]));
+      check('canvasMatchesArena', row.layout.canvas.every((v, i) => v === row.layout.arena[i]));
       check('zoomAllowed', !/user-scalable=no|maximum-scale=1(?:\D|$)/.test(row.layout.viewportMeta) && row.layout.wrapperTouch !== 'none');
       await page.eval("document.getElementById('btn-open-settings').focus()");
       await key(page, 'Enter'); await sleep(450);
@@ -77,12 +77,16 @@ try {
       await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...runeBox, button: 'left', buttons: 1, clickCount: 1 });
       await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...runeBox, button: 'left', buttons: 0, clickCount: 1 });
       check('runePointerDoesNotDoubleCast', (await page.eval('__castChecks.length')) === castsBeforePointer + 1);
-      await page.eval("__ARCANE_GAME__.settings.set('altInput', false); __bench.begin()");
+      await page.eval("__ARCANE_GAME__.settings.set('altInput', false)");
+      // Let the CSS arena and its ResizeObserver agree before starting a captured stroke.
+      await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+      await page.eval('__bench.begin()');
       if (!opts['skip-draw']) {
         const expected = Object.keys(templates);
         for (const [index, gesture] of expected.entries()) {
-          const size = Math.min(page.profile.width, page.profile.height) * 0.4;
-          const points = buildStroke(templates[gesture], page.profile.width / 2, page.profile.height * 0.57, size, 6, 5000 + index);
+          const arena = await page.eval("(() => { const r = __ARCANE_GAME__.canvas.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; })()");
+          const size = Math.min(arena.width, arena.height) * 0.4;
+          const points = buildStroke(templates[gesture], arena.x + arena.width / 2, arena.y + arena.height * 0.57, size, 6, 5000 + index);
           await drawStroke(page, points, { touch: page.profile.touch, intervalMs: page.profile.touch ? 8 : 4 });
           await sleep(70);
         }

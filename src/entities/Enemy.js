@@ -476,6 +476,11 @@ export class Enemy extends Entity {
       this.bossWidth = isMobile ? Math.max(160, this.canvasWidth * 0.44) : Math.max(300, this.canvasWidth * 0.46);
       this.radius = Math.max(isMobile ? 65 : 120, this.bossWidth / 2.8);
       this.bossHeight = this.radius * 3.1;
+      // A short landscape arena limits the whole boss uniformly, including its collision radius.
+      const fit = Math.min(1, this.canvasHeight * 0.88 / this.bossHeight);
+      this.radius *= fit;
+      this.bossWidth *= fit;
+      this.bossHeight *= fit;
     }
   }
 

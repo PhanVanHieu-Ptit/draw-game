@@ -99,6 +99,7 @@ function Shell({ dark, toggle }: { dark: boolean; toggle: () => void }) {
       <Drawer
         title="Navigation"
         placement="left"
+        width="min(360px, 100vw)"
         open={drawer}
         onClose={() => setDrawer(false)}
         styles={{ body: { padding: 0 } }}
