@@ -70,6 +70,9 @@ export class Player extends Entity {
    */
   _initSpriteSheets() {
     if (typeof Image === 'undefined') return;
+    // file:// cannot fetch these local HTTP assets reliably. Use the existing vector
+    // character immediately instead of twelve failed URL attempts at every offline launch.
+    if (typeof location !== 'undefined' && location.protocol === 'file:') return;
 
     const sheetsToLoad = [
       'level1-png-sprite.png',

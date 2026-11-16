@@ -404,6 +404,7 @@ export class Game {
    * @param {*} value
    */
   _applySetting(key, value) {
+    this._pausedFrameDrawn = false;
     switch (key) {
       case 'masterVolume':
         this.audioSystem.setVolume((value / 100) * AUDIO_SCALE.master);
@@ -585,7 +586,12 @@ export class Game {
     if (typeof document !== 'undefined' && document.addEventListener) {
       document.addEventListener('visibilitychange', () => this._onVisibilityChange());
     }
-    window.addEventListener('pagehide', () => this._pauseIfPlaying());
+    window.addEventListener('pagehide', () => {
+      this._pauseIfPlaying();
+      this._suspendFrameLoop();
+      this.audioSystem?.suspendForHidden?.();
+    });
+    window.addEventListener('pageshow', () => this._onVisibilityChange());
   }
 
   /**
@@ -595,10 +601,26 @@ export class Game {
   _onVisibilityChange() {
     if (typeof document !== 'undefined' && document.hidden) {
       this._pauseIfPlaying();
+      this._suspendFrameLoop();
+      // Hidden: no sound and no audio-thread work until the player is back
+      if (this.audioSystem && typeof this.audioSystem.suspendForHidden === 'function') this.audioSystem.suspendForHidden();
     } else {
       this.lastTime = performance.now();
       if (this.quality) this.quality.resetSampling(1500);
+      if (this.audioSystem && typeof this.audioSystem.resumeFromHidden === 'function') this.audioSystem.resumeFromHidden();
+      this._resumeFrameLoop();
     }
+  }
+
+  _suspendFrameLoop() {
+    if (this._rafId) cancelAnimationFrame(this._rafId);
+    this._rafId = 0;
+  }
+
+  _resumeFrameLoop() {
+    if (!this.isRunning || this._rafId || (typeof document !== 'undefined' && document.hidden)) return;
+    this.lastTime = performance.now();
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   _pauseIfPlaying() {
@@ -612,6 +634,7 @@ export class Game {
   _applyQuality() {
     const q = this.quality;
     if (!q) return;
+    this._pausedFrameDrawn = false;
 
     this.lightScale = q.lightScale;
 
@@ -650,6 +673,7 @@ export class Game {
     this.isMobile = isMobile;
 
     const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    if (this.quality) this.quality.isMobile = isMobile;
     const dpr = Math.min(rawDpr, this.quality ? this.quality.getDprCap() : (isMobile ? 1.5 : 2.0));
 
     const parent = this.canvas.parentElement;
@@ -659,6 +683,9 @@ export class Game {
     const sizeKey = `${width}x${height}@${dpr}/${this.lightScale}`;
     if (sizeKey === this._sizeKey) return;
     this._sizeKey = sizeKey;
+    this._pausedFrameDrawn = false;
+    // The client-to-arena transform just changed. Cancel rather than joining two coordinate spaces.
+    if (this.inputHandler && (width !== this.width || height !== this.height)) this.inputHandler.cancelStroke();
 
     // A portrait <-> landscape flip on a phone pauses the run (the layout under the player's hand just changed)
     const portrait = height > width;
@@ -1179,10 +1206,10 @@ export class Game {
   }
 
   start() {
+    if (this.isRunning) return;
     this.stateMachine.changeState(GAME_STATES.MENU);
     this.isRunning = true;
-    this.lastTime = performance.now();
-    this._rafId = requestAnimationFrame(this._boundLoop);
+    this._resumeFrameLoop();
   }
 
   /**
@@ -1191,7 +1218,9 @@ export class Game {
    * @param {DOMHighResTimeStamp} timestamp 
    */
   loop(timestamp) {
+    this._rafId = 0;
     if (!this.isRunning) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
 
     if (!this.lastTime) {
       this.lastTime = timestamp;
@@ -1203,11 +1232,14 @@ export class Game {
     const dt = Math.min(0.05, Math.max(0.001, rawDt));
     this.lastTime = timestamp;
 
-    // Feed the adaptive quality controller with the real (unclamped) frame time
-    if (this.quality) this.quality.sampleFrame(rawDt * 1000);
-
-    this.update(dt);
-    this.render();
+    const paused = this.stateMachine.getCurrentStateName() === GAME_STATES.PAUSE;
+    // A pause freezes the arena. Keep its pixels until size, quality or state invalidates them.
+    if (!paused || !this._pausedFrameDrawn) {
+      if (!paused && this.quality) this.quality.sampleFrame(rawDt * 1000);
+      this.update(dt);
+      this.render();
+      this._pausedFrameDrawn = paused;
+    }
 
     this._rafId = requestAnimationFrame(this._boundLoop);
   }
@@ -1331,8 +1363,15 @@ export class Game {
 
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
     // The golden ghost is a bonus: it never holds a wave (or a boss fight) open
-    const livingEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isGolden).length;
-    const hostileEnemiesCount = this.enemies.filter(e => !e.isDead && !e.isHeartGhost && !e.isGolden).length;
+    // One pass, no temporary arrays: this runs every frame (two .filter() calls allocated two arrays per frame)
+    let livingEnemiesCount = 0;
+    let hostileEnemiesCount = 0;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e.isDead || e.isGolden) continue;
+      livingEnemiesCount++;
+      if (!e.isHeartGhost) hostileEnemiesCount++;
+    }
 
     // Brief warning after clearing a story wave. Boss Rush and the final stage start immediately.
     const isPreBossClear = Boolean(this.waveSystem

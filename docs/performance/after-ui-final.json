@@ -1,0 +1,283 @@
+{
+  "profiles": [
+    {
+      "profile": "desktop",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "boundedParticleCacheUsed": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "canvas": [
+          1440,
+          900
+        ],
+        "scrollWidth": 1440,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "spriteCacheEntries": 251,
+      "pauseRenderCount": 1
+    },
+    {
+      "profile": "laptop",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          1366,
+          768
+        ],
+        "canvas": [
+          1366,
+          768
+        ],
+        "scrollWidth": 1366,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "pauseRenderCount": 1
+    },
+    {
+      "profile": "tablet",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "nativeTouchScroll": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          820,
+          1180
+        ],
+        "canvas": [
+          820,
+          1180
+        ],
+        "scrollWidth": 820,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "scrollTop": 229,
+      "scrollRange": 342,
+      "pauseRenderCount": 1
+    },
+    {
+      "profile": "mobile",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "nativeTouchScroll": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          390,
+          844
+        ],
+        "canvas": [
+          390,
+          844
+        ],
+        "scrollWidth": 390,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "scrollTop": 231,
+      "scrollRange": 960,
+      "pauseRenderCount": 1
+    },
+    {
+      "profile": "mobile-landscape",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "nativeTouchScroll": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          844,
+          390
+        ],
+        "canvas": [
+          844,
+          390
+        ],
+        "scrollWidth": 844,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "scrollTop": 228,
+      "scrollRange": 1110,
+      "pauseRenderCount": 1
+    },
+    {
+      "profile": "mobile-small",
+      "checks": {
+        "noHorizontalOverflow": true,
+        "canvasMatchesViewport": true,
+        "zoomAllowed": true,
+        "keyboardOpensSettings": true,
+        "settingsNoHorizontalOverflow": true,
+        "sliderHas44pxHitArea": true,
+        "dialogTabContained": true,
+        "nativeTouchScroll": true,
+        "dialogReturnsFocus": true,
+        "runeKeyboardCastsOncePerActivation": true,
+        "runePointerDoesNotDoubleCast": true,
+        "pauseFreezesHealth": true,
+        "pauseReusesFrame": true,
+        "heldPauseDoesNotToggle": true,
+        "resumeHasCountdown": true,
+        "resumeFocusesArena": true,
+        "noRuntimeErrors": true
+      },
+      "layout": {
+        "viewport": [
+          320,
+          568
+        ],
+        "canvas": [
+          320,
+          568
+        ],
+        "scrollWidth": 320,
+        "wrapperTouch": "auto",
+        "canvasTouch": "none",
+        "viewportMeta": "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      },
+      "sliderHeight": 44,
+      "scrollTop": 227,
+      "scrollRange": 1523,
+      "pauseRenderCount": 1
+    }
+  ],
+  "standalone": {
+    "state": "PLAYING",
+    "running": true,
+    "errors": [],
+    "spritesLoaded": false,
+    "casts": 1,
+    "audioState": "running",
+    "requests": [
+      "file:///Users/phanvanhieu/Documents/CaNhan/MyProject/draw-game/arcane-paws-standalone.html"
+    ],
+    "noExternalRequests": true
+  },
+  "meta": {
+    "date": "2026-11-15T08:50:20.091Z",
+    "chrome": "Chrome/157.0.8103.78",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "node": "v22.22.3",
+    "os": "Darwin 24.6.0 arm64",
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memGB": 32,
+    "gpu": {
+      "devices": [
+        "Google Inc. (Apple) ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Version 15.7.4 (Build 24G517))"
+      ],
+      "featureStatus": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "skia_graphite": "enabled_on",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      }
+    },
+    "headless": true
+  }
+}

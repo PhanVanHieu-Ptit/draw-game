@@ -1,0 +1,26 @@
+{
+  "before": {
+    "index.html": {
+      "bytes": 725874,
+      "gzip9Bytes": 193239,
+      "sha256": "cf77ebab084cea1bcedc5385af0a6b41915dba04432791fd19a1e57d00856aa0"
+    },
+    "arcane-paws-standalone.html": {
+      "bytes": 725874,
+      "gzip9Bytes": 193239,
+      "sha256": "cf77ebab084cea1bcedc5385af0a6b41915dba04432791fd19a1e57d00856aa0"
+    }
+  },
+  "after": {
+    "index.html": {
+      "bytes": 729573,
+      "gzip9Bytes": 194445,
+      "sha256": "4f4808fab37f77e6865cd701ec387a953549feccca745a89342905ccf0b8986b"
+    },
+    "arcane-paws-standalone.html": {
+      "bytes": 729049,
+      "gzip9Bytes": 194283,
+      "sha256": "8e9ef24bdcf620454eced57c807a9818d5619bdff75378259bd0eff2c12e0bd4"
+    }
+  }
+}

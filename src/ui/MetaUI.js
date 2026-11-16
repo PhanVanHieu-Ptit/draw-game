@@ -27,6 +27,7 @@ import { formatRemaining, formatLocalTime, summarizeRules } from '../core/LiveOp
 import { parseBoardId } from '../../shared/live-ops/contract.js';
 import { loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
+import { FocusManager } from './FocusManager.js';
 
 const MAX_TOASTS = 3;
 const TOAST_MS = 4200;
@@ -61,6 +62,9 @@ export class MetaUI {
   constructor(ui) {
     this.ui = ui;
     this.game = ui.game;
+
+    // Dialog semantics, focus hand-over and a Tab trap for every layer that opens on top of another screen
+    this.focus = new FocusManager();
 
     this._toastTimers = [];
     this._pickHandler = null;
@@ -108,12 +112,18 @@ export class MetaUI {
 
   _open(id) {
     const el = this.$(id);
-    if (el && el.classList) el.classList.add('active');
+    if (el && el.classList) {
+      el.classList.add('active');
+      this.focus.opened(el);
+    }
   }
 
   _close(id) {
     const el = this.$(id);
-    if (el && el.classList) el.classList.remove('active');
+    if (el && el.classList) {
+      el.classList.remove('active');
+      this.focus.closed(el);
+    }
   }
 
   _isOpen(id) {
@@ -335,9 +345,16 @@ export class MetaUI {
     if (pad && pad.addEventListener) {
       pad.addEventListener('pointerdown', (e) => {
         const btn = this._closestAttr(e.target, 'data-cast');
-        if (!btn) return;
+        if (!btn || e.isPrimary === false || (e.button !== undefined && e.button !== 0)) return;
         if (e.preventDefault) e.preventDefault();
         g.castRune(btn.getAttribute('data-cast'));
+      });
+      // Enter, Space and assistive technology activate buttons with a click of detail 0.
+      // Pointer clicks already cast on press; leave those alone to avoid firing twice.
+      pad.addEventListener('click', (e) => {
+        if (e.detail !== 0) return;
+        const btn = this._closestAttr(e.target, 'data-cast');
+        if (btn) g.castRune(btn.getAttribute('data-cast'));
       });
     }
   }

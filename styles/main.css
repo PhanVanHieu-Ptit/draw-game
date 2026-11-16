@@ -57,7 +57,7 @@ html, body {
   background-image: var(--bg-gradient);
   color: var(--text-main);
   font-family: var(--font-family);
-  touch-action: none;
+  touch-action: auto;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -72,7 +72,7 @@ html, body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  touch-action: none;
+  touch-action: auto;
   -webkit-touch-callout: none;
   overscroll-behavior: none;
 }
@@ -111,6 +111,14 @@ html, body {
 .ui-screen.active {
   display: flex;
   pointer-events: auto;
+}
+
+/* A screen takes programmatic focus when it appears (FocusManager / UIManager._focusScreen) so keyboard and
+   screen-reader users land inside it. The container is not a control, so it gets no focus ring; the controls
+   inside it keep theirs. */
+.ui-screen:focus,
+.modal-overlay:focus {
+  outline: none;
 }
 
 /* ==========================================================================
@@ -358,6 +366,7 @@ html, body {
    MODAL DIALOG OVERLAYS (MENU, PAUSE, GAMEOVER)
    ========================================================================== */
 .modal-overlay {
+  touch-action: pan-y pinch-zoom;
   align-items: center;
   justify-content: center;
   background: rgba(8, 6, 20, 0.68);
@@ -3458,17 +3467,29 @@ html, body {
   appearance: none;
   flex: 0 1 180px;
   min-width: 90px;
+  height: 44px;
+  border-radius: 9999px;
+  background: transparent;
+  outline: none;
+  touch-action: pan-y;
+}
+
+.settings-group input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.16);
-  outline: none;
-  touch-action: pan-y;
+}
+.settings-group input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .settings-group input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 22px;
   height: 22px;
+  margin-top: -8px;
   border-radius: 50%;
   background: linear-gradient(135deg, #fbbf24, #f59e0b);
   border: 2px solid #1a0b02;

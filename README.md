@@ -47,7 +47,9 @@ npm run build                                          # vite build + standalone
 
 `npm run build` writes `dist/` and also `arcane-paws-standalone.html` at the repository root. All three files are **tracked in git** for now, so only run it when you intend to commit refreshed artifacts together with the source change. To check that a build works without touching them, use the first command.
 
-The standalone file is one self-contained HTML page; opening it directly (`file://`) is supported. In that mode the local audio and sprite files from `public/` are not loaded (observed in Chrome), so the game falls back to synthesised sound and a vector-drawn Momo. Which assets the standalone file should carry is an open product decision (DEC-09 in the plan).
+The standalone file is one self-contained HTML page; opening it directly (`file://`) is supported. In that mode it uses synthesised sound, the embedded cat voice, a vector-drawn Momo, and system fonts, without attempting to fetch the HTTP sprite/audio assets or web fonts. Which additional assets the standalone file should carry remains an open product decision (DEC-09 in the plan).
+
+The [performance audit](docs/performance/AUDIT.md) records the measured baseline, changes, browser validation, and limitations. After building, `npm run test:browser` checks keyboard, touch, eight gestures, pause/resume and offline standalone play in local headless Chrome; `npm run perf:browser -- --matrix full --seconds 5 --out performance.json` captures frame times, CPU, memory, input latency and loading. These use Node's built-in DevTools connection and require local Chrome (`--chrome` can override its default macOS path); no browser-testing dependency is installed. Emulated viewport and CPU profiles do not represent physical-device testing.
 
 ## Quick start: the admin app
 

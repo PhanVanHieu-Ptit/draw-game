@@ -1,0 +1,11 @@
+# Arcane Paws performance implementation plan
+
+Baseline: the existing working tree on 2026-11-15, including its pre-existing uncommitted load/audio/accessibility changes. A fresh Vite build was frozen at `/tmp/arcane-audit/before` before implementation. The original tracked dist was stale and is not the baseline.
+
+1. **P1 — Particle raster work.** The desktop burst scenario measured 18.8 FPS / 100 ms p95 despite low JavaScript time. Replace repeated blurred fills of common particles with bounded, DPR-aware cached sprites. Preserve particle counts, shapes, colours, lifetimes, gameplay timing, and the existing high/medium/low controls. Keep a vector fallback and uncached expanding rings.
+2. **P1 — Pause/background scheduling.** A paused run still redraws at ~60 Hz (12.3% main-thread busy in the desktop sample). Reuse its frozen frame, repaint on state/size/quality changes, cancel the hidden-page frame request, and restart one request on return. Keep manual resume/countdown. Make start idempotent.
+3. **P1 — Accessible responsive interaction.** Scope touch suppression to the arena; restore native overlay scrolling and page zoom. Support native keyboard/assistive clicks on the alternative rune buttons without double casting. Ignore repeated/composing/modified global shortcuts, restore arena focus after menus, and release pointer capture when drawing is disabled/resized.
+4. **P2 — Drawing/standalone work.** Trace each glowing stroke once per render. Skip futile sprite requests in file mode (existing procedural fallback remains); remove optional web-font requests from exported standalone copies. Keep the HTTP asset path and current standalone asset contract.
+5. **Validation.** Run the full active game suite, gesture evaluation, builds, and real Chrome measurements against the frozen baseline and revised build. Add focused lifecycle/input regressions and real-browser checks for touch scrolling, eight gestures, rune activation, focus, pause/resume, and standalone operation. Save JSON evidence, responsive screenshots, methodology and remaining limits in the audit report.
+
+No framework migration, new runtime dependency, balance change, or admin change is planned. Emulation is not physical-device testing. Input latency measures event timestamp to stroke commands being issued, not photons on a display.

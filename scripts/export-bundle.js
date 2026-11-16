@@ -40,9 +40,14 @@ if (hasExternalCssLink) {
   console.log('✅ PASS: Zero local external CSS link tags (100% inlined CSS).');
 }
 
-// Write standalone copies
-fs.writeFileSync(standaloneDistPath, content, 'utf8');
-fs.writeFileSync(standaloneRootPath, content, 'utf8');
+// Optional HTTP web fonts do not belong in the offline distribution. System-font
+// fallbacks are already specified in CSS. Keep the hosted index's font enhancement.
+const standaloneContent = content
+  .replace(/<noscript>\s*<link\b[^>]*href=["']https:\/\/fonts\.googleapis\.com[^>]*>\s*<\/noscript>/gi, '')
+  .replace(/<link\b[^>]*href=["']https:\/\/fonts\.(?:googleapis|gstatic)\.com[^>]*>/gi, '')
+  .replace(/^[ \t]+$/gm, '');
+fs.writeFileSync(standaloneDistPath, standaloneContent, 'utf8');
+fs.writeFileSync(standaloneRootPath, standaloneContent, 'utf8');
 
 const stats = fs.statSync(standaloneRootPath);
 const sizeKb = (stats.size / 1024).toFixed(2);

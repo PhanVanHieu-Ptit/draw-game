@@ -1,0 +1,11 @@
+
+Frames: baseline-corrected-load -> optimized
+config                                   fps            p95 ms          >33ms %        main-thread %   renderer CPU %  tier
+(fps = display frames per second; "game fps" = frames the game actually rendered, shown after the tier)
+
+
+Load (median):
+  http desktop, no throttle: FCP 116->120 ms, gameReady 86.7->92.1 ms, TBT 13->18 ms, requests 5->5, transfer 823->824 KB, failed 0->0
+  http phone, 4x CPU + slow-4G (emulated): FCP 1316->1328 ms, gameReady 1271->1301.4 ms, TBT 121->12 ms, requests 5->5, transfer 823->824 KB, failed 0->0
+  file desktop, no throttle: FCP 116->116 ms, gameReady 86.1->83.9 ms, TBT 11->11 ms, requests 14->1, transfer 709->712 KB, failed 12->0
+  file phone, 4x CPU + slow-4G (emulated): FCP 356->340 ms, gameReady 299.3->286 ms, TBT 183->179 ms, requests 14->1, transfer 709->712 KB, failed 12->0

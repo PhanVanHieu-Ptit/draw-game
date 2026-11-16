@@ -66,6 +66,10 @@ export class ParticleSystem {
     // (very expensive on mobile GPUs) with a cheap translucent halo disc.
     this.activeLimit = maxParticles;
     this.glow = true;
+    // Common glowing particles reuse small raster sprites instead of running a blur for
+    // every fill on every frame. The bounded cache belongs to this system, not each particle.
+    this._sprites = new Map();
+    this._spriteDpr = 0;
 
     // Pre-allocated Particle Pool
     this.particlePool = [];
@@ -575,6 +579,11 @@ export class ParticleSystem {
     ctx.save();
 
     const glow = this.glow;
+    const dpr = ctx.canvas && ctx.canvas.clientWidth > 0 ? ctx.canvas.width / ctx.canvas.clientWidth : 1;
+    if (dpr !== this._spriteDpr) {
+      this._sprites.clear();
+      this._spriteDpr = dpr;
+    }
     // Without shadow glow, shadowBlur must stay 0 so the browser skips the blur pass entirely.
     ctx.shadowBlur = 0;
 
@@ -582,6 +591,19 @@ export class ParticleSystem {
       const p = this.particlePool[i];
       const alpha = Math.max(0, Math.min(1, p.life));
       ctx.globalAlpha = alpha;
+
+      if (glow && p.type !== 'ring' && typeof ctx.drawImage === 'function') {
+        const sprite = this._getParticleSprite(p, dpr);
+        if (sprite) {
+          ctx.shadowBlur = 0;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          if (p.type === 'magic_spark') ctx.rotate(p.rotation || 0);
+          ctx.drawImage(sprite.canvas, -sprite.half, -sprite.half, sprite.half * 2, sprite.half * 2);
+          ctx.restore();
+          continue;
+        }
+      }
 
       if (p.type === 'ring') {
         ctx.strokeStyle = p.color;
@@ -680,6 +702,53 @@ export class ParticleSystem {
     }
 
     ctx.restore();
+  }
+
+  _getParticleSprite(p, dpr) {
+    if (typeof document === 'undefined' || !document.createElement) return null;
+    const magic = p.type === 'magic_spark';
+    const gravity = p.type === 'gravity_spark';
+    const smoke = p.type === 'smoke';
+    const rawSize = magic ? p.size * (0.3 + 0.7 * p.life)
+      : smoke ? p.size : Math.max(gravity ? 0.6 : 0.5, p.size * p.life);
+    // Quarter-pixel bins keep a shrinking particle smooth while allowing nearby sizes to share a sprite.
+    const size = Math.max(0.5, Math.round(rawSize * 4) / 4);
+    const core = magic || (gravity && p.life > 0.4);
+    const key = `${p.type}|${p.color}|${size}|${core}`;
+    if (this._sprites.has(key)) return this._sprites.get(key);
+    let sprite = null;
+    try {
+      const blur = magic ? 10 : gravity ? 9 : smoke ? 14 : 8;
+      const half = Math.ceil(size * (magic ? 1.8 : 1) + blur * 2 / dpr + 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = Math.ceil(half * 2 * dpr);
+      const g = canvas.getContext('2d');
+      if (g && typeof g.setTransform === 'function') {
+        g.setTransform(dpr, 0, 0, dpr, half * dpr, half * dpr);
+        g.fillStyle = g.shadowColor = p.color;
+        g.shadowBlur = blur;
+        g.beginPath();
+        if (magic) {
+          const s = size * 1.8;
+          g.moveTo(0, -s);
+          g.quadraticCurveTo(0, 0, s, 0);
+          g.quadraticCurveTo(0, 0, 0, s);
+          g.quadraticCurveTo(0, 0, -s, 0);
+          g.quadraticCurveTo(0, 0, 0, -s);
+        } else g.arc(0, 0, size, 0, Math.PI * 2);
+        g.fill();
+        if (core) {
+          g.fillStyle = '#ffffff';
+          g.beginPath();
+          g.arc(0, 0, magic ? Math.max(0.8, size * 0.45) : size * 0.45, 0, Math.PI * 2);
+          g.fill();
+        }
+        sprite = { canvas, half };
+      }
+    } catch (e) { /* Keep the vector renderer on browsers without an offscreen 2D context. */ }
+    if (this._sprites.size >= 256) this._sprites.delete(this._sprites.keys().next().value);
+    this._sprites.set(key, sprite);
+    return sprite;
   }
 
   /**

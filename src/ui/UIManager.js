@@ -11,6 +11,7 @@ import { StoryCanvasRenderer } from './StoryCanvasRenderer.js';
 import { getCharacterPortraitSvg, CHARACTER_LORE_DATA, getCompanionForLevel } from './CharacterPortraits.js';
 import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChallengeUrl } from './WizardCardRenderer.js';
 import { MetaUI, PAD_ORDER } from './MetaUI.js';
+import { describeAsDialog, isInteractiveTarget } from './FocusManager.js';
 import { buildDailyChallengeUrl } from '../core/Challenge.js';
 
 /**
@@ -25,6 +26,9 @@ function setButtonLabel(btn, text) {
   span.textContent = text;
   btn.replaceChildren(span);
 }
+
+/** What a screen reader says for the arena: the canvas itself has no text, so it needs a name and the way around it */
+const CANVAS_LABEL = 'Sân đấu. Vẽ ấn ký bằng chuột hoặc ngón tay để hạ u linh. Bật “Nút ấn ký thay thế” trong Cài đặt để dùng phím 1 đến 8.';
 
 export class UIManager {
   constructor(game) {
@@ -177,6 +181,7 @@ export class UIManager {
 
     // Settings, records, daily challenge, companions, upgrade picker, practice HUD, toasts...
     this.meta = new MetaUI(this);
+    this._describeScreens();
     this._syncMuteButton(this.game.settings.get('muted'));
     this.game.settings.onChange((key, value) => {
       if (key === 'muted') this._syncMuteButton(value);
@@ -191,6 +196,48 @@ export class UIManager {
     if (!btn) return;
     btn.textContent = muted ? '🔇' : '🔊';
     btn.title = muted ? 'Bật âm thanh' : 'Tắt âm thanh';
+    // An emoji alone is read as "speaker high volume": name the action, and say whether sound is currently off
+    if (typeof btn.setAttribute === 'function') {
+      btn.setAttribute('aria-label', 'Âm thanh');
+      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    }
+  }
+
+  /**
+   * Accessibility labels that markup alone cannot carry: dialog semantics for every overlay, and a name for the arena.
+   * Guarded because the node tests run the UI against a minimal fake DOM.
+   */
+  _describeScreens() {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    try {
+      document.querySelectorAll('.modal-overlay').forEach((el) => describeAsDialog(el));
+      const canvas = this.game && this.game.canvas;
+      if (canvas && typeof canvas.setAttribute === 'function') {
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', CANVAS_LABEL);
+        canvas.setAttribute('tabindex', '-1');
+      }
+    } catch (e) { /* the game plays fine without the labels */ }
+  }
+
+  /**
+   * A full-screen state just appeared (pause, game over, victory, story, back at the menu): move keyboard / screen
+   * reader focus into it, otherwise it stays on a control that is no longer visible. The very first menu at page load
+   * is left alone, and the HUD never takes focus (the player is drawing).
+   */
+  _focusScreen(stateName, target) {
+    if (stateName === GAME_STATES.PLAYING || stateName === GAME_STATES.PRACTICE) {
+      this.game.canvas?.focus?.({ preventScroll: true });
+      return;
+    }
+    if (!target || typeof target.focus !== 'function') return;
+    if (stateName === GAME_STATES.MENU && !this._menuShownOnce) {
+      this._menuShownOnce = true;
+      return;
+    }
+    if (stateName !== GAME_STATES.MENU && stateName !== GAME_STATES.PAUSE && stateName !== GAME_STATES.GAMEOVER
+      && stateName !== GAME_STATES.VICTORY && stateName !== GAME_STATES.STORY) return;
+    try { target.focus({ preventScroll: true }); } catch (e) { /* not focusable: fine */ }
   }
 
   _bindButtonEvents() {
@@ -640,6 +687,7 @@ export class UIManager {
 
   _bindKeyboardEvents() {
     window.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.repeat || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
       // Close wizard card popup if open
       if (e.key === 'Escape' && this.wizardCardModal && this.wizardCardModal.classList.contains('active')) {
         this.hideWizardCard();
@@ -665,6 +713,7 @@ export class UIManager {
       if (this.meta.hasOpenOverlay()) return;
 
       const stateNow = this.game.stateMachine.getCurrentStateName();
+      if (e.key !== 'Escape' && isInteractiveTarget(e.target)) return;
 
       // Practice Mode: Esc leaves
       if (stateNow === GAME_STATES.PRACTICE) {
@@ -691,7 +740,9 @@ export class UIManager {
         }
       }
 
-      if (e.key === 'Enter') {
+      // Enter on a focused button / link / switch belongs to that control (it activates it). Treating it as "start the
+      // game" as well made keyboard navigation of the menu impossible: Tab to Settings + Enter started a run.
+      if (e.key === 'Enter' && !isInteractiveTarget(e.target)) {
         const currentState = this.game.stateMachine.getCurrentStateName();
         if (currentState === GAME_STATES.MENU || currentState === GAME_STATES.GAMEOVER) {
           this.game.audioSystem.init();
@@ -710,6 +761,9 @@ export class UIManager {
   }
 
   showScreen(stateName, payload = {}) {
+    // A layer that was closed behind the focus manager's back must not leave the arena or a screen inert
+    if (this.meta && this.meta.focus) this.meta.focus.sync();
+
     Object.values(this.screens).forEach(screen => {
       if (screen) screen.classList.remove('active');
     });
@@ -717,6 +771,7 @@ export class UIManager {
     const target = this.screens[stateName];
     if (target) {
       target.classList.add('active');
+      this._focusScreen(stateName, target);
     }
 
     if (stateName === GAME_STATES.MENU) {

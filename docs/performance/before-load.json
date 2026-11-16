@@ -1,0 +1,168 @@
+{
+  "label": "baseline-corrected-load",
+  "args": {
+    "matrix": "quick",
+    "seconds": 6
+  },
+  "meta": {
+    "date": "2026-11-15T08:37:15.541Z",
+    "chrome": "Chrome/157.0.8103.78",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "node": "v22.22.3",
+    "os": "Darwin 24.6.0 arm64",
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memGB": 32,
+    "gpu": {
+      "devices": [
+        "Google Inc. (Apple) ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Version 15.7.4 (Build 24G517))"
+      ],
+      "featureStatus": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "skia_graphite": "enabled_on",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      }
+    },
+    "headless": true
+  },
+  "load": [
+    {
+      "target": "http",
+      "case": "desktop, no throttle",
+      "runs": 3,
+      "fcp": 116,
+      "lcp": 0,
+      "dcl": 86.7,
+      "load": 97.9,
+      "gameReadyMs": 86.7,
+      "firstFrameMs": 16.5,
+      "tbtMs": 13,
+      "longTasks": 1,
+      "cls": 0,
+      "scriptMs": 73.3,
+      "taskMs": 235.6,
+      "nodes": 2191,
+      "heapMB": 3.3,
+      "requests": 5,
+      "transferKB": 823,
+      "byTypeKB": {
+        "text/html": 189,
+        "text/css": 0,
+        "image/png": 634
+      },
+      "failedRequests": []
+    },
+    {
+      "target": "http",
+      "case": "phone, 4x CPU + slow-4G (emulated)",
+      "runs": 3,
+      "fcp": 1316,
+      "lcp": 1676,
+      "dcl": 1271,
+      "load": 4500.8,
+      "gameReadyMs": 1271,
+      "firstFrameMs": 1104.1,
+      "tbtMs": 121,
+      "longTasks": 1,
+      "cls": 0,
+      "scriptMs": 205.1,
+      "taskMs": 649.4,
+      "nodes": 2201,
+      "heapMB": 3.3,
+      "requests": 5,
+      "transferKB": 823,
+      "byTypeKB": {
+        "text/html": 189,
+        "text/css": 0,
+        "image/png": 634
+      },
+      "failedRequests": []
+    },
+    {
+      "target": "file",
+      "case": "desktop, no throttle",
+      "runs": 3,
+      "fcp": 116,
+      "lcp": 0,
+      "dcl": 86.1,
+      "load": 101.9,
+      "gameReadyMs": 86.1,
+      "firstFrameMs": 21,
+      "tbtMs": 11,
+      "longTasks": 1,
+      "cls": 0,
+      "scriptMs": 64.5,
+      "taskMs": 223.3,
+      "nodes": 2242,
+      "heapMB": 3.4,
+      "requests": 14,
+      "transferKB": 709,
+      "byTypeKB": {
+        "text/html": 709,
+        "text/css": 0
+      },
+      "failedRequests": [
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/level1-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/main-png-sprite.png",
+        "net::ERR_FAILED file:///assets/level1-png-sprite.png",
+        "net::ERR_FAILED file:///assets/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///assets/main-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/level1-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/main-png-sprite.png",
+        "net::ERR_FAILED file:///level1-png-sprite.png",
+        "net::ERR_FAILED file:///level1-png1-sprite.png",
+        "net::ERR_FAILED file:///main-png-sprite.png"
+      ]
+    },
+    {
+      "target": "file",
+      "case": "phone, 4x CPU + slow-4G (emulated)",
+      "runs": 3,
+      "fcp": 356,
+      "lcp": 740,
+      "dcl": 299.4,
+      "load": 351.2,
+      "gameReadyMs": 299.3,
+      "firstFrameMs": 52.2,
+      "tbtMs": 183,
+      "longTasks": 1,
+      "cls": 0,
+      "scriptMs": 91,
+      "taskMs": 430.1,
+      "nodes": 2243,
+      "heapMB": 3,
+      "requests": 14,
+      "transferKB": 709,
+      "byTypeKB": {
+        "text/html": 709,
+        "text/css": 0
+      },
+      "failedRequests": [
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/level1-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/assets/main-png-sprite.png",
+        "net::ERR_FAILED file:///assets/level1-png-sprite.png",
+        "net::ERR_FAILED file:///assets/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///assets/main-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/level1-png-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/level1-png1-sprite.png",
+        "net::ERR_FAILED file:///tmp/arcane-audit/before/main-png-sprite.png",
+        "net::ERR_FAILED file:///level1-png-sprite.png",
+        "net::ERR_FAILED file:///level1-png1-sprite.png",
+        "net::ERR_FAILED file:///main-png-sprite.png"
+      ]
+    }
+  ]
+}

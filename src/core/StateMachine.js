@@ -356,6 +356,7 @@ export class StateMachine {
     }
 
     this.currentState = nextState;
+    this.game._pausedFrameDrawn = false;
     this.currentState.enter(previousStateName, payload);
   }
 
