@@ -14,6 +14,7 @@
     "test:all": "npm test && npm run test:admin",
     "test:gestures": "node tests/gesture-recognition.test.js && node test-gesture-enhancements.js",
     "test:browser": "node scripts/validate-browser.mjs --root dist --file arcane-paws-standalone.html --assert 1",
+    "test:responsive": "node scripts/validate-responsive.mjs",
     "perf:browser": "node scripts/perf-bench.mjs --root dist --file arcane-paws-standalone.html",
     "evaluate:gestures": "node scripts/evaluate-gestures.js",
     "test:story": "node test-story-lore.js && node --test admin/tests/story.test.mjs"

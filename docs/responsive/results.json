@@ -1,0 +1,1754 @@
+{
+  "game": [
+    {
+      "width": 320,
+      "height": 568,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 320,
+        "height": 568,
+        "scrollWidth": 320,
+        "overflow": [],
+        "arena": {
+          "x": 11,
+          "y": 149,
+          "width": 298,
+          "height": 322,
+          "right": 309,
+          "bottom": 471
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 568,
+      "height": 320,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 568,
+        "height": 320,
+        "scrollWidth": 568,
+        "overflow": [],
+        "arena": {
+          "x": 13,
+          "y": 105,
+          "width": 542,
+          "height": 162,
+          "right": 555,
+          "bottom": 267
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 360,
+      "height": 640,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 360,
+        "height": 640,
+        "scrollWidth": 360,
+        "overflow": [],
+        "arena": {
+          "x": 11,
+          "y": 149,
+          "width": 338,
+          "height": 394,
+          "right": 349,
+          "bottom": 543
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 640,
+      "height": 360,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 640,
+        "height": 360,
+        "scrollWidth": 640,
+        "overflow": [],
+        "arena": {
+          "x": 13,
+          "y": 105,
+          "width": 614,
+          "height": 202,
+          "right": 627,
+          "bottom": 307
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 375,
+        "height": 667,
+        "scrollWidth": 375,
+        "overflow": [],
+        "arena": {
+          "x": 11,
+          "y": 149,
+          "width": 353,
+          "height": 421,
+          "right": 364,
+          "bottom": 570
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 667,
+        "height": 375,
+        "scrollWidth": 667,
+        "overflow": [],
+        "arena": {
+          "x": 13,
+          "y": 105,
+          "width": 641,
+          "height": 217,
+          "right": 654,
+          "bottom": 322
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "overflow": [],
+        "arena": {
+          "x": 11,
+          "y": 149,
+          "width": 368,
+          "height": 598,
+          "right": 379,
+          "bottom": 747
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 844,
+        "height": 390,
+        "scrollWidth": 844,
+        "overflow": [],
+        "arena": {
+          "x": 13,
+          "y": 105,
+          "width": 818,
+          "height": 232,
+          "right": 831,
+          "bottom": 337
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "overflow": [],
+        "arena": {
+          "x": 11,
+          "y": 149,
+          "width": 408,
+          "height": 686,
+          "right": 419,
+          "bottom": 835
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 932,
+      "height": 430,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 932,
+        "height": 430,
+        "scrollWidth": 932,
+        "overflow": [],
+        "arena": {
+          "x": 13,
+          "y": 105,
+          "width": 906,
+          "height": 272,
+          "right": 919,
+          "bottom": 377
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 768,
+        "height": 1024,
+        "scrollWidth": 768,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 734,
+          "height": 810,
+          "right": 751,
+          "bottom": 927
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 1024,
+        "height": 768,
+        "scrollWidth": 1024,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 990,
+          "height": 554,
+          "right": 1007,
+          "bottom": 671
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 1280,
+        "height": 800,
+        "scrollWidth": 1280,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 1246,
+          "height": 586,
+          "right": 1263,
+          "bottom": 703
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 800,
+      "height": 1280,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 800,
+        "height": 1280,
+        "scrollWidth": 800,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 766,
+          "height": 1066,
+          "right": 783,
+          "bottom": 1183
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 1440,
+        "height": 900,
+        "scrollWidth": 1440,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 1406,
+          "height": 686,
+          "right": 1423,
+          "bottom": 803
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 900,
+      "height": 1440,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 900,
+        "height": 1440,
+        "scrollWidth": 900,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 866,
+          "height": 1226,
+          "right": 883,
+          "bottom": 1343
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 1920,
+        "height": 1080,
+        "scrollWidth": 1920,
+        "overflow": [],
+        "arena": {
+          "x": 177,
+          "y": 117,
+          "width": 1566,
+          "height": 866,
+          "right": 1743,
+          "bottom": 983
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    },
+    {
+      "width": 1080,
+      "height": 1920,
+      "checks": {
+        "noHorizontalOverflow": true,
+        "menuButtonsReachable": true,
+        "dialogControlsReachable": true,
+        "hudAndArenaDoNotOverlap": true,
+        "controlsVisibleAnd44px": true,
+        "essentialHudDoesNotOverlap": true,
+        "canvasAndDprMatch": true,
+        "pointerCoordinatesAccurate": true,
+        "noScrollWhileDrawing": true,
+        "alternativeRunesFit": true,
+        "practiceFits": true,
+        "practiceControlsClear": true,
+        "noRuntimeErrors": true
+      },
+      "dialogs": {
+        "settings-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "companion-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "codex-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        },
+        "story-screen": {
+          "active": true,
+          "reachable": true,
+          "noOverflow": true
+        }
+      },
+      "layout": {
+        "width": 1080,
+        "height": 1920,
+        "scrollWidth": 1080,
+        "overflow": [],
+        "arena": {
+          "x": 17,
+          "y": 117,
+          "width": 1046,
+          "height": 1706,
+          "right": 1063,
+          "bottom": 1823
+        },
+        "controls": [
+          {
+            "id": "btn-tutorial",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-mute",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          },
+          {
+            "id": "btn-pause",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        ]
+      }
+    }
+  ],
+  "admin": [
+    {
+      "width": 320,
+      "height": 568,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 568,
+      "height": 320,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 360,
+      "height": 640,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 640,
+      "height": 360,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 932,
+      "height": 430,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 800,
+      "height": 1280,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 900,
+      "height": 1440,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    },
+    {
+      "width": 1080,
+      "height": 1920,
+      "checks": {
+        "dashboardFits": true,
+        "navigationReachable": true
+      }
+    }
+  ],
+  "resize": {
+    "interruptedStrokeCancelled": true,
+    "safeInsets": true,
+    "pointerAfterResizeAndInsets": true
+  },
+  "notes": [
+    "Chrome viewport/touch emulation; no physical-device or OS-keyboard testing. Admin data uses local fixtures."
+  ],
+  "meta": {
+    "date": "2026-11-16T00:30:31.453Z",
+    "chrome": "Chrome/157.0.8103.78",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "node": "v22.22.3",
+    "os": "Darwin 24.6.0 arm64",
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memGB": 32,
+    "gpu": {
+      "devices": [
+        "Google Inc. (Apple) ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Version 15.7.4 (Build 24G517))"
+      ],
+      "featureStatus": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "skia_graphite": "enabled_on",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      }
+    },
+    "headless": true
+  },
+  "adminEditors": [
+    {
+      "route": "configuration",
+      "width": 320,
+      "fits": true
+    },
+    {
+      "route": "configuration",
+      "width": 768,
+      "fits": true
+    },
+    {
+      "route": "configuration",
+      "width": 1440,
+      "fits": true
+    },
+    {
+      "route": "gameplay",
+      "width": 320,
+      "fits": true
+    },
+    {
+      "route": "gameplay",
+      "width": 768,
+      "fits": true
+    },
+    {
+      "route": "gameplay",
+      "width": 1440,
+      "fits": true
+    },
+    {
+      "route": "content",
+      "width": 320,
+      "fits": true
+    },
+    {
+      "route": "content",
+      "width": 768,
+      "fits": true
+    },
+    {
+      "route": "content",
+      "width": 1440,
+      "fits": true
+    }
+  ],
+  "keyboardViewport": {
+    "simulated": true,
+    "focused": true,
+    "fieldReachable": true,
+    "noOverflow": true
+  }
+}

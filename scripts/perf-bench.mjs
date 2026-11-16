@@ -434,8 +434,13 @@ class Bench {
 
   async stop() {
     try { this.cdp.ws.close(); } catch (e) { /* ignore */ }
-    if (this.chrome) { this.chrome.proc.kill('SIGKILL'); }
-    for (const s of this.servers) s.close();
+    if (this.chrome) {
+      this.chrome.proc.kill('SIGKILL');
+      // Chrome helpers can inherit the stderr pipe after their parent exits.
+      this.chrome.proc.stderr?.destroy();
+      this.chrome.proc.unref();
+    }
+    for (const s of this.servers) { s.close(); s.closeAllConnections?.(); }
     try { fs.rmSync(this.userDataDir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
   }
 

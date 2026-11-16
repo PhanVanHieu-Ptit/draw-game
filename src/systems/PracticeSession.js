@@ -211,13 +211,12 @@ export class PracticeSession {
     const w = this.game.width;
     const h = this.game.height;
     const compact = h < 520 && w > h; // phone held sideways: the panel is slimmer
-    const top = compact ? 96 : (w < 420 ? 150 : 112);
-    const bottom = compact ? 100 : 170;
-    const avail = Math.max(120, h - top - bottom);
+    // The canvas now excludes the picker and feedback docks. Keep the guide inside this arena.
+    const avail = Math.max(1, Math.min(w - 32, h - 32));
     return {
       cx: w / 2,
-      cy: top + avail / 2,
-      size: Math.max(110, Math.min(300, avail * 0.92, w * 0.7))
+      cy: h * (compact ? 0.5 : 0.42),
+      size: Math.max(1, Math.min(300, avail * 0.8, w * 0.7))
     };
   }
 

@@ -761,6 +761,11 @@ export class UIManager {
   }
 
   showScreen(stateName, payload = {}) {
+    if (stateName === GAME_STATES.MENU || stateName === GAME_STATES.PRACTICE || stateName === GAME_STATES.STORY) {
+      clearTimeout(this._ltbTimeout);
+      clearTimeout(this._ltbDrawTimeout);
+      this.levelTransitionBanner?.classList.remove('show');
+    }
     // A layer that was closed behind the focus manager's back must not leave the arena or a screen inert
     if (this.meta && this.meta.focus) this.meta.focus.sync();
 
@@ -1399,6 +1404,7 @@ export class UIManager {
 
   updateHearts(currentHp, maxHp) {
     if (!this.heartsContainer) return;
+    this.heartsContainer.setAttribute?.('aria-label', `Máu: ${currentHp}/${maxHp}`);
     this.heartsContainer.innerHTML = '';
 
     for (let i = 0; i < maxHp; i++) {
@@ -1422,6 +1428,14 @@ export class UIManager {
     if (rounded === this._lastScoreShown) return;
     this._lastScoreShown = rounded;
     this.scoreVal.textContent = rounded.toLocaleString();
+  }
+
+  updateRunTime(elapsedSeconds) {
+    const seconds = Math.max(0, Math.floor(elapsedSeconds));
+    if (seconds === this._lastRunSecond) return;
+    this._lastRunSecond = seconds;
+    const timer = document.getElementById('hud-timer');
+    if (timer) timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   }
 
   updateCombo(count, multiplier, decayProgress) {

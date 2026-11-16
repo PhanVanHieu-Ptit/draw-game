@@ -571,6 +571,21 @@ export class Game {
       });
     };
     window.addEventListener('resize', schedule);
+    // CSS docks, safe areas and container queries can resize the arena without a window resize.
+    if (typeof ResizeObserver !== 'undefined' && this.canvas.parentElement) {
+      this._arenaObserver = new ResizeObserver(schedule);
+      this._arenaObserver.observe(this.canvas.parentElement);
+    }
+    // Moving between displays may change density without changing CSS dimensions.
+    if (typeof window.matchMedia === 'function') {
+      const watchDensity = () => {
+        this._densityQuery?.removeEventListener?.('change', watchDensity);
+        this._densityQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+        this._densityQuery.addEventListener?.('change', watchDensity, { once: true });
+        schedule();
+      };
+      watchDensity();
+    }
     window.addEventListener('orientationchange', () => {
       // Rotating the phone mid-fight: pause first, the player resumes with a 3-2-1
       this._pauseIfPlaying();
@@ -679,16 +694,22 @@ export class Game {
     const parent = this.canvas.parentElement;
     const width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
     const height = parent && parent.clientHeight > 0 ? parent.clientHeight : window.innerHeight;
+    const sizeChanged = width !== this.width || height !== this.height;
+    const rect = this.canvas.getBoundingClientRect?.();
+    const origin = rect ? `${rect.left},${rect.top}` : '';
+    const moved = this._arenaOrigin !== undefined && origin !== this._arenaOrigin;
+    this._arenaOrigin = origin;
+    if (sizeChanged || moved) this.inputHandler?.cancelStroke();
 
     const sizeKey = `${width}x${height}@${dpr}/${this.lightScale}`;
     if (sizeKey === this._sizeKey) return;
     this._sizeKey = sizeKey;
     this._pausedFrameDrawn = false;
-    // The client-to-arena transform just changed. Cancel rather than joining two coordinate spaces.
-    if (this.inputHandler && (width !== this.width || height !== this.height)) this.inputHandler.cancelStroke();
+    const scaleX = this.width > 0 ? width / this.width : 1;
+    const scaleY = this.height > 0 ? height / this.height : 1;
 
     // A portrait <-> landscape flip on a phone pauses the run (the layout under the player's hand just changed)
-    const portrait = height > width;
+    const portrait = window.innerHeight > window.innerWidth;
     if (isMobile && this._wasPortrait !== undefined && portrait !== this._wasPortrait) {
       this._pauseIfPlaying();
     }
@@ -714,7 +735,14 @@ export class Game {
       this.lightCanvas.height = Math.max(1, Math.round(this.height * this.lightScale));
     }
 
-    if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
+    if (!sizeChanged) return;
+
+    if (this.stateMachine?.getCurrentStateName() === GAME_STATES.PRACTICE) {
+      const compact = height < 520 && window.innerWidth > window.innerHeight;
+      this.player.resize(width, height);
+      this.player.x = compact ? width * 0.1 : width / 2;
+      this.player.y = compact ? height * 0.62 : height * 0.76;
+    } else if (this.waveSystem && this.waveSystem.currentLevelIndex === 5) {
       const isMobile = this.width < 600;
       this.player.x = this.width * (isMobile ? 0.20 : 0.22);
       this.player.y = this.height * (isMobile ? 0.65 : 0.70);
@@ -725,10 +753,19 @@ export class Game {
     // Update dimensions on active enemies (e.g. final boss)
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
+      // Reposition entities, never stretch their sprites, hitboxes or rune glyphs.
+      e.x *= scaleX;
+      e.y *= scaleY;
       if (typeof e.updateCanvasDimensions === 'function') {
         e.updateCanvasDimensions(this.width, this.height);
       }
     }
+    for (const projectile of this.projectiles || []) {
+      projectile.x *= scaleX;
+      projectile.y *= scaleY;
+      for (const point of projectile.history || []) { point.x *= scaleX; point.y *= scaleY; }
+    }
+    this.inputHandler?.clearGuide?.();
   }
 
   _createAmbientStars(count) {
@@ -1012,6 +1049,7 @@ export class Game {
       enemiesDefeated: 0,
       maxCombo: 0,
       startTime: Date.now(),
+      activeSeconds: 0,
       runeUse: {},
       runeMiss: {},
       accBest: 0,
@@ -1349,6 +1387,8 @@ export class Game {
    * @param {number} dt 
    */
   updatePlaying(dt) {
+    this.metrics.activeSeconds = (this.metrics.activeSeconds || 0) + dt;
+    this.uiManager.updateRunTime?.(this.metrics.activeSeconds);
     // 1. Update Player with dynamic drawing stroke coordinates
     this.player.setDrawing(this.inputHandler.isDrawing, this.inputHandler.lastPoint);
     this.player.update(dt, this.enemies);
@@ -2845,6 +2885,7 @@ export class Game {
     m.enemiesDefeated = snap.metrics.enemiesDefeated;
     m.maxCombo = snap.metrics.maxCombo;
     m.startTime = Date.now() - snap.metrics.elapsedMs;
+    m.activeSeconds = snap.metrics.elapsedMs / 1000;
 
     this.waveSystem.initLevel(snap.wave);
     this.uiManager.updateScore(this.score);
@@ -2909,7 +2950,7 @@ export class Game {
     this.audioSystem.stopBGM();
     this.player.reset();
     // Held sideways the info panel covers the bottom, so Momo steps to the left instead
-    const compact = this.height < 520 && this.width > this.height;
+    const compact = this.height < 520 && window.innerWidth > window.innerHeight;
     this.player.x = compact ? this.width * 0.1 : this.width / 2;
     this.player.y = compact ? this.height * 0.62 : this.height * 0.76;
   }
