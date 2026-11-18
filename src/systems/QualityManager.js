@@ -25,7 +25,13 @@ export const QUALITY_TIERS = {
     dprCapDesktop: 2.0,
     lightScale: 0.5,     // lightmap resolution relative to the screen
     particleFactor: 1,   // multiplier on the particle budget
-    bgIntervalMs: 0      // 0 = repaint the animated background every frame
+    bgIntervalMs: 0,     // 0 = repaint the animated background every frame
+    dynamicLighting: true,
+    shadowEffects: true,
+    glowEffects: true,
+    backgroundAnimations: true,
+    screenShake: true,
+    resolutionScale: 1.0
   },
   medium: {
     name: 'medium',
@@ -35,7 +41,13 @@ export const QUALITY_TIERS = {
     dprCapDesktop: 1.5,
     lightScale: 0.4,
     particleFactor: 1,
-    bgIntervalMs: 33     // background repainted at ~30 FPS into a cached layer
+    bgIntervalMs: 33,    // background repainted at ~30 FPS into a cached layer
+    dynamicLighting: true,
+    shadowEffects: true,
+    glowEffects: true,
+    backgroundAnimations: true,
+    screenShake: true,
+    resolutionScale: 1.0
   },
   low: {
     name: 'low',
@@ -45,7 +57,13 @@ export const QUALITY_TIERS = {
     dprCapDesktop: 1,
     lightScale: 0.3,
     particleFactor: 0.55,
-    bgIntervalMs: 50     // ~20 FPS
+    bgIntervalMs: 50,    // ~20 FPS
+    dynamicLighting: false,
+    shadowEffects: false,
+    glowEffects: false,
+    backgroundAnimations: false,
+    screenShake: false,
+    resolutionScale: 0.85
   }
 };
 
@@ -61,7 +79,7 @@ const WARMUP_MS = 3000;
 
 export class QualityManager {
   /**
-   * @param {{ isMobile?: boolean, lowEndDevice?: boolean, initialTier?: 'high'|'medium'|'low' }} [opts]
+   * @param {{ isMobile?: boolean, lowEndDevice?: boolean, initialTier?: 'high'|'medium'|'low', allowStepUp?: boolean }} [opts]
    */
   constructor(opts = {}) {
     const isMobile = !!opts.isMobile;
@@ -81,9 +99,17 @@ export class QualityManager {
     // When the player picks a fixed graphics tier, the adaptive step-down must leave it alone
     this.locked = false;
 
+    // Optional bidirectional adaptation (default: false to preserve strict step-down stability)
+    this.allowStepUp = !!opts.allowStepUp;
+
+    // Fine-grained option overrides
+    this._customOverrides = {};
+
     this._frameCount = 0;
     this._accumMs = 0;
     this._warmupLeft = WARMUP_MS;
+    this._cooldownLeft = 0;
+    this._fastFrames = 0;
   }
 
   /** Heuristic for weak phones: few cores or little RAM, or the user asked the OS to save data. */
@@ -95,11 +121,68 @@ export class QualityManager {
     return cores <= 3 || mem <= 2 || saveData;
   }
 
-  get glowScale() { return this.settings.glowScale; }
-  get particleGlow() { return this.settings.particleGlow; }
+  get glowScale() {
+    if (this._customOverrides.glowEffects === false || this._customOverrides.shadowEffects === false) return 0;
+    return this.settings.glowScale;
+  }
+  get particleGlow() {
+    if (this._customOverrides.glowEffects === false) return false;
+    return this.settings.particleGlow;
+  }
   get lightScale() { return this.settings.lightScale; }
-  get particleFactor() { return this.settings.particleFactor; }
-  get bgIntervalMs() { return this.settings.bgIntervalMs; }
+  get particleFactor() {
+    if (this._customOverrides.particleDensity !== undefined) return this._customOverrides.particleDensity;
+    return this.settings.particleFactor;
+  }
+  get bgIntervalMs() {
+    if (this._customOverrides.backgroundAnimations === false) return 999999999;
+    return this.settings.bgIntervalMs;
+  }
+
+  // --- Configurable individual graphics options ---
+  get particleDensity() {
+    return this._customOverrides.particleDensity !== undefined ? this._customOverrides.particleDensity : this.settings.particleFactor;
+  }
+  get glowEffects() {
+    return this._customOverrides.glowEffects !== undefined ? this._customOverrides.glowEffects : (this.settings.glowEffects !== false && this.settings.glowScale > 0);
+  }
+  get shadowEffects() {
+    return this._customOverrides.shadowEffects !== undefined ? this._customOverrides.shadowEffects : (this.settings.shadowEffects !== false && this.settings.glowScale > 0);
+  }
+  get backgroundAnimations() {
+    return this._customOverrides.backgroundAnimations !== undefined ? this._customOverrides.backgroundAnimations : (this.settings.backgroundAnimations !== false);
+  }
+  get screenShake() {
+    return this._customOverrides.screenShake !== undefined ? this._customOverrides.screenShake : (this.settings.screenShake !== false);
+  }
+  get dynamicLighting() {
+    return this._customOverrides.dynamicLighting !== undefined ? this._customOverrides.dynamicLighting : (this.settings.dynamicLighting !== false);
+  }
+  get resolutionScale() {
+    return this._customOverrides.resolutionScale !== undefined ? this._customOverrides.resolutionScale : (this.settings.resolutionScale || 1.0);
+  }
+
+  /**
+   * Set an individual graphics option override
+   * @param {'particleDensity'|'glowEffects'|'shadowEffects'|'backgroundAnimations'|'screenShake'|'dynamicLighting'|'resolutionScale'} option
+   * @param {*} value
+   */
+  setOption(option, value) {
+    if (option === 'particleDensity' || option === 'resolutionScale') {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return;
+      this._customOverrides[option] = Math.max(0.2, Math.min(2.0, num));
+    } else {
+      this._customOverrides[option] = !!value;
+    }
+    this._notifyChange(this.settings, this.settings);
+  }
+
+  /** Reset all individual option overrides to match active tier */
+  resetOptions() {
+    this._customOverrides = {};
+    this._notifyChange(this.settings, this.settings);
+  }
 
   /** Device-pixel-ratio cap for the main canvas at the current tier. */
   getDprCap() {
@@ -111,15 +194,40 @@ export class QualityManager {
     this.listeners.push(fn);
   }
 
+  _notifyChange(current, prev) {
+    for (const fn of this.listeners) {
+      try { fn(current, prev); } catch (e) { /* a bad listener must not break the loop */ }
+    }
+  }
+
   setTier(name) {
     if (!QUALITY_TIERS[name] || name === this.tier) return false;
     const prev = this.settings;
     this.tier = name;
     this.settings = QUALITY_TIERS[name];
-    for (const fn of this.listeners) {
-      try { fn(this.settings, prev); } catch (e) { /* a bad listener must not break the loop */ }
-    }
+    this._notifyChange(this.settings, prev);
     return true;
+  }
+
+  forceTier(name) {
+    if (QUALITY_TIERS[name]) {
+      const prev = this.settings;
+      this.tier = name;
+      this.settings = QUALITY_TIERS[name];
+      this._notifyChange(this.settings, prev);
+    }
+  }
+
+  recordFrame(frameMs) {
+    this.sampleFrame(frameMs);
+  }
+
+  get mode() {
+    return this.locked ? this.tier : 'auto';
+  }
+
+  setMode(mode) {
+    this.setPreference(mode);
   }
 
   /**
@@ -142,7 +250,18 @@ export class QualityManager {
   stepDown() {
     const idx = ORDER.indexOf(this.tier);
     if (idx < 0 || idx >= ORDER.length - 1) return false;
+    this._fastFrames = 0;
+    this._cooldownLeft = 5000;
     return this.setTier(ORDER[idx + 1]);
+  }
+
+  /** Step up one tier. Returns false if already at the highest. */
+  stepUp() {
+    const idx = ORDER.indexOf(this.tier);
+    if (idx <= 0) return false;
+    this._fastFrames = 0;
+    this._cooldownLeft = 6000;
+    return this.setTier(ORDER[idx - 1]);
   }
 
   /**
@@ -153,6 +272,10 @@ export class QualityManager {
     if (this.locked) return;
     if (!(frameMs > 0) || frameMs > 250) return;
 
+    if (this._cooldownLeft > 0) {
+      this._cooldownLeft -= frameMs;
+    }
+
     if (this._warmupLeft > 0) {
       this._warmupLeft -= frameMs;
       return;
@@ -161,15 +284,27 @@ export class QualityManager {
     this._accumMs += frameMs;
     this._frameCount++;
 
+    // Track fast frame performance for step-up when allowed
+    if (this.allowStepUp && frameMs < 14.0) {
+      this._fastFrames++;
+    } else if (frameMs > 20.0) {
+      this._fastFrames = Math.max(0, this._fastFrames - 10);
+    }
+
     if (this._frameCount >= SAMPLE_FRAMES) {
       const avg = this._accumMs / this._frameCount;
       this._frameCount = 0;
       this._accumMs = 0;
-      if (avg > SLOW_FRAME_MS) {
+
+      if (avg > SLOW_FRAME_MS && this._cooldownLeft <= 0) {
         // After a downgrade give the new tier a moment to settle before judging it.
         let changed = this.stepDown();
         if (changed && avg > VERY_SLOW_FRAME_MS) this.stepDown();
         if (changed) this._warmupLeft = 1500;
+      } else if (this.allowStepUp && this._fastFrames >= 180 && this._cooldownLeft <= 0 && this.tier !== 'high') {
+        // Consistently capable device with solid 60+ FPS headroom over extended duration
+        this.stepUp();
+        this._warmupLeft = 1500;
       }
     }
   }
@@ -178,6 +313,7 @@ export class QualityManager {
   resetSampling(extraWarmupMs = 1000) {
     this._frameCount = 0;
     this._accumMs = 0;
+    this._fastFrames = 0;
     this._warmupLeft = Math.max(this._warmupLeft, extraWarmupMs);
   }
 }

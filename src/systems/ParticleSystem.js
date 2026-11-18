@@ -66,6 +66,7 @@ export class ParticleSystem {
     // (very expensive on mobile GPUs) with a cheap translucent halo disc.
     this.activeLimit = maxParticles;
     this.glow = true;
+    this.particleDensity = 1.0;
     // Common glowing particles reuse small raster sprites instead of running a blur for
     // every fill on every frame. The bounded cache belongs to this system, not each particle.
     this._sprites = new Map();
@@ -121,6 +122,28 @@ export class ParticleSystem {
    */
   setGlow(enabled) {
     this.glow = !!enabled;
+  }
+
+  /**
+   * Configure particle budget and graphics options from QualityManager
+   * @param {{ particleDensity?: number, particleFactor?: number, glow?: boolean, glowEffects?: boolean, activeLimit?: number }} opts
+   */
+  setQuality(opts = {}) {
+    if (opts.particleDensity !== undefined) {
+      this.particleDensity = Math.max(0.1, Number(opts.particleDensity) || 1);
+    }
+    if (opts.particleFactor !== undefined) {
+      this.particleDensity = Math.max(0.1, Number(opts.particleFactor) || 1);
+    }
+    if (opts.glow !== undefined) {
+      this.setGlow(opts.glow);
+    }
+    if (opts.glowEffects !== undefined) {
+      this.setGlow(opts.glowEffects);
+    }
+    if (opts.activeLimit !== undefined) {
+      this.setActiveLimit(opts.activeLimit);
+    }
   }
 
   /**
@@ -225,7 +248,8 @@ export class ParticleSystem {
    * @param {number} [vy=0]
    */
   emitMagicSparks(x, y, count = 2, customColor = null, vx = 0, vy = 0) {
-    for (let i = 0; i < count; i++) {
+    const finalCount = this.particleDensity !== 1.0 ? Math.max(1, Math.round(count * this.particleDensity)) : count;
+    for (let i = 0; i < finalCount; i++) {
       const p = this._acquireParticle();
       if (!p) break;
 
@@ -481,6 +505,9 @@ export class ParticleSystem {
 
     // Normalized frame rate factor for drag calculations (base 60 FPS)
     const rateFactor = dt * 60;
+    const magicDecay = Math.pow(0.94, rateFactor);
+    const smokeDecay = Math.pow(0.98, rateFactor);
+    const standardDecay = Math.pow(0.95, rateFactor);
 
     // 2. Update Active Particles with O(1) in-place swap on death
     let i = 0;
@@ -505,16 +532,15 @@ export class ParticleSystem {
         p.radius += p.growth * dt;
       } else if (p.type === 'gravity_spark') {
         p.vy += p.gravity * dt;
-        const dragFactor = Math.pow(p.drag, rateFactor);
+        const dragFactor = p.drag === 1.0 ? 1.0 : Math.pow(p.drag, rateFactor);
         p.vx *= dragFactor;
         p.vy *= dragFactor;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.vRot) p.rotation += p.vRot * dt;
       } else if (p.type === 'magic_spark') {
-        const decayFactor = Math.pow(0.94, rateFactor);
-        p.vx *= decayFactor;
-        p.vy *= decayFactor;
+        p.vx *= magicDecay;
+        p.vy *= magicDecay;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.vRot) p.rotation += p.vRot * dt;
@@ -522,12 +548,11 @@ export class ParticleSystem {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.size += 3.5 * dt;
-        p.vx *= Math.pow(0.98, rateFactor);
+        p.vx *= smokeDecay;
       } else {
         // Standard spark
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        const standardDecay = Math.pow(0.95, rateFactor);
         p.vx *= standardDecay;
         p.vy *= standardDecay;
       }
@@ -596,11 +621,15 @@ export class ParticleSystem {
         const sprite = this._getParticleSprite(p, dpr);
         if (sprite) {
           ctx.shadowBlur = 0;
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          if (p.type === 'magic_spark') ctx.rotate(p.rotation || 0);
-          ctx.drawImage(sprite.canvas, -sprite.half, -sprite.half, sprite.half * 2, sprite.half * 2);
-          ctx.restore();
+          if (p.type === 'magic_spark' && p.rotation) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.drawImage(sprite.canvas, -sprite.half, -sprite.half, sprite.half * 2, sprite.half * 2);
+            ctx.restore();
+          } else {
+            ctx.drawImage(sprite.canvas, p.x - sprite.half, p.y - sprite.half, sprite.half * 2, sprite.half * 2);
+          }
           continue;
         }
       }
@@ -776,8 +805,12 @@ export class ParticleSystem {
       ctx.strokeText(t.text, t.x, t.y);
 
       ctx.fillStyle = t.color;
-      ctx.shadowColor = t.color;
-      ctx.shadowBlur = 12;
+      if (this.glow) {
+        ctx.shadowColor = t.color;
+        ctx.shadowBlur = 12;
+      } else {
+        ctx.shadowBlur = 0;
+      }
       ctx.fillText(t.text, t.x, t.y);
 
       ctx.shadowBlur = 0;

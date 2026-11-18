@@ -560,6 +560,7 @@ export class Game {
   }
 
   _bindResize() {
+    this._cleanups = this._cleanups || [];
     // Resize events fire in bursts (orientation change, visualViewport, URL-bar collapse).
     // Coalesce them into at most one real resize per animation frame.
     const schedule = () => {
@@ -571,6 +572,8 @@ export class Game {
       });
     };
     window.addEventListener('resize', schedule);
+    this._cleanups.push(() => window.removeEventListener('resize', schedule));
+
     // CSS docks, safe areas and container queries can resize the arena without a window resize.
     if (typeof ResizeObserver !== 'undefined' && this.canvas.parentElement) {
       this._arenaObserver = new ResizeObserver(schedule);
@@ -585,28 +588,39 @@ export class Game {
         schedule();
       };
       watchDensity();
+      this._cleanups.push(() => this._densityQuery?.removeEventListener?.('change', watchDensity));
     }
-    window.addEventListener('orientationchange', () => {
+    const onOrient = () => {
       // Rotating the phone mid-fight: pause first, the player resumes with a 3-2-1
       this._pauseIfPlaying();
       schedule();
       setTimeout(() => this.resize(), 150);
       setTimeout(() => this.resize(), 400);
-    });
+    };
+    window.addEventListener('orientationchange', onOrient);
+    this._cleanups.push(() => window.removeEventListener('orientationchange', onOrient));
+
     if (typeof window !== 'undefined' && window.visualViewport) {
       window.visualViewport.addEventListener('resize', schedule);
+      this._cleanups.push(() => window.visualViewport.removeEventListener('resize', schedule));
     }
 
     // Stop burning battery (and playing audio) while the page is hidden or the app is backgrounded.
+    const onVis = () => this._onVisibilityChange();
     if (typeof document !== 'undefined' && document.addEventListener) {
-      document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+      document.addEventListener('visibilitychange', onVis);
+      this._cleanups.push(() => document.removeEventListener('visibilitychange', onVis));
     }
-    window.addEventListener('pagehide', () => {
+    const onPageHide = () => {
       this._pauseIfPlaying();
       this._suspendFrameLoop();
       this.audioSystem?.suspendForHidden?.();
-    });
-    window.addEventListener('pageshow', () => this._onVisibilityChange());
+    };
+    window.addEventListener('pagehide', onPageHide);
+    this._cleanups.push(() => window.removeEventListener('pagehide', onPageHide));
+
+    window.addEventListener('pageshow', onVis);
+    this._cleanups.push(() => window.removeEventListener('pageshow', onVis));
   }
 
   /**
@@ -656,13 +670,15 @@ export class Game {
     if (Enemy.setGlowScale(q.glowScale)) Enemy.prewarmGlow();
 
     if (this.particleSystem) {
-      this.particleSystem.setGlow(q.particleGlow);
+      this.particleSystem.setGlow(q.particleGlow && q.glowEffects);
+      this.particleSystem.setShakeEnabled(q.screenShake);
+      const factor = q.particleDensity !== undefined ? q.particleDensity : q.particleFactor;
       if (this.particleBudget) {
-        this.particleSystem.setActiveLimit(this.particleBudget * q.particleFactor);
+        this.particleSystem.setActiveLimit(this.particleBudget * factor);
       }
     }
     if (this.inputHandler) {
-      this.inputHandler.setGlow(q.glowScale > 0);
+      this.inputHandler.setGlow(q.glowScale > 0 && q.glowEffects);
     }
     // Recording the arena costs CPU: stop if the device had to drop to the lowest tier
     if (this.highlight && this.highlight.running && !this._highlightAllowed()) {
@@ -690,6 +706,8 @@ export class Game {
     const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
     if (this.quality) this.quality.isMobile = isMobile;
     const dpr = Math.min(rawDpr, this.quality ? this.quality.getDprCap() : (isMobile ? 1.5 : 2.0));
+    const resScale = this.quality && this.quality.resolutionScale !== undefined ? this.quality.resolutionScale : 1.0;
+    const effectiveDpr = dpr * resScale;
 
     const parent = this.canvas.parentElement;
     const width = parent && parent.clientWidth > 0 ? parent.clientWidth : window.innerWidth;
@@ -701,7 +719,7 @@ export class Game {
     this._arenaOrigin = origin;
     if (sizeChanged || moved) this.inputHandler?.cancelStroke();
 
-    const sizeKey = `${width}x${height}@${dpr}/${this.lightScale}`;
+    const sizeKey = `${width}x${height}@${dpr}/${this.lightScale}${resScale !== 1.0 ? '@' + resScale : ''}`;
     if (sizeKey === this._sizeKey) return;
     this._sizeKey = sizeKey;
     this._pausedFrameDrawn = false;
@@ -716,14 +734,15 @@ export class Game {
     this._wasPortrait = portrait;
 
     this.dpr = dpr;
+    this.effectiveDpr = effectiveDpr;
     this.width = width;
     this.height = height;
     // Glow sprites are DPR-aware: rebuild them (once) if the canvas density changed
     if (Enemy.setPixelRatio(dpr)) Enemy.prewarmGlow();
 
-    // Internal pixel buffer scaled by DPR
-    this.canvas.width = Math.round(this.width * this.dpr);
-    this.canvas.height = Math.round(this.height * this.dpr);
+    // Internal pixel buffer scaled by DPR and resolution scale
+    this.canvas.width = Math.round(this.width * effectiveDpr);
+    this.canvas.height = Math.round(this.height * effectiveDpr);
 
     // Keep display size matching container via 100%
     this.canvas.style.width = '100%';
@@ -733,6 +752,8 @@ export class Game {
     if (this.lightCanvas) {
       this.lightCanvas.width = Math.max(1, Math.round(this.width * this.lightScale));
       this.lightCanvas.height = Math.max(1, Math.round(this.height * this.lightScale));
+      this._vignetteGrad = null;
+      this._vignetteKey = null;
     }
 
     if (!sizeChanged) return;
@@ -1267,19 +1288,32 @@ export class Game {
     // Normalized delta time clamped to [0.001, 0.05] (20 FPS floor)
     // Prevents spiraling tunneling or jump lag when tab is backgrounded
     const rawDt = (timestamp - this.lastTime) / 1000;
-    const dt = Math.min(0.05, Math.max(0.001, rawDt));
+    const isTabSuspension = rawDt > 0.25;
+    const sampleDt = isTabSuspension ? 0.01667 : rawDt;
+    const dt = Math.min(0.05, Math.max(0.001, isTabSuspension ? 0.01667 : rawDt));
     this.lastTime = timestamp;
 
-    const paused = this.stateMachine.getCurrentStateName() === GAME_STATES.PAUSE;
-    // A pause freezes the arena. Keep its pixels until size, quality or state invalidates them.
-    if (!paused || !this._pausedFrameDrawn) {
-      if (!paused && this.quality) this.quality.sampleFrame(rawDt * 1000);
-      this.update(dt);
-      this.render();
-      this._pausedFrameDrawn = paused;
+    try {
+      const paused = this.stateMachine.getCurrentStateName() === GAME_STATES.PAUSE;
+      // A pause freezes the arena. Keep its pixels until size, quality or state invalidates them.
+      if (!paused || !this._pausedFrameDrawn) {
+        if (!paused && this.quality) this.quality.sampleFrame(sampleDt * 1000);
+        // Separate sub-steps for simulation stability when frame delta drops below 30 FPS
+        if (dt > 0.033 && this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) {
+          const subDt = dt / 2;
+          this.update(subDt);
+          this.update(subDt);
+        } else {
+          this.update(dt);
+        }
+        this.render();
+        this._pausedFrameDrawn = paused;
+      }
+    } finally {
+      if (this.isRunning && !(typeof document !== 'undefined' && document.hidden)) {
+        this._rafId = requestAnimationFrame(this._boundLoop);
+      }
     }
-
-    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   update(dt) {
@@ -1293,21 +1327,24 @@ export class Game {
 
   render() {
     this.ctx.save();
-    this.ctx.scale(this.dpr, this.dpr);
+    try {
+      const renderScale = this.effectiveDpr || this.dpr;
+      this.ctx.scale(renderScale, renderScale);
 
-    // Clear background
-    this.ctx.clearRect(0, 0, this.width, this.height);
+      // Clear background
+      this.ctx.clearRect(0, 0, this.width, this.height);
 
-    // Render animated Level Environment (Google Doodle 2016)
-    const curLevel = this.waveSystem.currentLevelIndex || 1;
-    this._renderLevelBackground(curLevel);
-    // Event look (colour wash, snow, petals...): over the scenery, under ghosts and Momo
-    if (this.liveEffects && this.liveEffects.active) this.liveEffects.render(this.ctx, this.width, this.height);
+      // Render animated Level Environment (Google Doodle 2016)
+      const curLevel = this.waveSystem.currentLevelIndex || 1;
+      this._renderLevelBackground(curLevel);
+      // Event look (colour wash, snow, petals...): over the scenery, under ghosts and Momo
+      if (this.liveEffects && this.liveEffects.active) this.liveEffects.render(this.ctx, this.width, this.height);
 
-    // Render active state
-    this.stateMachine.render(this.ctx);
-
-    this.ctx.restore();
+      // Render active state
+      this.stateMachine.render(this.ctx);
+    } finally {
+      this.ctx.restore();
+    }
   }
 
   /**
@@ -1317,8 +1354,9 @@ export class Game {
    * @param {number} level 1-based level index
    */
   _renderLevelBackground(level) {
-    const interval = this.quality ? this.quality.bgIntervalMs : 0;
-    const bg = interval > 0 ? this._ensureBackgroundLayer() : null;
+    const animated = this.quality ? this.quality.backgroundAnimations : true;
+    const interval = !animated ? 999999999 : (this.quality ? this.quality.bgIntervalMs : 0);
+    const bg = (interval > 0 || !animated) ? this._ensureBackgroundLayer() : null;
 
     if (!bg) {
       this.backgroundRenderer.render(this.ctx, this.width, this.height, level, this.lastTime / 1000);
@@ -1335,6 +1373,24 @@ export class Game {
       this._bgLastRender = now;
     }
     this.ctx.drawImage(bg, 0, 0, this.width, this.height);
+  }
+
+  destroy() {
+    this.isRunning = false;
+    this._suspendFrameLoop();
+    if (this._arenaObserver) {
+      this._arenaObserver.disconnect();
+      this._arenaObserver = null;
+    }
+    if (this._cleanups) {
+      for (const fn of this._cleanups) {
+        try { fn(); } catch (e) {}
+      }
+      this._cleanups.length = 0;
+    }
+    this.audioSystem?.destroy?.();
+    this.particleSystem?.clear?.();
+    this.inputHandler?.destroy?.();
   }
 
   /**
@@ -1403,14 +1459,20 @@ export class Game {
 
     // 2. Wave System Spawner with Pooled Enemy (supports simultaneous squad spawning)
     // The golden ghost is a bonus: it never holds a wave (or a boss fight) open
-    // One pass, no temporary arrays: this runs every frame (two .filter() calls allocated two arrays per frame)
+    // One pass, no temporary arrays: this runs every frame (eliminating multiple .filter() array allocations)
     let livingEnemiesCount = 0;
     let hostileEnemiesCount = 0;
+    let livingHeartCount = 0;
+    let livingFreezeCount = 0;
+    let livingBlastCount = 0;
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
       if (e.isDead || e.isGolden) continue;
       livingEnemiesCount++;
       if (!e.isHeartGhost) hostileEnemiesCount++;
+      if (e.isHeartGhost) livingHeartCount++;
+      if (e.isFreezeGhost) livingFreezeCount++;
+      if (e.isBlastGhost) livingBlastCount++;
     }
 
     // Brief warning after clearing a story wave. Boss Rush and the final stage start immediately.
@@ -1461,11 +1523,6 @@ export class Game {
     if (spawnResult) {
       const configs = Array.isArray(spawnResult) ? spawnResult : [spawnResult];
       const isSquad = configs.length > 1;
-
-      // Count living special tactical ghosts on screen
-      let livingHeartCount = this.enemies.filter(e => e.isHeartGhost && !e.isDead).length;
-      let livingFreezeCount = this.enemies.filter(e => e.isFreezeGhost && !e.isDead).length;
-      let livingBlastCount = this.enemies.filter(e => e.isBlastGhost && !e.isDead).length;
 
       // Coordinated edge positions for simultaneous squad members (all 4 borders across all levels, including Level 5)
       let squadPositions = [];
@@ -2060,6 +2117,7 @@ export class Game {
    * @param {CanvasRenderingContext2D} ctx 
    */
   _renderDynamicLighting(ctx) {
+    if (this.quality && !this.quality.dynamicLighting) return;
     const lCanvas = this.lightCanvas;
     const lCtx = this.lightCtx;
     const w = this.width;
@@ -2078,16 +2136,20 @@ export class Game {
     lCtx.fillStyle = 'rgba(6, 4, 16, 0.78)';
     lCtx.fillRect(0, 0, lw, lh);
 
-    // Step B: Heavy Vignette Gradient towards canvas borders
+    // Step B: Heavy Vignette Gradient towards canvas borders (cached by dimension)
     const maxDim = Math.max(lw, lh);
-    const vignette = lCtx.createRadialGradient(
-      lw / 2, lh / 2, maxDim * 0.22,
-      lw / 2, lh / 2, maxDim * 0.75
-    );
-    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(0.6, 'rgba(3, 2, 8, 0.55)');
-    vignette.addColorStop(1, 'rgba(2, 1, 5, 0.95)');
-    lCtx.fillStyle = vignette;
+    if (!this._vignetteGrad || this._vignetteGradKey !== `${lw}x${lh}`) {
+      const vignette = lCtx.createRadialGradient(
+        lw / 2, lh / 2, maxDim * 0.22,
+        lw / 2, lh / 2, maxDim * 0.75
+      );
+      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vignette.addColorStop(0.6, 'rgba(3, 2, 8, 0.55)');
+      vignette.addColorStop(1, 'rgba(2, 1, 5, 0.95)');
+      this._vignetteGrad = vignette;
+      this._vignetteGradKey = `${lw}x${lh}`;
+    }
+    lCtx.fillStyle = this._vignetteGrad;
     lCtx.fillRect(0, 0, lw, lh);
 
     // Step C: Carve out light sources using destination-out
@@ -2175,30 +2237,32 @@ export class Game {
     ctx.drawImage(lCanvas, 0, 0, this.width, this.height);
 
     // Step E: Additive Glow Halos (Atmospheric Bloom)
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    if (this.quality ? this.quality.glowEffects : true) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
 
-    if (this.playerHaloStamp) {
-      const haloR = 160;
-      ctx.drawImage(
-        this.playerHaloStamp,
-        this.player.x - haloR,
-        this.player.y - haloR,
-        haloR * 2,
-        haloR * 2
-      );
-    }
-
-    // Spell projectile color bloom (pre-rendered per colour: no gradient allocated per projectile per frame)
-    for (let i = 0; i < this.projectiles.length; i++) {
-      const proj = this.projectiles[i];
-      const halo = this._getProjectileHalo(proj.color);
-      if (halo) {
-        ctx.drawImage(halo, proj.x - 65, proj.y - 65);
+      if (this.playerHaloStamp) {
+        const haloR = 160;
+        ctx.drawImage(
+          this.playerHaloStamp,
+          this.player.x - haloR,
+          this.player.y - haloR,
+          haloR * 2,
+          haloR * 2
+        );
       }
-    }
 
-    ctx.restore();
+      // Spell projectile color bloom (pre-rendered per colour: no gradient allocated per projectile per frame)
+      for (let i = 0; i < this.projectiles.length; i++) {
+        const proj = this.projectiles[i];
+        const halo = this._getProjectileHalo(proj.color);
+        if (halo) {
+          ctx.drawImage(halo, proj.x - 65, proj.y - 65);
+        }
+      }
+
+      ctx.restore();
+    }
 
     // 6. Lightning Electric Sky Flash Overlay
     if (this.lightningFlashTimer > 0) {
@@ -2213,15 +2277,21 @@ export class Game {
     if (this.freezeOverlayTimer > 0) {
       ctx.save();
       const frostAlpha = Math.min(0.55, this.freezeOverlayTimer * 0.22 + 0.12);
-      const frostGrad = ctx.createRadialGradient(
-        this.width / 2, this.height / 2, Math.min(this.width, this.height) * 0.22,
-        this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.70
-      );
-      frostGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
-      frostGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.14)');
-      frostGrad.addColorStop(1, `rgba(186, 230, 253, ${frostAlpha})`);
-      ctx.fillStyle = frostGrad;
+      if (!this._frostGrad || this._frostGradKey !== `${this.width}x${this.height}`) {
+        const frostGrad = ctx.createRadialGradient(
+          this.width / 2, this.height / 2, Math.min(this.width, this.height) * 0.22,
+          this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.70
+        );
+        frostGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        frostGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.25)');
+        frostGrad.addColorStop(1, 'rgba(186, 230, 253, 1)');
+        this._frostGrad = frostGrad;
+        this._frostGradKey = `${this.width}x${this.height}`;
+      }
+      ctx.globalAlpha = frostAlpha;
+      ctx.fillStyle = this._frostGrad;
       ctx.fillRect(0, 0, this.width, this.height);
+      ctx.globalAlpha = 1;
 
       // Frost decorative corner ice brackets
       ctx.strokeStyle = `rgba(224, 242, 254, ${Math.min(1.0, frostAlpha * 1.5)})`;

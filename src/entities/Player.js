@@ -444,6 +444,21 @@ export class Player extends Entity {
     }
   }
 
+  _getGroundGradient(ctx, isHeal = false) {
+    if (!this._groundGradNormal && ctx && typeof ctx.createRadialGradient === 'function') {
+      const gNorm = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
+      gNorm.addColorStop(0, 'rgba(251, 191, 36, 0.2)');
+      gNorm.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      this._groundGradNormal = gNorm;
+
+      const gHeal = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
+      gHeal.addColorStop(0, 'rgba(244, 63, 94, 0.35)');
+      gHeal.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      this._groundGradHeal = gHeal;
+    }
+    return isHeal ? this._groundGradHeal : this._groundGradNormal;
+  }
+
   render(ctx) {
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -460,10 +475,9 @@ export class Player extends Entity {
     ctx.stroke();
 
     // Subtle inner golden/amber ambient halo on floor
-    const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
-    grad.addColorStop(0, this.healPulseTimer > 0 ? 'rgba(244, 63, 94, 0.35)' : 'rgba(251, 191, 36, 0.2)');
-    grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-    ctx.fillStyle = grad;
+    const isHeal = this.healPulseTimer > 0;
+    const groundGrad = this._getGroundGradient(ctx, isHeal);
+    ctx.fillStyle = isHeal ? (groundGrad || 'rgba(244, 63, 94, 0.35)') : (groundGrad || 'rgba(251, 191, 36, 0.2)');
     ctx.beginPath();
     ctx.arc(0, 0, 60, 0, Math.PI * 2);
     ctx.fill();
