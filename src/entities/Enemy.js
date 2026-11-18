@@ -100,6 +100,21 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
+const linearGradCache = new Map();
+
+function getCachedLinearGradient(ctx, key, x0, y0, x1, y1, stops) {
+  let grad = linearGradCache.get(key);
+  if (!grad && ctx && typeof ctx.createLinearGradient === 'function') {
+    grad = ctx.createLinearGradient(x0, y0, x1, y1);
+    for (let i = 0; i < stops.length; i++) {
+      grad.addColorStop(stops[i][0], stops[i][1]);
+    }
+    if (linearGradCache.size >= 128) linearGradCache.clear();
+    linearGradCache.set(key, grad);
+  }
+  return grad;
+}
+
 /** Glow of the ghost silhouette (body shape with a neutral skirt). Sprite origin = the ghost's origin. */
 function buildBodyGlow(r, color, blur) {
   const pad = Math.ceil(blur * 1.3) + 2;
@@ -608,7 +623,11 @@ export class Enemy extends Entity {
       // The colossal Boss occupies ~46% screen width with huge shadow wings
       // Its front left wing/body strikes Momo when within effective attack range
       const effectiveRadius = this.radius * 1.15;
-      return this.distanceTo(other) < (effectiveRadius + (other.radius || 25));
+      const r = effectiveRadius + (other.radius || 25);
+      const dx = other.x - this.x;
+      const dy = other.y - this.y;
+      if (Math.abs(dx) > r || Math.abs(dy) > r) return false;
+      return (dx * dx + dy * dy) < (r * r);
     }
     return super.collidesWith(other);
   }
@@ -1250,35 +1269,27 @@ export class Enemy extends Entity {
         glowColor = '#f43f5e';
         glowBlur = 20;
       } else if (this.type === 'BOSS_LIBRARIAN') {
-        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
-        bgGrad.addColorStop(0, '#7dd3fc');
-        bgGrad.addColorStop(0.5, '#38bdf8');
-        bgGrad.addColorStop(1, '#0284c7');
-        ctx.fillStyle = bgGrad;
+        ctx.fillStyle = getCachedLinearGradient(ctx, `LIBRARIAN_${r}`, 0, -r, 0, r, [
+          [0, '#7dd3fc'], [0.5, '#38bdf8'], [1, '#0284c7']
+        ]);
         glowColor = '#38bdf8';
         glowBlur = 22;
       } else if (this.type === 'BOSS_CHEF') {
-        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
-        bgGrad.addColorStop(0, '#fed7aa');
-        bgGrad.addColorStop(0.45, '#fb923c');
-        bgGrad.addColorStop(1, '#ea580c');
-        ctx.fillStyle = bgGrad;
+        ctx.fillStyle = getCachedLinearGradient(ctx, `CHEF_${r}`, 0, -r, 0, r, [
+          [0, '#fed7aa'], [0.45, '#fb923c'], [1, '#ea580c']
+        ]);
         glowColor = '#f97316';
         glowBlur = 22;
       } else if (this.type === 'BOSS_PLANETARIUM') {
-        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
-        bgGrad.addColorStop(0, '#e9d5ff');
-        bgGrad.addColorStop(0.5, '#c084fc');
-        bgGrad.addColorStop(1, '#7e22ce');
-        ctx.fillStyle = bgGrad;
+        ctx.fillStyle = getCachedLinearGradient(ctx, `PLANETARIUM_${r}`, 0, -r, 0, r, [
+          [0, '#e9d5ff'], [0.5, '#c084fc'], [1, '#7e22ce']
+        ]);
         glowColor = '#c084fc';
         glowBlur = 24;
       } else if (this.type === 'BOSS_COACH') {
-        const bgGrad = ctx.createLinearGradient(0, -r, 0, r);
-        bgGrad.addColorStop(0, '#a7f3d0');
-        bgGrad.addColorStop(0.45, '#34d399');
-        bgGrad.addColorStop(1, '#059669');
-        ctx.fillStyle = bgGrad;
+        ctx.fillStyle = getCachedLinearGradient(ctx, `COACH_${r}`, 0, -r, 0, r, [
+          [0, '#a7f3d0'], [0.45, '#34d399'], [1, '#059669']
+        ]);
         glowColor = '#10b981';
         glowBlur = 22;
       } else {
@@ -2559,20 +2570,16 @@ export class Enemy extends Entity {
 
     // 3. Main Spectral Body & 5 Living Multi-Harmonic Undulating Ghost Robes / Tails
     ctx.save();
-    const bodyGrad = ctx.createLinearGradient(0, -r * 1.0, 0, r * 1.5);
     if (isHit) {
-      bodyGrad.addColorStop(0, '#ffffff');
-      bodyGrad.addColorStop(0.5, '#fda4af');
-      bodyGrad.addColorStop(1, '#ffffff');
-      ctx.fillStyle = bodyGrad;
+      ctx.fillStyle = getCachedLinearGradient(ctx, `FINAL_BOSS_HIT_${r}`, 0, -r * 1.0, 0, r * 1.5, [
+        [0, '#ffffff'], [0.5, '#fda4af'], [1, '#ffffff']
+      ]);
       ctx.shadowColor = '#ffffff';
       ctx.shadowBlur = 28;
     } else {
-      bodyGrad.addColorStop(0, '#be123c');
-      bodyGrad.addColorStop(0.35, '#881337');
-      bodyGrad.addColorStop(0.7, '#4c0519');
-      bodyGrad.addColorStop(1, '#18040b');
-      ctx.fillStyle = bodyGrad;
+      ctx.fillStyle = getCachedLinearGradient(ctx, `FINAL_BOSS_NORM_${r}`, 0, -r * 1.0, 0, r * 1.5, [
+        [0, '#be123c'], [0.35, '#881337'], [0.7, '#4c0519'], [1, '#18040b']
+      ]);
       ctx.shadowColor = '#f43f5e';
       ctx.shadowBlur = 20;
     }
@@ -2989,7 +2996,16 @@ Enemy.setPixelRatio = function setPixelRatio(dpr) {
   if (next === pixelRatio) return false;
   pixelRatio = next;
   glowSprites.clear();
+  linearGradCache.clear();
   return true;
+};
+
+Enemy.getCachedLinearGradient = function(ctx, key, x0, y0, x1, y1, stops) {
+  return getCachedLinearGradient(ctx, key, x0, y0, x1, y1, stops);
+};
+
+Enemy.clearGradientCache = function() {
+  linearGradCache.clear();
 };
 
 /**

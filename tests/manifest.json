@@ -34,7 +34,8 @@
     { "id": "accessibility", "file": "tests/accessibility.test.js", "area": "accessibility" },
     { "id": "load-performance", "file": "tests/load-performance.test.js", "area": "performance" },
     { "id": "runtime-lifecycle", "file": "tests/runtime-lifecycle.test.js", "area": "performance" },
-    { "id": "particle-sprites", "file": "tests/particle-sprites.test.js", "area": "performance" }
+    { "id": "particle-sprites", "file": "tests/particle-sprites.test.js", "area": "performance" },
+    { "id": "rendering-performance", "file": "tests/rendering-performance.test.js", "area": "performance" }
   ],
   "quarantine": [
     {

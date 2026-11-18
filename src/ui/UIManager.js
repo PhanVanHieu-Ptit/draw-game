@@ -55,6 +55,7 @@ export class UIManager {
     this.comboBar = document.getElementById('combo-bar');
     this.gestureFeedback = document.getElementById('gesture-feedback');
     this.gestureHint = document.getElementById('gesture-hint');
+    this.hudTimer = document.getElementById('hud-timer');
 
     // Level Transition Banner Elements
     this.levelTransitionBanner = document.getElementById('level-transition-banner');
@@ -1434,7 +1435,7 @@ export class UIManager {
     const seconds = Math.max(0, Math.floor(elapsedSeconds));
     if (seconds === this._lastRunSecond) return;
     this._lastRunSecond = seconds;
-    const timer = document.getElementById('hud-timer');
+    const timer = this.hudTimer || document.getElementById('hud-timer');
     if (timer) timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   }
 

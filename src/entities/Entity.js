@@ -23,12 +23,17 @@ export class Entity {
   }
 
   /**
-   * Check circle collision with another entity
+   * Check circle collision with another entity with fast AABB rejection
    * @param {Entity} other 
    * @returns {boolean}
    */
   collidesWith(other) {
-    return this.distanceTo(other) < (this.radius + other.radius);
+    if (!other) return false;
+    const r = this.radius + (other.radius || 0);
+    const dx = other.x - this.x;
+    const dy = other.y - this.y;
+    if (Math.abs(dx) > r || Math.abs(dy) > r) return false;
+    return (dx * dx + dy * dy) < (r * r);
   }
 
   update(dt) {
