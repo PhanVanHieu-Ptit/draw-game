@@ -238,6 +238,13 @@ export class Game {
 
     // UI Manager
     this.uiManager = new UIManager(this);
+    this.particleSystem.onFloatingText = (text, _x, _y, color) => {
+      if (this.stateMachine?.getCurrentStateName() !== GAME_STATES.PLAYING) return false;
+      // Points are already reflected in the score counter; keep notices for information the HUD lacks.
+      if (/^\+\d+$/.test(String(text))) return true;
+      return this.uiManager.showGameplayNotice(text, color);
+    };
+    this.particleSystem.onClearTexts = () => this.uiManager.clearGameplayNotice();
 
     // Finite State Machine
     this.stateMachine = new StateMachine(this);
@@ -1716,7 +1723,14 @@ export class Game {
       enemy.statusEffects?.tick(dt);
       const elite = this.combat.rules.flags.eliteModifiers && this.combat.rules.elite[enemy.eliteModifier];
       enemy.combatSpeedScale = (enemy.statusEffects?.speedMultiplier ?? 1) * (elite?.speedMultiplier ?? 1);
+      const wasReEntering = enemy.isReEntering;
       enemy.update(dt, this.player);
+      if (enemy.isBoss && !wasReEntering && enemy.isReEntering) {
+        this.particleSystem.emitFloatingText(
+          enemy.phaseClearedOnRetreat ? '🔥 KÝ TỰ MỚI! 🔥' : '⚠️ TRÙM TIẾP TỤC TẤN CÔNG! ⚠️',
+          enemy.x, enemy.y - 45, '#38bdf8', 22
+        );
+      }
 
       // Check collision with Player
       if (enemy.collidesWith(this.player)) {
@@ -1776,6 +1790,9 @@ export class Game {
         // Multi-phase Boss recoils and retreats when it hits player to attack again!
         if (enemy.isBoss) {
           enemy.startBossRetreat(false);
+          this.particleSystem.emitFloatingText(
+            '⚡ ĐÒN ĐÁNH CỦA TRÙM! LÙI LẠI...', enemy.x, enemy.y - 45, '#fde047', 22
+          );
           continue;
         }
 

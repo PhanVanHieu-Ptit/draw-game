@@ -2,6 +2,7 @@
 #game-wrapper {
   --hud-height: 116px;
   --feedback-height: 96px;
+  --notice-height: 96px;
   --edge: 16px;
   width: 100%;
   max-width: 1600px;
@@ -11,7 +12,7 @@
 
 #game-arena {
   position: absolute;
-  inset: calc(var(--sat) + var(--hud-height)) max(var(--edge), var(--sar))
+  inset: calc(var(--sat) + var(--hud-height) + var(--notice-height)) max(var(--edge), var(--sar))
     calc(var(--sab) + var(--feedback-height)) max(var(--edge), var(--sal));
   overflow: hidden;
   border: 1px solid var(--panel-border-inner);
@@ -517,6 +518,7 @@ button:focus-visible {
   #game-wrapper {
     --edge: 10px;
     --hud-height: 148px;
+    --notice-height: 104px;
   }
   .hud-top-bar {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -649,6 +651,7 @@ button:focus-visible {
 #game-wrapper:has(#practice-screen.active) {
   --hud-height: 116px;
   --feedback-height: 160px;
+  --notice-height: 0px;
 }
 @media (max-width: 600px) {
   .practice-top {
@@ -679,6 +682,7 @@ button:focus-visible {
   #game-wrapper {
     --hud-height: 104px;
     --feedback-height: 52px;
+    --notice-height: 0px;
     --edge: 12px;
   }
   .hud-top-bar {
@@ -758,29 +762,166 @@ button:focus-visible {
 .tutorial-card {
   max-height: 100%;
 }
-.dialogue-toast {
-  top: calc(var(--sat) + var(--hud-height) + 8px);
-  max-width: min(560px, calc(100% - 32px - var(--sal) - var(--sar)));
-}
-.toast-stack {
-  top: calc(var(--sat) + var(--hud-height) + 8px);
-  width: min(90%, 380px);
-}
-.toast-stack .toast {
-  padding: 8px 12px;
-  font-size: 0.78rem;
-}
-.level-transition-banner {
-  top: calc(var(--sat) + var(--hud-height) + 12px);
-  max-width: calc(100% - 32px);
+/* All notices flow inside a clipped rail; long text or stacked unlocks cannot spill into the arena. */
+.game-notices {
+  position: absolute;
+  top: calc(var(--sat) + 12px);
+  left: max(var(--edge), var(--sal));
+  right: max(var(--edge), var(--sar));
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(45%, 320px);
+  overflow: hidden;
   pointer-events: none;
 }
-.level-transition-banner,
-.level-transition-banner.show {
-  transform: translateX(-50%);
+.notice-messages {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  flex: 0 1 auto;
+  min-height: 0;
+  gap: 4px 8px;
+  overflow-y: auto;
+  overflow-anchor: none;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+  pointer-events: auto;
 }
-#game-wrapper:not(:has(#hud-playing.active)) .level-transition-banner {
+#game-wrapper:has(#hud-playing.active, #pause-screen.active) .game-notices {
+  top: calc(var(--sat) + var(--hud-height) + 4px);
+  height: calc(var(--notice-height) - 8px);
+  max-height: calc(var(--notice-height) - 8px);
+  z-index: 10;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+#game-wrapper:has(#pause-screen.active) .game-notices {
   display: none;
+}
+.game-notices .dialogue-toast,
+.game-notices .level-transition-banner,
+.game-notices .toast-stack {
+  position: static;
+  inset: auto;
+  flex: 1 0 min(100%, 340px);
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  transform: none;
+  box-shadow: none;
+}
+.game-notices .dialogue-toast,
+.game-notices .level-transition-banner,
+.gameplay-notice {
+  display: none;
+}
+#game-wrapper:has(#hud-playing.active) .game-notices .dialogue-toast.show,
+#game-wrapper:has(#hud-playing.active) .game-notices .level-transition-banner.show {
+  display: flex;
+}
+.game-notices .dialogue-toast {
+  padding: 6px 10px;
+  gap: 8px;
+  border-radius: 12px;
+}
+.game-notices .dialogue-avatar-wrap {
+  width: 32px;
+  height: 32px;
+  animation: none;
+}
+.game-notices .dialogue-header {
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+.game-notices .dialogue-name {
+  font-size: 0.78rem;
+}
+.game-notices .dialogue-role-badge {
+  font-size: 0.6rem;
+}
+.game-notices .dialogue-text {
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+.game-notices .dialogue-close-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+.game-notices .level-transition-banner {
+  padding: 4px 10px;
+}
+.game-notices .ltb-level-number {
+  font-size: 0.65rem;
+}
+.game-notices .ltb-level-title {
+  font-size: 0.9rem;
+}
+.game-notices .ltb-prompt {
+  font-size: 1rem;
+}
+.game-notices .toast-stack:empty {
+  display: none;
+}
+.game-notices .toast-stack {
+  gap: 4px;
+  pointer-events: auto;
+}
+.game-notices .toast {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+}
+.game-notices .toast-icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+.gameplay-notice {
+  flex: 0 0 auto;
+  min-width: 0;
+  color: var(--notice-color, #fef08a);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+#game-wrapper:has(#hud-playing.active) .gameplay-notice.show {
+  display: block;
+}
+#game-wrapper:has(#hud-playing.active) .tutorial-overlay.show ~ .game-notices .dialogue-toast {
+  display: none;
+}
+@media (max-width: 600px) {
+  .game-notices .dialogue-role-badge {
+    display: none;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  /* Share the second HUD row so short screens retain room for monsters and the rune pad. */
+  .hud-status-bar {
+    width: 38%;
+  }
+  #game-wrapper:has(#hud-playing.active) .game-notices {
+    top: calc(var(--sat) + 56px);
+    left: calc(max(var(--edge), var(--sal)) + 38%);
+    height: 44px;
+    max-height: 44px;
+  }
+  .game-notices .dialogue-toast {
+    padding-block: 2px;
+  }
+  .game-notices .dialogue-text,
+  .gameplay-notice {
+    font-size: 0.68rem;
+  }
+  .game-notices .ltb-prompt {
+    flex-basis: auto;
+    font-size: 0.9rem;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .hud-companion-badge,

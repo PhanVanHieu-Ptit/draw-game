@@ -86,6 +86,10 @@ export class ParticleSystem {
     }
     this.activeTextCount = 0;
 
+    // Gameplay can send text to the HUD while standalone effects retain the pooled canvas renderer.
+    this.onFloatingText = null;
+    this.onClearTexts = null;
+
     this.screenShake = {
       intensity: 0,
       duration: 0,
@@ -451,6 +455,8 @@ export class ParticleSystem {
   }
 
   emitFloatingText(text, x, y, color = '#fef08a', fontSize = 18) {
+    if (this.onFloatingText?.(text, x, y, color, fontSize) === true) return;
+
     // The same message raised again while it is still on screen (e.g. a stage start that fires twice)
     // refreshes the live text instead of stacking a duplicate under it
     for (let i = 0; i < this.activeTextCount; i++) {
@@ -831,6 +837,8 @@ export class ParticleSystem {
       this.textPool[i].reset();
     }
     this.activeTextCount = 0;
+
+    this.onClearTexts?.();
 
     this.screenShake.timer = 0;
     this.screenShake.x = 0;

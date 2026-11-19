@@ -28,14 +28,6 @@
       <canvas id="gameCanvas"></canvas>
     </div>
 
-    <!-- Level Transition Banner (Ready... Set... Draw!) -->
-    <div id="level-transition-banner" class="level-transition-banner">
-      <div class="ltb-level-number" id="ltb-number">CẤP ĐỘ 1</div>
-      <div class="ltb-level-title" id="ltb-title">THƯ VIỆN CỔ KÍNH</div>
-      <div class="ltb-level-en" id="ltb-en">THE LIBRARY</div>
-      <div class="ltb-prompt" id="ltb-prompt">SẴN SÀNG... VẼ!</div>
-    </div>
-
     <!-- Level 1 Interactive Tutorial Overlay -->
     <div id="tutorial-overlay" class="tutorial-overlay">
       <div class="glass-card tutorial-card">
@@ -208,21 +200,6 @@
       </div>
       </div>
 
-      <!-- In-Game Character Dialogue Speech Bubble -->
-      <div id="in-game-dialogue-toast" class="dialogue-toast" aria-live="polite">
-        <div class="dialogue-avatar-wrap" id="diag-avatar-wrap">
-          <span class="dialogue-avatar" id="diag-avatar">🐱</span>
-        </div>
-        <div class="dialogue-body">
-          <div class="dialogue-header">
-            <span class="dialogue-name" id="diag-name">Momo</span>
-            <span class="dialogue-role-badge" id="diag-role">Pháp Sư</span>
-          </div>
-          <p class="dialogue-text" id="diag-text">Sẵn sàng vung đũa phép!</p>
-        </div>
-        <button class="dialogue-close-btn" id="diag-close" title="Đóng nhanh">✕</button>
-      </div>
-
       <!-- Bottom Gesture Feedback Pill + miss hint -->
       <div class="hud-bottom-bar">
         <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
@@ -233,6 +210,35 @@
         <!-- Alternative input for players who cannot draw: tap a rune (or press keys 1-8) -->
         <div class="rune-pad hidden" id="rune-pad" aria-label="Bảng ấn ký thay thế"></div>
       </div>
+    </div>
+
+    <!-- Notices have their own reserved space above the monster arena. -->
+    <div id="game-notices" class="game-notices" aria-label="Thông báo trò chơi">
+      <div class="notice-messages">
+        <div id="level-transition-banner" class="level-transition-banner">
+          <div class="ltb-level-number" id="ltb-number">CẤP ĐỘ 1</div>
+          <div class="ltb-level-title" id="ltb-title">THƯ VIỆN CỔ KÍNH</div>
+          <div class="ltb-level-en" id="ltb-en">THE LIBRARY</div>
+          <div class="ltb-prompt" id="ltb-prompt">SẴN SÀNG... VẼ!</div>
+        </div>
+
+        <div id="in-game-dialogue-toast" class="dialogue-toast" aria-live="polite">
+          <div class="dialogue-avatar-wrap" id="diag-avatar-wrap">
+            <span class="dialogue-avatar" id="diag-avatar">🐱</span>
+          </div>
+          <div class="dialogue-body">
+            <div class="dialogue-header">
+              <span class="dialogue-name" id="diag-name">Momo</span>
+              <span class="dialogue-role-badge" id="diag-role">Pháp Sư</span>
+            </div>
+            <p class="dialogue-text" id="diag-text">Sẵn sàng vung đũa phép!</p>
+          </div>
+          <button class="dialogue-close-btn" id="diag-close" title="Đóng nhanh">✕</button>
+        </div>
+
+        <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+      </div>
+      <div id="gameplay-notice" class="gameplay-notice" role="status" aria-live="polite"></div>
     </div>
 
     <!-- UI Overlay: MENU SCREEN -->
@@ -936,9 +942,6 @@
       <span class="countdown-num" id="countdown-num">3</span>
       <span class="countdown-hint">Chuẩn bị vung đũa phép…</span>
     </div>
-
-    <!-- Achievement / info toasts -->
-    <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
     <!-- UI Overlay: WIZARD CAT LICENSE / SHARE CARD MODAL -->
     <div id="wizard-card-modal" class="ui-screen modal-overlay">
