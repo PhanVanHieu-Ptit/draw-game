@@ -63,6 +63,7 @@ function makeDom() {
 function scene() {
   const { doc, El } = makeDom();
   const canvas = new El('gameCanvas', [], 'canvas');
+  const notices = new El('game-notices');
   const menu = new El('menu-screen', ['ui-screen', 'modal-overlay', 'active']);
   const openSettings = menu.append(new El('btn-open-settings', [], 'button'));
   const settings = new El('settings-screen', ['ui-screen', 'modal-overlay', 'meta-layer']);
@@ -71,7 +72,7 @@ function scene() {
   records.append(new El('', [], 'h2'));
   const show = (el) => el.classList.add('active');
   const hide = (el) => el.classList.remove('active');
-  return { doc, El, canvas, menu, openSettings, settings, title, records, show, hide, manager: new FocusManager(doc) };
+  return { doc, El, canvas, notices, menu, openSettings, settings, title, records, show, hide, manager: new FocusManager(doc) };
 }
 
 // ---- 1. Dialog semantics -----------------------------------------------------------------------------------
@@ -110,18 +111,19 @@ await check('a DOM without setAttribute (the Node test stub) is left alone inste
 
 // ---- 2. Opening and closing a layer ------------------------------------------------------------------------
 await check('opening a layer moves focus in and makes the screen and canvas underneath inert', () => {
-  const { doc, canvas, menu, openSettings, settings, show, manager } = scene();
+  const { doc, canvas, notices, menu, openSettings, settings, show, manager } = scene();
   openSettings.focus();
   show(settings);
   manager.opened(settings);
   assert.equal(doc.activeElement, settings, 'focus is inside the dialog');
   assert.equal(menu.getAttribute('inert'), '', 'the menu underneath cannot be reached');
   assert.equal(canvas.getAttribute('inert'), '', 'neither can the arena');
+  assert.equal(notices.getAttribute('inert'), '', 'dialogue controls outside the HUD are also blocked');
   assert.equal(settings.getAttribute('inert'), null, 'the dialog itself stays live');
 });
 
 await check('closing it restores focus to the control that opened it and removes only its own inert marks', () => {
-  const { doc, canvas, menu, openSettings, settings, show, hide, manager } = scene();
+  const { doc, canvas, notices, menu, openSettings, settings, show, hide, manager } = scene();
   openSettings.focus();
   show(settings);
   manager.opened(settings);
@@ -130,6 +132,7 @@ await check('closing it restores focus to the control that opened it and removes
   assert.equal(doc.activeElement, openSettings);
   assert.equal(menu.getAttribute('inert'), null);
   assert.equal(canvas.getAttribute('inert'), null);
+  assert.equal(notices.getAttribute('inert'), null, 'notice controls become available again');
   assert.equal(manager.hasOpen, false);
 });
 

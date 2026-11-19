@@ -2869,29 +2869,10 @@ export class Enemy extends Entity {
       ctx.restore();
     }
 
-    // 2. Boss Retreat & Re-entry banners
+    // Retreat/re-entry announcements belong to the HUD; keep only enemy status and runes here.
     if (this.isRetreating) {
-      ctx.fillStyle = '#fde047';
-      ctx.shadowColor = '#f59e0b';
-      ctx.shadowBlur = 12;
-      ctx.font = `bold ${this.isFinalBoss ? 16 : 12}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const retreatMsg = this.phaseClearedOnRetreat ? '⚡ LÙI LẠI... (-1 MẠNG)' : '⚡ ĐÒN ĐÁNH CỦA TRÙM! LÙI LẠI...';
-      ctx.fillText(retreatMsg, 0, this.isFinalBoss ? (-this.radius * 0.80) : (-this.radius - 28));
       ctx.restore();
       return;
-    }
-
-    if (this.isReEntering) {
-      ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#0284c7';
-      ctx.shadowBlur = 12;
-      ctx.font = `bold ${this.isFinalBoss ? 16 : 12}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const reEnterMsg = this.phaseClearedOnRetreat ? '🔥 KÝ TỰ MỚI! 🔥' : '⚠️ TRÙM TIẾP TỤC TẤN CÔNG! ⚠️';
-      ctx.fillText(reEnterMsg, 0, this.isFinalBoss ? (-this.radius * 0.80) : (-this.radius - 28));
     }
 
     if (this.symbolQueue.length === 0) {

@@ -56,6 +56,8 @@ export class UIManager {
     this.gestureFeedback = document.getElementById('gesture-feedback');
     this.gestureHint = document.getElementById('gesture-hint');
     this.hudTimer = document.getElementById('hud-timer');
+    this.gameplayNotice = document.getElementById('gameplay-notice');
+    this._gameplayNoticeTimeout = null;
 
     // Level Transition Banner Elements
     this.levelTransitionBanner = document.getElementById('level-transition-banner');
@@ -762,6 +764,7 @@ export class UIManager {
   }
 
   showScreen(stateName, payload = {}) {
+    if (stateName !== GAME_STATES.PLAYING) this.clearGameplayNotice();
     if (stateName === GAME_STATES.MENU || stateName === GAME_STATES.PRACTICE || stateName === GAME_STATES.STORY) {
       clearTimeout(this._ltbTimeout);
       clearTimeout(this._ltbDrawTimeout);
@@ -893,6 +896,29 @@ export class UIManager {
     } else if (stateName === GAME_STATES.VICTORY) {
       this._stopVictoryAnim();
     }
+  }
+
+  /** Show the latest gameplay announcement in the HUD, outside the monster arena. */
+  showGameplayNotice(text, color = '#fef08a') {
+    const notice = this.gameplayNotice;
+    if (!notice?.classList) return false;
+
+    const message = String(text);
+    if (notice.textContent !== message) notice.textContent = message;
+    notice.style?.setProperty?.('--notice-color', color);
+    notice.classList.add('show');
+    clearTimeout(this._gameplayNoticeTimeout);
+    this._gameplayNoticeTimeout = setTimeout(() => this.clearGameplayNotice(), 2400);
+    this._gameplayNoticeTimeout?.unref?.();
+    return true;
+  }
+
+  clearGameplayNotice() {
+    clearTimeout(this._gameplayNoticeTimeout);
+    this._gameplayNoticeTimeout = null;
+    if (!this.gameplayNotice) return;
+    this.gameplayNotice.classList?.remove('show');
+    this.gameplayNotice.textContent = '';
   }
 
   // =========================================================================

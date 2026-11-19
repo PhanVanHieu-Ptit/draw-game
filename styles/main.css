@@ -2987,7 +2987,7 @@ html, body {
 }
 
 /* A speech toast would sit half-behind the open tutorial card and bleed through it */
-.tutorial-overlay.show ~ #hud-playing .dialogue-toast {
+.tutorial-overlay.show ~ .game-notices .dialogue-toast {
   opacity: 0;
   visibility: hidden;
   transition: none;

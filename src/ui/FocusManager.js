@@ -104,7 +104,7 @@ export class FocusManager {
     });
   }
 
-  /** Everything the player could still reach under a new layer: the arena canvas and the other open screens */
+  /** Everything the player could still reach under a new layer: the arena, notices and other open screens */
   _defaultBackdrop() {
     const doc = this.doc;
     if (!doc || typeof doc.querySelectorAll !== 'function') return [];
@@ -112,6 +112,8 @@ export class FocusManager {
     try {
       const canvas = typeof doc.getElementById === 'function' ? doc.getElementById('gameCanvas') : null;
       if (canvas && typeof canvas.setAttribute === 'function') list.push(canvas);
+      const notices = doc.getElementById?.('game-notices');
+      if (notices && typeof notices.setAttribute === 'function') list.push(notices);
       for (const screen of doc.querySelectorAll('.ui-screen.active')) list.push(screen);
     } catch (e) { /* no DOM: nothing to make inert */ }
     return list;
