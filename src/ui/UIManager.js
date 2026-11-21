@@ -1506,19 +1506,23 @@ export class UIManager {
    * @param {boolean} isSuccess
    * @param {string|null} [hint] explains how to fix a missed stroke (shown under the pill)
    */
-  showGestureFeedback(gesture, score, isSuccess, hint = null) {
+  showGestureFeedback(gesture, score, isSuccess, hint = null, result = null) {
     if (!this.gestureFeedback) return;
     this._showHint(hint);
 
     if (gesture && RUNES[gesture]) {
       const rune = RUNES[gesture];
-      this.gestureFeedback.textContent = `${rune.symbol} ${rune.name.toUpperCase()} (${(score * 100).toFixed(0)}%)`;
+      this.gestureFeedback.textContent = `✓ ${rune.symbol} ${rune.name.toUpperCase()} · Khớp ${(score * 100).toFixed(0)}%${isSuccess ? '' : ' · Chưa trúng'}`;
       this.gestureFeedback.className = isSuccess ? 'feedback-success' : 'feedback-miss';
     } else {
-      this.gestureFeedback.textContent = 'KHÔNG KHỚP';
+      const ambiguous = result?.reason === 'ambiguous';
+      const candidate = result?.candidate && RUNES[result.candidate];
+      const match = candidate && score >= 0.35 ? ` · ${candidate.symbol} Khớp ${Math.round(score * 100)}%` : '';
+      this.gestureFeedback.textContent = `${ambiguous ? '? CHƯA RÕ ẤN KÝ' : '× KHÔNG KHỚP'}${match}`;
       this.gestureFeedback.className = 'feedback-fizzle';
     }
 
+    this.gestureFeedback.setAttribute?.('data-verdict', gesture ? 'valid' : result?.reason === 'ambiguous' ? 'ambiguous' : 'rejected');
     this.gestureFeedback.classList.add('show');
     clearTimeout(this._feedbackTimeout);
     this._feedbackTimeout = setTimeout(() => {

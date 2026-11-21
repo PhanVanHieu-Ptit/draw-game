@@ -435,7 +435,12 @@ export class Game {
         this.hapticSystem.setEnabled(value);
         break;
       case 'screenShake':
-        this.particleSystem.setShakeEnabled(value);
+        this.particleSystem.setShakeEnabled(value && !this.settings.get('reducedEffects'));
+        break;
+      case 'trailEffect':
+      case 'reducedEffects':
+        this.inputHandler.setTrailOptions(this.settings.get('trailEffect'), this.settings.get('reducedEffects'));
+        this.particleSystem.setShakeEnabled(this.settings.get('screenShake') && !this.settings.get('reducedEffects'));
         break;
       case 'quality':
         this.quality.setPreference(value);
@@ -678,7 +683,7 @@ export class Game {
 
     if (this.particleSystem) {
       this.particleSystem.setGlow(q.particleGlow && q.glowEffects);
-      this.particleSystem.setShakeEnabled(q.screenShake);
+      this.particleSystem.setShakeEnabled(q.screenShake && this.settings.get('screenShake') && !this.settings.get('reducedEffects'));
       const factor = q.particleDensity !== undefined ? q.particleDensity : q.particleFactor;
       if (this.particleBudget) {
         this.particleSystem.setActiveLimit(this.particleBudget * factor);
@@ -2018,10 +2023,10 @@ export class Game {
     // 8. Render Dynamic Lighting (Darkness Vignette & Radial Light Cutouts)
     this._renderDynamicLighting(ctx);
 
-    // 9. Render Neon Drawing Trail
-    this.inputHandler.render(ctx);
-
     ctx.restore();
+
+    // Input ink stays in logical screen space, independent of combat camera shake.
+    this.inputHandler.render(ctx);
 
     // 10. Pressure cues in screen space (not shaken): edge arrows, last-heart glow, slow-motion tint
     if (this.danger) this.danger.render(ctx, this);
@@ -2370,7 +2375,7 @@ export class Game {
       this._trackMiss(result);
       this.audioSystem.playFizzle();
       const hint = getMissHint(result.reason, result.candidate, result.score);
-      this.uiManager.showGestureFeedback(null, 0, false, hint);
+      this.uiManager.showGestureFeedback(null, result.score, false, hint, result);
       this._showMissGuide(result, rawStroke);
       this._fizzleCombo();
       return;

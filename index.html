@@ -205,7 +205,7 @@
         <div id="assist-badge" class="assist-badge hidden">♿ Chế độ trợ năng — không tính vào bảng điểm</div>
         <!-- Strokes of a Spell Phrase in progress (hidden when the chain is empty) -->
         <div class="phrase-chain hidden" id="phrase-chain" aria-live="polite"></div>
-        <div class="gesture-pill" id="gesture-feedback">ARCANE SLASH</div>
+        <div class="gesture-pill" id="gesture-feedback" role="status" aria-live="polite" aria-atomic="true">ARCANE SLASH</div>
         <div class="gesture-hint" id="gesture-hint"></div>
         <!-- Alternative input for players who cannot draw: tap a rune (or press keys 1-8) -->
         <div class="rune-pad hidden" id="rune-pad" aria-label="Bảng ấn ký thay thế"></div>
@@ -703,6 +703,7 @@
                 <button type="button" data-value="strict">Chặt</button>
               </div></div>
             <p class="setting-note" id="sensitivity-note"></p>
+            <p class="setting-note">Vẽ bằng một ngón tay hoặc bút. Chạm thêm không đổi nét vẽ; khi xoay màn hình, hãy nhấc tay rồi vẽ lại.</p>
             <label class="setting-row"><span class="setting-label">Gợi ý khi vẽ sai (hiện nét mẫu)</span>
               <input type="checkbox" role="switch" class="switch" data-setting="missHints"></label>
           </section>
@@ -725,6 +726,14 @@
                 <button type="button" data-value="low">Thấp</button>
               </div></div>
             <p class="setting-note" id="quality-note"></p>
+            <div class="setting-row"><span class="setting-label">Vệt phép</span>
+              <div class="seg" data-setting="trailEffect">
+                <button type="button" data-value="full">Rực sáng</button>
+                <button type="button" data-value="simple">Đơn giản</button>
+                <button type="button" data-value="minimal">Tối thiểu</button>
+              </div></div>
+            <label class="setting-row"><span class="setting-label">Giảm hiệu ứng vẽ và rung màn hình</span>
+              <input type="checkbox" role="switch" class="switch" data-setting="reducedEffects"></label>
           </section>
 
           <section class="settings-group">

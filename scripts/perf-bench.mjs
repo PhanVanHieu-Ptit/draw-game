@@ -274,8 +274,14 @@ const BENCH_SRC = `(() => {
   };
   // recognition timing + results
   const rec = { ms: [], results: [] };
-  const origRecognize = g.gestureEngine.recognize.bind(g.gestureEngine);
-  g.gestureEngine.recognize = function (pts) { const t = performance.now(); const r = origRecognize(pts); rec.ms.push(performance.now() - t); rec.results.push({ gesture: r.gesture, score: r.score, reason: r.reason, n: pts.length }); return r; };
+  const recognizer = g.inputHandler.recognition || g.gestureEngine;
+  const origRecognize = recognizer.recognize.bind(recognizer);
+  recognizer.recognize = function (pts) {
+    const t = performance.now();
+    const record = r => { if (r) { rec.ms.push(performance.now() - t); rec.results.push({ gesture: r.gesture, score: r.score, reason: r.reason, n: pts.length }); } return r; };
+    const result = origRecognize(pts);
+    return result?.then ? result.then(record) : record(result);
+  };
   const GHOST_TYPES = ['REGULAR', 'SPEEDSTER', 'ARMORED', 'REGULAR', 'REGULAR'];
   const QUEUES = [['horizontal'], ['vertical'], ['caret'], ['v_shape'], ['lightning']];
   let keepTimer = 0, partTimer = 0, castTimer = 0;
@@ -378,13 +384,13 @@ function buildStroke(template, cx, cy, size, stepPx, seed) {
   return out;
 }
 
-async function drawStroke(page, points, { touch, intervalMs }) {
+async function drawStroke(page, points, { touch, intervalMs, pointerType = 'mouse' }) {
   const first = points[0];
   if (touch) {
     await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: first.x, y: first.y, id: 1 }] });
   } else {
-    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: first.x, y: first.y });
-    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: first.x, y: first.y, button: 'left', buttons: 1, clickCount: 1 });
+    await page.send('Input.dispatchMouseEvent', { pointerType, type: 'mouseMoved', x: first.x, y: first.y });
+    await page.send('Input.dispatchMouseEvent', { pointerType, type: 'mousePressed', x: first.x, y: first.y, button: 'left', buttons: 1, clickCount: 1 });
   }
   let next = performance.now();
   for (let i = 1; i < points.length; i++) {
@@ -393,11 +399,11 @@ async function drawStroke(page, points, { touch, intervalMs }) {
     if (wait > 1) await sleep(wait);
     const p = points[i];
     if (touch) await page.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p.x, y: p.y, id: 1 }] });
-    else await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, button: 'left', buttons: 1 });
+    else await page.send('Input.dispatchMouseEvent', { pointerType, type: 'mouseMoved', x: p.x, y: p.y, button: 'left', buttons: 1 });
   }
   const last = points[points.length - 1];
   if (touch) await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  else await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: last.x, y: last.y, button: 'left', buttons: 0, clickCount: 1 });
+  else await page.send('Input.dispatchMouseEvent', { pointerType, type: 'mouseReleased', x: last.x, y: last.y, button: 'left', buttons: 0, clickCount: 1 });
 }
 
 // ----------------------------------------------------------------------------------------------- runner

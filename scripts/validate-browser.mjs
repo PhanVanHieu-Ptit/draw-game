@@ -77,6 +77,10 @@ try {
       await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...runeBox, button: 'left', buttons: 1, clickCount: 1 });
       await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...runeBox, button: 'left', buttons: 0, clickCount: 1 });
       check('runePointerDoesNotDoubleCast', (await page.eval('__castChecks.length')) === castsBeforePointer + 1);
+      const beforeKeys = await page.eval('__castChecks.length');
+      await page.eval('__ARCANE_GAME__.canvas.focus()');
+      for (const digit of ['1', '2', '3', '4', '5', '6', '7', '8']) await key(page, digit);
+      check('allEightKeyboardShortcuts', await page.eval(`JSON.stringify(__castChecks.slice(${beforeKeys})) === JSON.stringify(['horizontal','vertical','caret','v_shape','lightning','heart','circle','spiral'])`));
       await page.eval("__ARCANE_GAME__.settings.set('altInput', false)");
       // Let the CSS arena and its ResizeObserver agree before starting a captured stroke.
       await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
@@ -129,12 +133,13 @@ try {
       await page.eval("__ARCANE_GAME__.settings.set('highlight', false); __bench.play()");
       const points = buildStroke(templates.horizontal, 195, 400, 150, 6, 9);
       await drawStroke(page, points, { touch: true, intervalMs: 8 });
+      await page.eval(`new Promise(resolve => { const end = performance.now() + 3000; const check = () => { if (__ARCANE_GAME__.metrics.spellsCast > 0 || performance.now() > end) resolve(); else setTimeout(check, 10); }; check(); })`);
       report.standalone = await page.eval(`({ state: __bench.state(), running: __ARCANE_GAME__.isRunning, errors: __perf.errors,
-        spritesLoaded: __ARCANE_GAME__.player.spriteLoaded, casts: __ARCANE_GAME__.metrics.spellsCast, audioState: __ARCANE_GAME__.audioSystem.ctx?.state })`);
+        workerActive: !!__ARCANE_GAME__.inputHandler.recognition?.worker, spritesLoaded: __ARCANE_GAME__.player.spriteLoaded, casts: __ARCANE_GAME__.metrics.spellsCast, audioState: __ARCANE_GAME__.audioSystem.ctx?.state })`);
       report.standalone.requests = requests;
-      report.standalone.noExternalRequests = requests.every(u => u.startsWith('file:') && u.endsWith('.html'));
+      report.standalone.noExternalRequests = requests.every(u => (u.startsWith('file:') && u.endsWith('.html')) || u.startsWith('blob:'));
       await screenshot(page, 'standalone-offline');
     } finally { await page.close(); }
   }
 } finally { await b.stop(); if (opts.out) fs.writeFileSync(opts.out, JSON.stringify(report, null, 2) + '\n'); }
-if (opts.assert && (report.profiles.some(r => r.error || Object.values(r.checks).some(x => !x)) || !report.standalone?.noExternalRequests || report.standalone.casts < 1)) process.exitCode = 1;
+if (opts.assert && (report.profiles.some(r => r.error || Object.values(r.checks).some(x => !x)) || !report.standalone?.noExternalRequests || report.standalone.casts < 1 || !report.standalone.workerActive)) process.exitCode = 1;

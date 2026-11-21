@@ -2,6 +2,7 @@
   "$comment": "Single list of the game's Node test suites, read by scripts/run-tests.mjs (npm test). Every file matching test-*.js, scripts/test-*.js or tests/*.test.js must appear in `suites` or `quarantine`, otherwise the runner fails (orphan guard). Admin suites run through `npm run test:admin`.",
   "suites": [
     { "id": "combat", "file": "tests/combat.test.js", "area": "combat" },
+    { "id": "pointer-input", "file": "tests/pointer-input.test.js", "area": "gestures" },
     { "id": "gesture-recognition", "file": "tests/gesture-recognition.test.js", "area": "gestures" },
     { "id": "gesture-enhancements", "file": "test-gesture-enhancements.js", "area": "gestures" },
     { "id": "performance-system", "file": "test-performance-system.js", "area": "performance" },

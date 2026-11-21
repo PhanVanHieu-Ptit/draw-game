@@ -113,6 +113,8 @@ export class PracticeSession {
   }
 
   _resetAttempt() {
+    this._attemptGeneration = (this._attemptGeneration || 0) + 1;
+    this.game.inputHandler?.cancelStroke?.();
     this.liveAccuracy = 0;
     this.lastResult = null;
     this._liveTimer = 0;
@@ -139,11 +141,19 @@ export class PracticeSession {
     this._liveTimer = LIVE_INTERVAL;
     this._lastLiveLen = pts.length;
 
-    const r = this.game.gestureEngine.scoreFor(pts, this.target);
-    this.liveAccuracy = r.accuracy;
-    this.lastResult = null; // a new stroke started: hide the previous verdict
-    const meta = this.game.uiManager && this.game.uiManager.meta;
-    if (meta && typeof meta.updatePracticeLive === 'function') meta.updatePracticeLive(this.liveAccuracy);
+    if (this._livePending) return;
+    const generation = this._attemptGeneration;
+    const apply = r => {
+      if (!r || !this.active || generation !== this._attemptGeneration || !input.isDrawing || input.currentPoints !== pts) return;
+      this.liveAccuracy = r.accuracy;
+      this.lastResult = null;
+      const meta = this.game.uiManager && this.game.uiManager.meta;
+      if (meta && typeof meta.updatePracticeLive === 'function') meta.updatePracticeLive(this.liveAccuracy);
+    };
+    if (input.recognition) {
+      this._livePending = true;
+      input.recognition.scoreFor(pts.slice(), this.target).then(apply).finally(() => { this._livePending = false; });
+    } else apply(this.game.gestureEngine.scoreFor(pts, this.target));
   }
 
   /**
@@ -151,11 +161,18 @@ export class PracticeSession {
    * @param {Array<{x:number, y:number}>} rawStroke
    * @returns {Object|null} the attempt record
    */
-  handleStroke(rawStroke) {
+  handleStroke(rawStroke, scored = null) {
     if (!this.active || !rawStroke || rawStroke.length < 2) return null;
 
     const game = this.game;
-    const r = game.gestureEngine.scoreFor(rawStroke, this.target);
+    if (!scored && game.inputHandler?.recognition) {
+      const generation = this._attemptGeneration;
+      return game.inputHandler.recognition.scoreFor(rawStroke, this.target).then(result => {
+        if (result && this.active && generation === this._attemptGeneration) return this.handleStroke(rawStroke, result);
+        return null;
+      });
+    }
+    const r = scored || game.gestureEngine.scoreFor(rawStroke, this.target);
     const verdict = describeAttempt(r, this.target);
     const rune = RUNES[this.target];
 
@@ -260,7 +277,7 @@ export class PracticeSession {
     ctx.arc(pts[0].x, pts[0].y, 7, 0, Math.PI * 2);
     ctx.fill();
 
-    const dot = pointAlong(pts, (this._age * 0.5) % 1);
+    const dot = this.game.settings?.get('reducedEffects') ? pts[0] : pointAlong(pts, (this._age * 0.5) % 1);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2);
