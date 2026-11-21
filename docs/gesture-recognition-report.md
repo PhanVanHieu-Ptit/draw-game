@@ -1,5 +1,7 @@
 # Gesture recognition evaluation
 
+For the current pointer pipeline and browser measurements, see [Touch input verification](touch-input-report.md).
+
 Measured 2026-11-07 with Node v22.22.3 on the development machine. Results describe synthetic fixtures, not a human usability study or a mobile frame-rate guarantee.
 
 ## Baseline and decision
@@ -14,7 +16,7 @@ Observed weaknesses:
 - Practice scored the same stroke twice. Invalid coordinates and excessive input had no explicit rejection.
 - Input could mix pointer IDs, omitted release coordinates, and recognized cancelled strokes. Low-sample strokes could be mistaken for taps regardless of distance.
 
-Changes keep the baseline matcher, add reversed spiral templates, class-specific score floors, a configurable margin between distinct geometrically valid candidates, and canonical geometry units. Resampling remains independent of event timing. Mouse, touch, and pen use the same Pointer Events path with coalesced samples and pointer ownership. Recognition runs on release, never every frame. Samples retained by input are bounded to approximately 2,048; drawing already strides long trails. Practice analysis is reused.
+Changes keep the baseline matcher, add reversed spiral templates, class-specific score floors, a configurable margin between distinct geometrically valid candidates, and canonical geometry units. Resampling remains independent of event timing. Mouse, touch, and pen use the same Pointer Events path with coalesced samples and pointer ownership. Recognition runs on release, never every frame. The current input pipeline retains up to 8,192 raw samples plus one overflow sentinel; longer strokes are rejected without altering their geometry. Visual ink uses an independent spatial sample set and bounded-error simplification. Practice analysis is reused.
 
 ## Accuracy
 
@@ -59,7 +61,7 @@ const engine = new GestureEngine({
 });
 ```
 
-The effective class threshold is `max(minScore, thresholds[class] ?? 0)`. `setSensitivity()` still updates the global floor; class floors stay in force and may be explicitly overridden. Length is in logical canvas units; InputHandler maps CSS/client coordinates to logical dimensions without using device pixel ratio. Shape matching removes translation and scale. Strokes shorter than the logical-unit minimum remain deliberate accidental-touch rejections.
+The default effective class threshold is `max(minScore, thresholds[class] ?? 0)`. `setSensitivity()` updates the global floor and shifts class floors by −0.10 for easy / +0.10 for strict, so the preference affects all eight gestures. Default normal behavior is unchanged. Length is in logical canvas units; InputHandler maps CSS/client coordinates to logical dimensions without using device pixel ratio. Shape matching removes translation and scale. Strokes shorter than the logical-unit minimum remain deliberate accidental-touch rejections.
 
 `recognize()` preserves `gesture`, `score`, `candidate`, `reason`, and adds `confidence` (same normalized similarity as score) and `margin` (best minus runner-up score). Confidence is a similarity measure, not a calibrated probability. New rejection codes are `ambiguous`, `invalid_input`, and `too_complex`; existing geometry and low-score codes remain. Vietnamese feedback uses the existing miss-hint setting and guide overlay.
 

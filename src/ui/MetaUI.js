@@ -434,7 +434,7 @@ export class MetaUI {
       }
     });
 
-    this._text('sensitivity-note', `${SENSITIVITY_TEXT[s.get('sensitivity')] || ''} (ngưỡng nhận diện ${Math.round((SENSITIVITY_LEVELS[s.get('sensitivity')] || 0.65) * 100)}%)`);
+    this._text('sensitivity-note', `${SENSITIVITY_TEXT[s.get('sensitivity')] || ''} (ngưỡng cơ bản ${Math.round((SENSITIVITY_LEVELS[s.get('sensitivity')] || 0.65) * 100)}%)`);
     const q = this.game.quality;
     const tierName = q && QUALITY_NAMES[q.tier] ? QUALITY_NAMES[q.tier] : '';
     this._text('quality-note', s.get('quality') === 'auto'

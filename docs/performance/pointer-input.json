@@ -1,0 +1,1079 @@
+{
+  "date": "2026-11-20",
+  "environment": "Headless Chrome, CDP emulated input; timings end at canvas draw submission, not physical display",
+  "profiles": [
+    {
+      "profile": "desktop",
+      "strokes": [
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        }
+      ],
+      "alignmentErrorLogicalPixels": 0,
+      "workerActive": true,
+      "eventToInkMs": {
+        "samples": 1014,
+        "p50": 16.200000047683716,
+        "p95": 17.799999952316284,
+        "max": 21.399999976158142
+      },
+      "recognitionRoundTripMs": {
+        "samples": 24,
+        "p50": 16.899999976158142,
+        "p95": 17.400000035762787,
+        "max": 17.5
+      },
+      "runtimeErrors": [],
+      "practiceWorkerScoring": true
+    },
+    {
+      "profile": "laptop",
+      "strokes": [
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "mouse",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        }
+      ],
+      "alignmentErrorLogicalPixels": 0,
+      "workerActive": true,
+      "eventToInkMs": {
+        "samples": 338,
+        "p50": 16.599999964237213,
+        "p95": 17.900000035762787,
+        "max": 18.599999964237213
+      },
+      "recognitionRoundTripMs": {
+        "samples": 8,
+        "p50": 15.699999988079071,
+        "p95": 19.599999964237213,
+        "max": 19.599999964237213
+      },
+      "runtimeErrors": []
+    },
+    {
+      "profile": "tablet",
+      "strokes": [
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 1,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "pen",
+          "intervalMs": 20,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        }
+      ],
+      "alignmentErrorLogicalPixels": 0,
+      "workerActive": true,
+      "eventToInkMs": {
+        "samples": 1006,
+        "p50": 16.700000047683716,
+        "p95": 67.30000001192093,
+        "max": 68.70000004768372
+      },
+      "recognitionRoundTripMs": {
+        "samples": 24,
+        "p50": 16.600000023841858,
+        "p95": 18.200000047683716,
+        "max": 18.400000035762787
+      },
+      "runtimeErrors": [],
+      "cancelResets": true
+    },
+    {
+      "profile": "mobile",
+      "strokes": [
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        }
+      ],
+      "alignmentErrorLogicalPixels": 0,
+      "workerActive": true,
+      "eventToInkMs": {
+        "samples": 330,
+        "p50": 66.30000001192093,
+        "p95": 67.5,
+        "max": 68.5
+      },
+      "recognitionRoundTripMs": {
+        "samples": 8,
+        "p50": 16.5,
+        "p95": 17.5,
+        "max": 17.5
+      },
+      "runtimeErrors": [],
+      "cancelResets": true,
+      "multiTouchSingleCast": true,
+      "orientationRecovery": true
+    },
+    {
+      "profile": "mobile-landscape",
+      "strokes": [
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 8,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "horizontal",
+          "gesture": "horizontal",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "vertical",
+          "gesture": "vertical",
+          "score": 1,
+          "reason": null,
+          "samples": 4
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "caret",
+          "gesture": "caret",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "v_shape",
+          "gesture": "v_shape",
+          "score": 1,
+          "reason": null,
+          "samples": 6
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "lightning",
+          "gesture": "lightning",
+          "score": 0.934,
+          "reason": null,
+          "samples": 8
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "heart",
+          "gesture": "heart",
+          "score": 0.995,
+          "reason": null,
+          "samples": 26
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "circle",
+          "gesture": "circle",
+          "score": 0.88,
+          "reason": null,
+          "samples": 130
+        },
+        {
+          "pointerType": "touch",
+          "intervalMs": 1,
+          "expected": "spiral",
+          "gesture": "spiral",
+          "score": 0.969,
+          "reason": null,
+          "samples": 162
+        }
+      ],
+      "alignmentErrorLogicalPixels": 0,
+      "workerActive": true,
+      "eventToInkMs": {
+        "samples": 330,
+        "p50": 48.59999996423721,
+        "p95": 50.39999997615814,
+        "max": 51.19999998807907
+      },
+      "recognitionRoundTripMs": {
+        "samples": 8,
+        "p50": 16.900000035762787,
+        "p95": 17.30000001192093,
+        "max": 17.30000001192093
+      },
+      "runtimeErrors": [],
+      "cancelResets": true
+    }
+  ],
+  "chrome": {
+    "date": "2026-11-19T23:51:06.734Z",
+    "chrome": "Chrome/157.0.8103.79",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "node": "v22.22.3",
+    "os": "Darwin 24.6.0 arm64",
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memGB": 32,
+    "gpu": {
+      "devices": [
+        "Google Inc. (Apple) ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Version 15.7.4 (Build 24G517))"
+      ],
+      "featureStatus": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "skia_graphite": "enabled_on",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      }
+    },
+    "headless": true
+  }
+}

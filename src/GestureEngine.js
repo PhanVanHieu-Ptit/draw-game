@@ -367,6 +367,7 @@ export class GestureEngine {
    */
   constructor(options = {}) {
     this.minScore = options.minScore ?? 0.65;
+    this.sensitivity = 'normal';
     this.thresholds = { caret: 0.78, v_shape: 0.78, circle: 0.78, ...options.thresholds };
     this.minMargin = options.minMargin ?? 0.025;
     this.maxInputPoints = options.maxInputPoints ?? 8192;
@@ -620,7 +621,7 @@ export class GestureEngine {
    */
   setSensitivity(level = 'normal') {
     const value = SENSITIVITY_LEVELS[level];
-    if (value !== undefined) this.minScore = value;
+    if (value !== undefined) { this.minScore = value; this.sensitivity = level; }
   }
 
   /**
@@ -658,7 +659,7 @@ export class GestureEngine {
     }
 
     // 8. So sánh với ngưỡng chấp nhận (Threshold Filter)
-    if (bestScore < Math.max(this.minScore, this.thresholds[bestGesture] ?? 0)) {
+    if (bestScore < Math.max(this.minScore, (this.thresholds[bestGesture] ?? 0) + (SENSITIVITY_LEVELS[this.sensitivity] - SENSITIVITY_LEVELS.normal))) {
       return { gesture: null, score: roundedBest, ...details, candidate: bestGesture, reason: 'low_score' };
     }
 

@@ -37,6 +37,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   screenShake: true,
   missHints: true,
   quality: 'auto',
+  trailEffect: 'full',
+  reducedEffects: false,
   colorBlind: false,
   assist: 0,
   altInput: false,
@@ -45,7 +47,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const NUMBER_KEYS = ['masterVolume', 'musicVolume', 'sfxVolume', 'catVolume'];
-const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight', 'storyLines'];
+const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight', 'storyLines', 'reducedEffects'];
 
 /**
  * Coerce a value for `key` into something valid, or return undefined if it is not salvageable.
@@ -66,6 +68,7 @@ export function sanitizeSetting(key, value) {
     return undefined;
   }
   if (key === 'sensitivity') return SENSITIVITY_OPTIONS.includes(value) ? value : undefined;
+  if (key === 'trailEffect') return ['full', 'simple', 'minimal'].includes(value) ? value : undefined;
   if (key === 'quality') return QUALITY_OPTIONS.includes(value) ? value : undefined;
   if (key === 'assist') {
     const n = Number(value);
@@ -100,6 +103,7 @@ export class SettingsStore {
       if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         values.screenShake = false;
+        values.reducedEffects = true;
       }
     } catch (e) { /* no matchMedia: motion stays on */ }
     return values;
