@@ -484,12 +484,19 @@ export class Player extends Entity {
     ctx.restore();
 
     // 2. Invulnerability Flashing
-    if (this.isInvulnerable && Math.floor(this.time * 20) % 2 === 0) {
-      ctx.globalAlpha = 0.35;
+    if (this.isInvulnerable) {
+      ctx.save();
+      ctx.strokeStyle = '#a5f3fc';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, -8, 48, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      if (!this.reducedMotion) ctx.globalAlpha = 0.78 + Math.sin(this.time * 5) * 0.12;
     }
 
     // Gentle idle breathing bob
-    const bob = Math.sin(this.time * 3) * 2.5;
+    const bob = this.reducedMotion ? 0 : Math.sin(this.time * 3) * 2.5;
     ctx.translate(0, bob);
 
     // Hurt recoil glow

@@ -1,0 +1,398 @@
+{
+  "generatedAt": "2026-11-21T00:45:29.881Z",
+  "ok": true,
+  "orphans": [],
+  "manifestProblems": [],
+  "quarantinedNotRun": [
+    {
+      "id": "center-cat-boss-tutorial",
+      "file": "scripts/test-center-cat-boss-tutorial.js",
+      "task": "TST-04",
+      "reason": "Outdated test: fails with a TypeError on the first tutorial minion after WaveSystem changed."
+    },
+    {
+      "id": "boss-minions-and-scary-face",
+      "file": "scripts/test-boss-minions-and-scary-face.js",
+      "task": "TST-05",
+      "reason": "Outdated expectations (level 1 now has 12 minions, new concurrent-minion caps) plus one RNG-dependent assertion."
+    },
+    {
+      "id": "monster-sounds",
+      "file": "scripts/test-monster-sounds.js",
+      "task": "TST-06",
+      "reason": "Outdated test: its fake projectile lacks the cast identity the combat refactor requires."
+    }
+  ],
+  "results": [
+    {
+      "id": "gameplay-feedback",
+      "file": "tests/gameplay-feedback.test.js",
+      "area": "gameplay",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 44.574959,
+      "passed": 13
+    },
+    {
+      "id": "combat",
+      "file": "tests/combat.test.js",
+      "area": "combat",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 42.588375,
+      "passed": null
+    },
+    {
+      "id": "pointer-input",
+      "file": "tests/pointer-input.test.js",
+      "area": "gestures",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 248.195209,
+      "passed": null
+    },
+    {
+      "id": "gesture-recognition",
+      "file": "tests/gesture-recognition.test.js",
+      "area": "gestures",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 107.949875,
+      "passed": null
+    },
+    {
+      "id": "gesture-enhancements",
+      "file": "test-gesture-enhancements.js",
+      "area": "gestures",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 37.211459,
+      "passed": 21
+    },
+    {
+      "id": "performance-system",
+      "file": "test-performance-system.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 32.337875,
+      "passed": 30
+    },
+    {
+      "id": "visual-effects",
+      "file": "test-visual-effects.js",
+      "area": "visuals",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 48.075833,
+      "passed": 46
+    },
+    {
+      "id": "sound-system",
+      "file": "test-sound-system.js",
+      "area": "sound",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 130.171125,
+      "passed": 51
+    },
+    {
+      "id": "new-features",
+      "file": "scripts/test-new-features.js",
+      "area": "features",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 47.81025,
+      "passed": 29
+    },
+    {
+      "id": "doodle-levels-story",
+      "file": "test-doodle-levels-story.js",
+      "area": "story",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 39.53825,
+      "passed": 60
+    },
+    {
+      "id": "story-character-expansion",
+      "file": "test-story-character-expansion.js",
+      "area": "story",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 26.598834,
+      "passed": 69
+    },
+    {
+      "id": "character-visuals",
+      "file": "test-character-visuals.js",
+      "area": "visuals",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 28.107084,
+      "passed": 138
+    },
+    {
+      "id": "difficulty-scaling",
+      "file": "test-difficulty-scaling.js",
+      "area": "balance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 28.346,
+      "passed": 45
+    },
+    {
+      "id": "boss-retreat-all-minions",
+      "file": "scripts/test-boss-retreat-all-minions.js",
+      "area": "boss",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 42.627875,
+      "passed": 28
+    },
+    {
+      "id": "boss-spawn-deadlock-prevention",
+      "file": "scripts/test-boss-spawn-deadlock-prevention.js",
+      "area": "boss",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 43.999542,
+      "passed": null
+    },
+    {
+      "id": "share-card-haptic-catsfx",
+      "file": "test-share-card-haptic-catsfx.js",
+      "area": "features",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 39.300167,
+      "passed": 41
+    },
+    {
+      "id": "boss-gradual-arrival",
+      "file": "scripts/test-boss-gradual-arrival.js",
+      "area": "boss",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 45.9475,
+      "passed": null
+    },
+    {
+      "id": "final-boss-half-screen-right",
+      "file": "scripts/test-final-boss-half-screen-right.js",
+      "area": "boss",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 34.256375,
+      "passed": 40
+    },
+    {
+      "id": "tactical-rune-requirement",
+      "file": "test-tactical-rune-requirement.js",
+      "area": "gameplay",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 1755.794958,
+      "passed": 17
+    },
+    {
+      "id": "mobile-optimization",
+      "file": "test-mobile-optimization.js",
+      "area": "mobile",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 452.505625,
+      "passed": 75
+    },
+    {
+      "id": "endless-mode",
+      "file": "test-endless-mode.js",
+      "area": "gameplay",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 69.845125,
+      "passed": 13
+    },
+    {
+      "id": "meta-features",
+      "file": "test-meta-features.js",
+      "area": "meta",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 251.4015,
+      "passed": 160
+    },
+    {
+      "id": "enemy-render-performance",
+      "file": "test-enemy-render-performance.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 175.802667,
+      "passed": 46
+    },
+    {
+      "id": "engagement-features",
+      "file": "test-engagement-features.js",
+      "area": "engagement",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 1899.741958,
+      "passed": 170
+    },
+    {
+      "id": "story-lore",
+      "file": "test-story-lore.js",
+      "area": "story",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 150.309834,
+      "passed": 175
+    },
+    {
+      "id": "powerups-freeze-blast",
+      "file": "test-powerups-freeze-blast.js",
+      "area": "gameplay",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 113.726833,
+      "passed": 34
+    },
+    {
+      "id": "gesture-momo-sound",
+      "file": "scripts/test-gesture-momo-sound.js",
+      "area": "sound",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 64.073625,
+      "passed": 72
+    },
+    {
+      "id": "test-runner",
+      "file": "tests/run-tests.test.js",
+      "area": "tooling",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 2596.787959,
+      "passed": 21
+    },
+    {
+      "id": "no-hotlinks",
+      "file": "tests/no-hotlinks.test.js",
+      "area": "security",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 116.861417,
+      "passed": 7
+    },
+    {
+      "id": "live-ops-contract",
+      "file": "tests/live-ops-contract.test.js",
+      "area": "liveops",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 312.383417,
+      "passed": 62
+    },
+    {
+      "id": "live-ops-client",
+      "file": "tests/live-ops-client.test.js",
+      "area": "liveops",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 800.466833,
+      "passed": 58
+    },
+    {
+      "id": "audio-loading",
+      "file": "tests/audio-loading.test.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 124.301375,
+      "passed": 12
+    },
+    {
+      "id": "accessibility",
+      "file": "tests/accessibility.test.js",
+      "area": "accessibility",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 63.4665,
+      "passed": 16
+    },
+    {
+      "id": "load-performance",
+      "file": "tests/load-performance.test.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 71.080667,
+      "passed": 5
+    },
+    {
+      "id": "runtime-lifecycle",
+      "file": "tests/runtime-lifecycle.test.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 107.511208,
+      "passed": 9
+    },
+    {
+      "id": "particle-sprites",
+      "file": "tests/particle-sprites.test.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 129.088292,
+      "passed": 3
+    },
+    {
+      "id": "rendering-performance",
+      "file": "tests/rendering-performance.test.js",
+      "area": "performance",
+      "quarantined": false,
+      "ok": true,
+      "reasons": [],
+      "durationMs": 66.697042,
+      "passed": 11
+    }
+  ]
+}

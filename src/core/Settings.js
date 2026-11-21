@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   quality: 'auto',
   trailEffect: 'full',
   reducedEffects: false,
+  compactHud: false,
   colorBlind: false,
   assist: 0,
   altInput: false,
@@ -47,7 +48,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const NUMBER_KEYS = ['masterVolume', 'musicVolume', 'sfxVolume', 'catVolume'];
-const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight', 'storyLines', 'reducedEffects'];
+const BOOLEAN_KEYS = ['muted', 'haptics', 'screenShake', 'missHints', 'colorBlind', 'altInput', 'highlight', 'storyLines', 'reducedEffects', 'compactHud'];
 
 /**
  * Coerce a value for `key` into something valid, or return undefined if it is not salvageable.

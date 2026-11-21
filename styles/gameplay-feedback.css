@@ -1,0 +1,94 @@
+/* Gameplay hierarchy: survival → imminent threat → next rune → progress → celebrations.
+   All text sits in reserved rails; the canvas keeps its full input surface. */
+.health-group { grid-area: hearts; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; }
+.hud-hearts-panel { flex-wrap: wrap; align-items: center; gap: 2px; border-radius: 10px; }
+.health-value { font: 800 0.75rem var(--font-family); color: #fff0f3; margin-left: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hud-hearts-panel[data-critical="true"] { border-color: #fda4af; background: #401d33; }
+.player-protection { color: #a5f3fc; font-size: 0.72rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.player-protection:empty { display: none; }
+.score-label { color: #c6badb; font-size: 0.62rem; letter-spacing: 0.06em; }
+.combo-container { opacity: 1; transform: none; transition: color 120ms ease; align-items: flex-start; }
+.combo-container:not(.active) .combo-mult { color: #c6badb; text-shadow: none; }
+.combo-mult { font-size: 0.75rem; letter-spacing: 0; }
+.combo-time { color: #ddd3ed; font-size: 0.6rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.combo-container[data-urgent="true"] .combo-time { color: #ffe49c; }
+.combo-bar-wrap { width: 100%; min-width: 72px; height: 5px; }
+.combo-bar { transition: none; }
+.combat-readout { flex: 0 0 auto; display: none; min-width: 0; padding: 5px 8px; border: 1px solid #574868; border-radius: 10px; background: #181127; color: #e9e0f5; }
+#game-wrapper:has(#hud-playing.active) .combat-readout { display: block; }
+.combat-summary { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; min-width: 0; min-height: 25px; }
+.wave-progress { flex: 0 1 auto; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+.boss-status { flex: 1 1 150px; max-width: 380px; font-size: 0.65rem; font-weight: 700; color: #fecdd3; }
+.boss-status[data-visible="false"], .spell-cooldowns[data-visible="false"] { display: none; }
+.boss-meter { height: 5px; border-radius: 4px; background: #4c2948; overflow: hidden; margin-top: 3px; }
+#boss-fill { height: 100%; background: #fda4af; transition: width 120ms linear; }
+.threat-cue { font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+.threat-cue[data-urgent="true"] { color: #fff1bd; }
+.combat-readout[data-urgent="true"] { border-color: #ffe49c; border-left-width: 4px; background: #302436; }
+.spell-cooldowns { display: flex; gap: 3px; margin-top: 4px; }
+.cooldown-chip { flex: 1; text-align: center; border: 1px solid #6b596f; border-radius: 4px; padding: 2px; color: #ffe49c; font-size: 0.65rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cooldown-chip[data-ready="true"] { color: #b5f5d6; border-color: #436758; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+#game-notices[data-urgent="true"] .dialogue-toast,
+#game-notices[data-urgent="true"] .toast-stack { display: none !important; }
+.game-notices .notice-messages { overflow-x: hidden; }
+.game-notices .gameplay-notice { flex: 1 0 100%; padding: 2px 4px; font-size: 0.75rem; }
+.game-notices:has(.gameplay-notice.show) .dialogue-toast,
+.game-notices:has(.level-transition-banner.show) .dialogue-toast { display: none !important; }
+#gesture-feedback { min-height: 28px; margin: 0; line-height: 1.3; transition: opacity 100ms ease; animation: none; }
+.feedback-perfect { color: #fff0b1; border: 1px solid #e9c85f; background: #32213d; }
+.feedback-cooldown { color: #e5d9fa; border: 1px solid #a995c4; background: #251d36; }
+.feedback-damage { color: #ffe4e9; border: 1px solid #fda4af; background: #3c1b32; }
+.countdown-overlay { pointer-events: none; background: #100c2238; }
+.countdown-num { animation: none; font-size: clamp(3rem, 12vw, 6rem); text-shadow: 0 2px 12px #100c22; }
+.countdown-hint { background: #181127ed; border: 1px solid #8f749e; padding: 8px 14px; border-radius: 8px; }
+#pause-screen > .glass-card { animation-duration: 140ms; }
+#game-wrapper[data-compact-hud="true"] .hud-status-bar .hud-companion-badge,
+#game-wrapper[data-compact-hud="true"] .hud-diff-pill,
+#game-wrapper[data-compact-hud="true"] .hud-timer,
+#game-wrapper[data-compact-hud="true"] .score-label { display: none; }
+#game-wrapper[data-compact-hud="true"] .hud-status-bar { height: 24px; }
+#game-wrapper[data-compact-hud="true"] { --hud-height: 96px; }
+#game-wrapper[data-reduced-motion="true"] *,
+#game-wrapper[data-reduced-motion="true"] *::before,
+#game-wrapper[data-reduced-motion="true"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+@media (max-width: 600px) {
+  #game-wrapper { --hud-height: 168px; }
+  .health-value { font-size: 0.68rem; margin-left: 4px; }
+  .heart-icon { font-size: 0.8rem; }
+  .player-protection { font-size: 0.62rem; }
+  .score-label { display: none; }
+  .combo-mult { font-size: 0.67rem; }
+  .combo-time { font-size: 0.55rem; }
+  .hud-score-row { gap: 8px; }
+  .combat-summary { flex-wrap: wrap; gap: 3px 8px; }
+  .threat-cue { font-size: 0.67rem; margin-left: auto; }
+  .boss-status[data-visible="true"] { order: 3; flex-basis: 100%; max-width: none; }
+  .combat-readout:has(.boss-status[data-visible="true"]) .wave-progress { display: none; }
+  .cooldown-chip { font-size: 0.57rem; padding: 2px 0; }
+  #gesture-feedback { font-size: 0.7rem; padding: 4px 8px; }
+  #game-wrapper[data-compact-hud="true"] { --hud-height: 148px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  #game-wrapper { --hud-height: 56px; --notice-height: 60px; }
+  .hud-status-bar { display: none; }
+  .hud-center-panel .wave-badge-row { display: none; }
+  .health-group { gap: 2px 4px; }
+  .hud-hearts-panel { flex-wrap: nowrap; }
+  .hud-hearts-panel .heart-icon:not(:first-child) { display: none; }
+  #game-wrapper:has(#hud-playing.active) .game-notices { top: calc(var(--sat) + var(--hud-height) + 2px); left: max(var(--edge), var(--sal)); height: calc(var(--notice-height) - 4px); max-height: calc(var(--notice-height) - 4px); gap: 2px; }
+  .combat-readout { padding: 2px 6px; }
+  .combat-summary { flex-wrap: nowrap; min-height: 20px; }
+  .boss-status[data-visible="true"] { order: 0; flex-basis: 140px; }
+  .spell-cooldowns { margin-top: 2px; }
+  .cooldown-chip { padding-block: 0; }
+  .game-notices .gameplay-notice { font-size: 0.64rem; padding: 0; }
+  .hud-status-bar { width: 100%; }
+  #game-wrapper[data-compact-hud="true"] { --hud-height: 56px; }
+  #game-wrapper:has(#rune-pad:not(.hidden)) { --feedback-height: 96px; }
+  .countdown-hint { padding: 4px 10px; font-size: 0.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .countdown-num, #gesture-feedback { animation: none; }
+  #boss-fill, .combo-container { transition: none; }
+}

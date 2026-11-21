@@ -1,0 +1,44 @@
+Arcane Paws — Gameplay feedback validation
+
+Delivered
+- Numeric HP alongside hearts, critical-health styling, temporary protection time and a stable shield ring.
+- Persistent combo count and score multiplier, remaining combo time, an explicit expiration warning and a separate combo-break state.
+- Remaining hostile wave count, fixed boss phase/life/rune progress, and per-spell ready/cooldown states when cooldowns are enabled.
+- A threat cue selects the enemy with the shortest estimated time to collision and displays its direction and next required rune. Hidden runes remain hidden.
+- Enemy types have distinct glyphs and names. The active rune has a pointer, larger border and stronger emphasis. Secondary badges collapse during crowded battles.
+- Cast success, Perfect Cast, multiple targets, incorrect/ambiguous input, secret spells, blocked hits and unavailable cooldowns have explicit messages.
+- Independent cast and announcement surfaces prevent routine results from replacing boss transitions. Repeated messages do not extend themselves; stale notifications are discarded.
+- Routine dialogue/toasts yield to imminent danger. One general toast is visible at a time. Particles render behind enemies and their rune badges.
+- Persisted optional compact HUD in Settings > Graphics. Short landscape screens automatically prioritize health, score, combo, controls and threat information.
+- Three full resume countdown seconds with input disabled. HP, invulnerability, combo and cooldown time stay frozen through pause and countdown. The pause button remains available during the countdown.
+
+Game feel and accessibility
+- Ordinary cast shake is 1.8 pixels / 100 ms; major camera shake is capped at 8 pixels / 250 ms. Existing settings can disable it.
+- Crowded encounters halve hit/death particle density. Reduced effects use a quarter-density particle budget while retaining visible impacts.
+- Reduced effects disable feedback CSS animations, camera shake and lightning flashes. Shield and warning cues remain steady and readable. OS reduced-motion defaults remain supported.
+- Health uses a live status with numeric HP. Boss progress exposes current lives and rune count. Threat announcements change with the cue, rather than announcing a timer every frame.
+- Touch controls retain 44-pixel minimum targets. Keyboard alternatives and 1–8 rune input remain available.
+- Input trails remain in logical screen coordinates, independent of camera shake. Projectile travel, impact timing and the existing enemy hit reaction duration are preserved.
+- Distinct cast, impact and error audio remains. Combo expiration no longer repeats a combo chime; Perfect/chain notifications no longer add a second impact sound at launch. Boss transition audio remains.
+- Scoring, damage amounts, combo tiers, projectile damage resolution and feature flags were not changed. Perfect Cast and cooldown presentation reflect the configured rules; these features are not enabled by this change.
+
+Automated validation
+1. npm run build — PASS. Refreshed dist/index.html and both tracked standalone bundles.
+2. npm test — PASS: 37/37 active suites; three existing quarantined suites remain excluded. See unit-results.json for suite-level results and quarantine reasons.
+3. npm run test:feedback — PASS: 13 focused cases. Covers priority, duplicate suppression, threat selection, hidden runes, non-colour identities, boss phase handoff, settings persistence, cooldown rejection without score/HP changes, countdown duration, cooldown clock freezing, merged cast messages, HUD values, particle budgets and pooled enemy reuse.
+4. npm run test:feedback:browser — PASS: 74/74 checks. See browser-results.json and screenshots/.
+   Standard and compact variants at 320x568, 390x844, 768x1024, 1024x768, 1440x900, 1920x1080, 568x320 and 844x390.
+   Alternative input plus miss hints at 320x568, 568x320 and 844x390.
+   Scenarios include eight simultaneous cooldowns, nine enemies including a boss, critical HP, temporary protection, combo expiration, urgent notice priority, boss phase transition, cooldown rejection, reduced motion and resume countdown.
+   Assertions check rail separation, horizontal overflow, control sizes, cooldown visibility and runtime errors.
+5. npm run test:browser — PASS: 94/94 assertions across five profiles, plus standalone offline operation with no runtime errors or external requests. See interaction-results.json.
+6. git diff --check — PASS.
+
+Evidence
+- browser-results.json: focused layout and feedback checks, including measured bounds.
+- unit-results.json: active-suite results and existing quarantine entries.
+- interaction-results.json: desktop/laptop/tablet/phone/landscape interactions, all eight drawn gestures, keyboard/touch input, focus, pause and offline standalone behavior.
+- screenshots/: representative standard/compact HUDs, alternative input, reduced motion and resume countdown.
+
+Limits
+Chrome viewport emulation was used, not physical phones. No manual screen-reader or audio listening evaluation was performed. Crowded screenshots deliberately park enemies close together; this work limits feedback overlap without changing enemy spawn, movement, collision, damage or scoring mechanics. This is functional/layout validation, not a comparative frame-rate benchmark.

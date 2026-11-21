@@ -1,0 +1,1637 @@
+{
+  "checks": [
+    {
+      "name": "320x568 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "320x568 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "320x568 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "320x568 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "320x568 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "320x568 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "320x568 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "320x568 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "390x844 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "390x844 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "390x844 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "390x844 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "390x844 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "390x844 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "390x844 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "390x844 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "768x1024 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "768x1024 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "768x1024 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "768x1024 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "768x1024 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "768x1024 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "768x1024 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "768x1024 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1024x768 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1024x768 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1024x768 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1024x768 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1024x768 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1024x768 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1024x768 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1024x768 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1440x900 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1440x900 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1440x900 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1440x900 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1440x900 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1440x900 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1440x900 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1440x900 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "1920x1080 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "568x320 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "568x320 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "568x320 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "568x320 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "568x320 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "568x320 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "568x320 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "568x320 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "844x390 standard: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "844x390 standard: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "844x390 standard: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "844x390 standard: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "844x390 compact: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "844x390 compact: rails stay outside arena and header",
+      "pass": true
+    },
+    {
+      "name": "844x390 compact: readable combo and 44px controls",
+      "pass": true
+    },
+    {
+      "name": "844x390 compact: all eight cooldowns and no runtime errors",
+      "pass": true
+    },
+    {
+      "name": "320x568: alternative input and incorrect-gesture hint stay outside arena",
+      "pass": true
+    },
+    {
+      "name": "568x320: alternative input and incorrect-gesture hint stay outside arena",
+      "pass": true
+    },
+    {
+      "name": "844x390: alternative input and incorrect-gesture hint stay outside arena",
+      "pass": true
+    },
+    {
+      "name": "urgent target hides routine dialogue and toasts",
+      "pass": true
+    },
+    {
+      "name": "boss phase announcement resists routine hit messages",
+      "pass": true
+    },
+    {
+      "name": "cooldown attempt changes no HP, score, combo or ready time",
+      "pass": true
+    },
+    {
+      "name": "reduced motion preserves static cues and removes CSS animations",
+      "pass": true
+    },
+    {
+      "name": "pause and resume freeze gameplay timers and reject casts throughout 3-2-1",
+      "pass": true
+    },
+    {
+      "name": "the pause button remains usable during resume countdown",
+      "pass": true
+    },
+    {
+      "name": "all runtime error checks",
+      "pass": true
+    }
+  ],
+  "layouts": [
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "arena": {
+        "x": 10,
+        "y": 272,
+        "right": 310,
+        "bottom": 472,
+        "width": 300,
+        "height": 200,
+        "overflow": false
+      },
+      "rail": {
+        "x": 10,
+        "y": 172,
+        "right": 310,
+        "bottom": 268,
+        "width": 300,
+        "height": 96,
+        "overflow": false
+      },
+      "hudBottom": 168,
+      "cast": {
+        "x": 44.65625,
+        "y": 528,
+        "right": 275.328125,
+        "bottom": 556,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 146.078125,
+        "y": 66,
+        "right": 228.84375,
+        "bottom": 98,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 210
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 260
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 310
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "arena": {
+        "x": 10,
+        "y": 252,
+        "right": 310,
+        "bottom": 472,
+        "width": 300,
+        "height": 220,
+        "overflow": false
+      },
+      "rail": {
+        "x": 10,
+        "y": 152,
+        "right": 310,
+        "bottom": 248,
+        "width": 300,
+        "height": 96,
+        "overflow": false
+      },
+      "hudBottom": 145,
+      "cast": {
+        "x": 44.65625,
+        "y": 528,
+        "right": 275.328125,
+        "bottom": 556,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 128.5,
+        "y": 66,
+        "right": 211.265625,
+        "bottom": 98,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 210
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 260
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 310
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "arena": {
+        "x": 10,
+        "y": 272,
+        "right": 380,
+        "bottom": 748,
+        "width": 370,
+        "height": 476,
+        "overflow": false
+      },
+      "rail": {
+        "x": 10,
+        "y": 172,
+        "right": 380,
+        "bottom": 268,
+        "width": 370,
+        "height": 96,
+        "overflow": false
+      },
+      "hudBottom": 158,
+      "cast": {
+        "x": 79.65625,
+        "y": 804,
+        "right": 310.328125,
+        "bottom": 832,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 181.078125,
+        "y": 56,
+        "right": 263.84375,
+        "bottom": 88,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 280
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 330
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 380
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "arena": {
+        "x": 10,
+        "y": 252,
+        "right": 380,
+        "bottom": 748,
+        "width": 370,
+        "height": 496,
+        "overflow": false
+      },
+      "rail": {
+        "x": 10,
+        "y": 152,
+        "right": 380,
+        "bottom": 248,
+        "width": 370,
+        "height": 96,
+        "overflow": false
+      },
+      "hudBottom": 135,
+      "cast": {
+        "x": 79.65625,
+        "y": 804,
+        "right": 310.328125,
+        "bottom": 832,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 163.5,
+        "y": 56,
+        "right": 246.265625,
+        "bottom": 88,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 280
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 330
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 380
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        768,
+        1024
+      ],
+      "arena": {
+        "x": 16,
+        "y": 212,
+        "right": 752,
+        "bottom": 928,
+        "width": 736,
+        "height": 716,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 120,
+        "right": 752,
+        "bottom": 208,
+        "width": 736,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 118,
+      "cast": {
+        "x": 251.265625,
+        "y": 983.375,
+        "right": 516.71875,
+        "bottom": 1012,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 390,
+        "y": 8,
+        "right": 481.484375,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 652
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 702
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 752
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        768,
+        1024
+      ],
+      "arena": {
+        "x": 16,
+        "y": 192,
+        "right": 752,
+        "bottom": 928,
+        "width": 736,
+        "height": 736,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 100,
+        "right": 752,
+        "bottom": 188,
+        "width": 736,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 98,
+      "cast": {
+        "x": 251.265625,
+        "y": 983.375,
+        "right": 516.71875,
+        "bottom": 1012,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 350.609375,
+        "y": 10.5,
+        "right": 442.09375,
+        "bottom": 45.5,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 652
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 702
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 752
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        1024,
+        768
+      ],
+      "arena": {
+        "x": 16,
+        "y": 212,
+        "right": 1008,
+        "bottom": 672,
+        "width": 992,
+        "height": 460,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 120,
+        "right": 1008,
+        "bottom": 208,
+        "width": 992,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 118,
+      "cast": {
+        "x": 379.265625,
+        "y": 727.375,
+        "right": 644.71875,
+        "bottom": 756,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 520.328125,
+        "y": 8,
+        "right": 611.8125,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 908
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 958
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1008
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        1024,
+        768
+      ],
+      "arena": {
+        "x": 16,
+        "y": 192,
+        "right": 1008,
+        "bottom": 672,
+        "width": 992,
+        "height": 480,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 100,
+        "right": 1008,
+        "bottom": 188,
+        "width": 992,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 95,
+      "cast": {
+        "x": 379.265625,
+        "y": 727.375,
+        "right": 644.71875,
+        "bottom": 756,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 480.9375,
+        "y": 8,
+        "right": 572.421875,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 908
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 958
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1008
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "arena": {
+        "x": 16,
+        "y": 212,
+        "right": 1424,
+        "bottom": 804,
+        "width": 1408,
+        "height": 592,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 120,
+        "right": 1424,
+        "bottom": 208,
+        "width": 1408,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 118,
+      "cast": {
+        "x": 587.265625,
+        "y": 859.375,
+        "right": 852.71875,
+        "bottom": 888,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 729.328125,
+        "y": 8,
+        "right": 820.8125,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1324
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1374
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1424
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "arena": {
+        "x": 16,
+        "y": 192,
+        "right": 1424,
+        "bottom": 804,
+        "width": 1408,
+        "height": 612,
+        "overflow": false
+      },
+      "rail": {
+        "x": 16,
+        "y": 100,
+        "right": 1424,
+        "bottom": 188,
+        "width": 1408,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 95,
+      "cast": {
+        "x": 587.265625,
+        "y": 859.375,
+        "right": 852.71875,
+        "bottom": 888,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 689.9375,
+        "y": 8,
+        "right": 781.421875,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1324
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1374
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1424
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "arena": {
+        "x": 176,
+        "y": 212,
+        "right": 1744,
+        "bottom": 984,
+        "width": 1568,
+        "height": 772,
+        "overflow": false
+      },
+      "rail": {
+        "x": 176,
+        "y": 120,
+        "right": 1744,
+        "bottom": 208,
+        "width": 1568,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 118,
+      "cast": {
+        "x": 827.265625,
+        "y": 1039.375,
+        "right": 1092.71875,
+        "bottom": 1068,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 969.328125,
+        "y": 8,
+        "right": 1060.8125,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1644
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1694
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1744
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "arena": {
+        "x": 176,
+        "y": 192,
+        "right": 1744,
+        "bottom": 984,
+        "width": 1568,
+        "height": 792,
+        "overflow": false
+      },
+      "rail": {
+        "x": 176,
+        "y": 100,
+        "right": 1744,
+        "bottom": 188,
+        "width": 1568,
+        "height": 88,
+        "overflow": false
+      },
+      "hudBottom": 95,
+      "cast": {
+        "x": 827.265625,
+        "y": 1039.375,
+        "right": 1092.71875,
+        "bottom": 1068,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 929.9375,
+        "y": 8,
+        "right": 1021.421875,
+        "bottom": 43,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1644
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1694
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 1744
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "arena": {
+        "x": 12,
+        "y": 116,
+        "right": 556,
+        "bottom": 268,
+        "width": 544,
+        "height": 152,
+        "overflow": false
+      },
+      "rail": {
+        "x": 12,
+        "y": 58,
+        "right": 556,
+        "bottom": 114,
+        "width": 544,
+        "height": 56,
+        "overflow": false
+      },
+      "hudBottom": 52,
+      "cast": {
+        "x": 168.65625,
+        "y": 280,
+        "right": 399.328125,
+        "bottom": 308,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 260.59375,
+        "y": 14,
+        "right": 343.359375,
+        "bottom": 46,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 456
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 506
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 556
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "arena": {
+        "x": 12,
+        "y": 116,
+        "right": 556,
+        "bottom": 268,
+        "width": 544,
+        "height": 152,
+        "overflow": false
+      },
+      "rail": {
+        "x": 12,
+        "y": 58,
+        "right": 556,
+        "bottom": 114,
+        "width": 544,
+        "height": 56,
+        "overflow": false
+      },
+      "hudBottom": 52,
+      "cast": {
+        "x": 168.65625,
+        "y": 280,
+        "right": 399.328125,
+        "bottom": 308,
+        "width": 230.671875,
+        "height": 28,
+        "overflow": false
+      },
+      "combo": {
+        "x": 244.25,
+        "y": 14,
+        "right": 327.015625,
+        "bottom": 46,
+        "width": 82.765625,
+        "height": 32,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 456
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 506
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 556
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "arena": {
+        "x": 12,
+        "y": 116,
+        "right": 832,
+        "bottom": 338,
+        "width": 820,
+        "height": 222,
+        "overflow": false
+      },
+      "rail": {
+        "x": 12,
+        "y": 58,
+        "right": 832,
+        "bottom": 114,
+        "width": 820,
+        "height": 56,
+        "overflow": false
+      },
+      "hudBottom": 52,
+      "cast": {
+        "x": 289.265625,
+        "y": 349.375,
+        "right": 554.71875,
+        "bottom": 378,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 458.046875,
+        "y": 12.5,
+        "right": 549.53125,
+        "bottom": 47.5,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 732
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 782
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 832
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": false
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "arena": {
+        "x": 12,
+        "y": 116,
+        "right": 832,
+        "bottom": 338,
+        "width": 820,
+        "height": 222,
+        "overflow": false
+      },
+      "rail": {
+        "x": 12,
+        "y": 58,
+        "right": 832,
+        "bottom": 114,
+        "width": 820,
+        "height": 56,
+        "overflow": false
+      },
+      "hudBottom": 52,
+      "cast": {
+        "x": 289.265625,
+        "y": 349.375,
+        "right": 554.71875,
+        "bottom": 378,
+        "width": 265.453125,
+        "height": 28.625,
+        "overflow": false
+      },
+      "combo": {
+        "x": 423.890625,
+        "y": 12.5,
+        "right": 515.375,
+        "bottom": 47.5,
+        "width": 91.484375,
+        "height": 35,
+        "overflow": false
+      },
+      "controls": [
+        {
+          "width": 44,
+          "height": 44,
+          "right": 732
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 782
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "right": 832
+        }
+      ],
+      "noPageOverflow": true,
+      "cooldowns": 8,
+      "cooldownOverflow": false,
+      "readoutOverflow": false,
+      "errors": [],
+      "compact": true
+    }
+  ],
+  "limitations": [
+    "Chrome emulation; physical devices and listening tests were not performed."
+  ],
+  "altLayouts": [
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "arenaBottom": 384,
+      "arenaHeight": 132,
+      "items": [
+        {
+          "width": 114.375,
+          "height": 28,
+          "top": 399.8125,
+          "left": 102.8125,
+          "right": 217.1875,
+          "bottom": 427.8125
+        },
+        {
+          "width": 195.453125,
+          "height": 26.1875,
+          "top": 431.8125,
+          "left": 62.265625,
+          "right": 257.71875,
+          "bottom": 458
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 462,
+          "left": 39,
+          "right": 95,
+          "bottom": 506
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 462,
+          "left": 101,
+          "right": 157,
+          "bottom": 506
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 462,
+          "left": 163,
+          "right": 219,
+          "bottom": 506
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 462,
+          "left": 225,
+          "right": 281,
+          "bottom": 506
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 512,
+          "left": 39,
+          "right": 95,
+          "bottom": 556
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 512,
+          "left": 101,
+          "right": 157,
+          "bottom": 556
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 512,
+          "left": 163,
+          "right": 219,
+          "bottom": 556
+        },
+        {
+          "width": 56,
+          "height": 44,
+          "top": 512,
+          "left": 225,
+          "right": 281,
+          "bottom": 556
+        }
+      ],
+      "buttons": 8
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "arenaBottom": 224,
+      "arenaHeight": 108,
+      "items": [
+        {
+          "width": 114.375,
+          "height": 28,
+          "top": 232,
+          "left": 134.109375,
+          "right": 248.484375,
+          "bottom": 260
+        },
+        {
+          "width": 181.40625,
+          "height": 24.671875,
+          "top": 233.65625,
+          "left": 252.484375,
+          "right": 433.890625,
+          "bottom": 258.328125
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 63,
+          "right": 113,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 119,
+          "right": 169,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 175,
+          "right": 225,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 231,
+          "right": 281,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 287,
+          "right": 337,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 343,
+          "right": 393,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 399,
+          "right": 449,
+          "bottom": 308
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 264,
+          "left": 455,
+          "right": 505,
+          "bottom": 308
+        }
+      ],
+      "buttons": 8
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "arenaBottom": 294,
+      "arenaHeight": 178,
+      "items": [
+        {
+          "width": 134.703125,
+          "height": 28.625,
+          "top": 341.6875,
+          "left": 38.9375,
+          "right": 173.640625,
+          "bottom": 370.3125
+        },
+        {
+          "width": 181.40625,
+          "height": 24.671875,
+          "top": 343.65625,
+          "left": 177.640625,
+          "right": 359.046875,
+          "bottom": 368.328125
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 363.046875,
+          "right": 413.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 419.046875,
+          "right": 469.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 475.046875,
+          "right": 525.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 531.046875,
+          "right": 581.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 587.046875,
+          "right": 637.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 643.046875,
+          "right": 693.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 699.046875,
+          "right": 749.046875,
+          "bottom": 378
+        },
+        {
+          "width": 50,
+          "height": 44,
+          "top": 334,
+          "left": 755.046875,
+          "right": 805.046875,
+          "bottom": 378
+        }
+      ],
+      "buttons": 8
+    }
+  ],
+  "ok": true
+}

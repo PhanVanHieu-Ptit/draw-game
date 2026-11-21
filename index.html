@@ -20,6 +20,7 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap"></noscript>
   <link rel="stylesheet" href="./styles/main.css">
   <link rel="stylesheet" href="./styles/responsive.css">
+  <link rel="stylesheet" href="./styles/gameplay-feedback.css">
 </head>
 <body>
   <div id="game-wrapper">
@@ -148,6 +149,7 @@
       <div class="hud-dock">
       <div class="hud-top-bar">
         <!-- Player Hearts -->
+        <div class="health-group">
         <div class="hud-hearts-panel" id="hearts-container">
           <span class="heart-icon filled">❤️</span>
           <span class="heart-icon filled">❤️</span>
@@ -155,14 +157,18 @@
           <span class="heart-icon filled">❤️</span>
           <span class="heart-icon filled">❤️</span>
         </div>
+        <span id="player-protection" class="player-protection" aria-label="Có thể nhận sát thương"></span>
+        </div>
 
         <!-- Center Score, Stage & Level Info -->
         <div class="hud-center-panel">
           <div class="hud-score-row">
           <div class="score-counter" id="score-val">0</div>
+          <span class="score-label">ĐIỂM</span>
           <span class="hud-timer" id="hud-timer" aria-label="Thời gian lượt chơi">0:00</span>
           <div class="combo-container" id="combo-badge">
             <span class="combo-mult" id="combo-mult">x1</span>
+            <span class="combo-time" id="combo-time">SẴN SÀNG</span>
             <div class="combo-bar-wrap"><div class="combo-bar" id="combo-bar"></div></div>
           </div>
           </div>
@@ -214,6 +220,18 @@
 
     <!-- Notices have their own reserved space above the monster arena. -->
     <div id="game-notices" class="game-notices" aria-label="Thông báo trò chơi">
+      <div id="combat-readout" class="combat-readout">
+        <div class="combat-summary">
+          <span id="wave-progress" class="wave-progress">ĐỢT 1</span>
+          <div id="boss-status" class="boss-status" data-visible="false">
+            <span id="boss-label">♛ TRÙM</span>
+            <div id="boss-meter" class="boss-meter" role="progressbar" aria-label="Máu trùm" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="boss-fill"></div></div>
+          </div>
+          <span id="threat-cue" class="threat-cue">◇ SẴN SÀNG VẼ</span>
+        </div>
+        <div id="spell-cooldowns" class="spell-cooldowns" data-visible="false" aria-label="Hồi chiêu phép"></div>
+      </div>
+      <span id="combat-alert" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
       <div class="notice-messages">
         <div id="level-transition-banner" class="level-transition-banner">
           <div class="ltb-level-number" id="ltb-number">CẤP ĐỘ 1</div>
@@ -718,6 +736,8 @@
 
           <section class="settings-group">
             <h3 class="settings-heading">🖥️ Đồ họa</h3>
+            <label class="setting-row"><span class="setting-label">HUD gọn (giữ máu, combo và cảnh báo)</span>
+              <input type="checkbox" role="switch" class="switch" data-setting="compactHud"></label>
             <div class="setting-row"><span class="setting-label">Chất lượng</span>
               <div class="seg" data-setting="quality">
                 <button type="button" data-value="auto">Tự động</button>
@@ -732,7 +752,7 @@
                 <button type="button" data-value="simple">Đơn giản</button>
                 <button type="button" data-value="minimal">Tối thiểu</button>
               </div></div>
-            <label class="setting-row"><span class="setting-label">Giảm hiệu ứng vẽ và rung màn hình</span>
+            <label class="setting-row"><span class="setting-label">Giảm chuyển động, chớp sáng và rung màn hình</span>
               <input type="checkbox" role="switch" class="switch" data-setting="reducedEffects"></label>
           </section>
 
@@ -947,9 +967,9 @@
     </div>
 
     <!-- Countdown shown when resuming from pause -->
-    <div id="countdown-overlay" class="countdown-overlay" aria-live="assertive">
+    <div id="countdown-overlay" class="countdown-overlay" role="status" aria-live="assertive" aria-atomic="true">
       <span class="countdown-num" id="countdown-num">3</span>
-      <span class="countdown-hint">Chuẩn bị vung đũa phép…</span>
+      <span class="countdown-hint">Tiếp tục sau… Chuẩn bị vẽ!</span>
     </div>
 
     <!-- UI Overlay: WIZARD CAT LICENSE / SHARE CARD MODAL -->

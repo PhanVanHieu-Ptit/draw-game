@@ -29,7 +29,7 @@ import { loreLetters, loreSummary, mysteryHint } from '../core/Lore.js';
 import { getCharacterPortraitSvg } from './CharacterPortraits.js';
 import { FocusManager } from './FocusManager.js';
 
-const MAX_TOASTS = 3;
+const MAX_TOASTS = 1;
 const TOAST_MS = 4200;
 
 /** Gesture order used by the alternative-input pad and the 1-8 keys */
@@ -1494,9 +1494,7 @@ export class MetaUI {
     if (n !== this._countdownShown) {
       this._countdownShown = n;
       this._text('countdown-num', String(n));
-      // Restart the pop animation for every digit
-      overlay.classList.remove('show');
-      if (overlay.offsetWidth !== undefined) void overlay.offsetWidth;
+      // Keep the arena visible and the digit stable, including with reduced motion.
       overlay.classList.add('show');
     }
   }

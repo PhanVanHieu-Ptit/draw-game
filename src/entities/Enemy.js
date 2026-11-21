@@ -8,6 +8,7 @@ import { StatusEffects } from '../combat/StatusEffects.js';
 import { Entity } from './Entity.js';
 import { RUNES, ENEMY_TYPES } from '../core/Constants.js';
 import { applyBorderPattern, resetBorderPattern, drawRunePattern } from './RunePatterns.js';
+import { enemyIdentity } from '../ui/GameplayFeedback.js';
 
 /**
  * Each boss has one signature trick that fires while it is advancing on Momo (never during a retreat):
@@ -239,6 +240,8 @@ export class Enemy extends Entity {
     this.time = Math.random() * 10;
     this.phase = Math.random() * Math.PI * 2;
     this.hitTimer = 0;
+    this.feedbackUrgent = false;
+    this.feedbackCompact = false;
     this.isDead = false;
 
     this.blinkTimer = Math.random() * 2.5 + 2.0;
@@ -344,6 +347,8 @@ export class Enemy extends Entity {
     this.time = Math.random() * 10;
     this.phase = Math.random() * Math.PI * 2;
     this.hitTimer = 0;
+    this.feedbackUrgent = false;
+    this.feedbackCompact = false;
     this.isDead = false;
 
     // Hit reaction and slowdown states
@@ -1212,7 +1217,7 @@ export class Enemy extends Entity {
       ctx.globalAlpha = Math.max(0.2, Math.min(1.0, blink * (this.heartLifetime / 3.5)));
     }
 
-    const animTime = this.time * 1000;
+    const animTime = Enemy.reducedMotion ? 0 : this.time * 1000;
 
     // 1. Procedural sine-wave floating dynamics with hit shudder
     const bob = Math.sin(animTime * 0.0035 + this.phase) * (this.type === 'SPEEDSTER' ? 5 : 8);
@@ -1220,8 +1225,8 @@ export class Enemy extends Entity {
     const breath = Math.sin(animTime * 0.004 + this.phase) * 0.045;
     const scaleX = 1 - breath;
     const scaleY = 1 + breath;
-    const shiverX = this.shiverTimer > 0 ? (Math.random() - 0.5) * 4 : 0;
-    const shiverY = this.shiverTimer > 0 ? (Math.random() - 0.5) * 3 : 0;
+    const shiverX = !Enemy.reducedMotion && this.shiverTimer > 0 ? Math.sin(this.time * 70) * 2 : 0;
+    const shiverY = !Enemy.reducedMotion && this.shiverTimer > 0 ? Math.cos(this.time * 65) * 1.5 : 0;
 
     ctx.translate(this.x + shiverX, this.y + bob + shiverY);
 
@@ -2840,35 +2845,7 @@ export class Enemy extends Entity {
   _renderSymbols(ctx) {
     ctx.save();
 
-    // 1. Boss Lives Hearts display
-    if (this.isBoss && this.maxBossLives > 1) {
-      const heartSize = this.isFinalBoss ? 24 : 16;
-      const hSpacing = this.isFinalBoss ? 6 : 3;
-      const totalHWidth = this.maxBossLives * heartSize + (this.maxBossLives - 1) * hSpacing;
-      const startHX = -totalHWidth / 2;
-      const bossHpY = this.isFinalBoss ? (-this.radius * 1.08) : (-this.radius - 52);
-
-      ctx.save();
-      for (let h = 0; h < this.maxBossLives; h++) {
-        const isFilled = h < this.bossLives;
-        const hx = startHX + h * (heartSize + hSpacing) + heartSize / 2;
-        ctx.font = `${this.isFinalBoss ? 22 : 13}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        if (isFilled) {
-          ctx.shadowColor = '#f43f5e';
-          ctx.shadowBlur = this.isFinalBoss ? 16 : 8;
-          ctx.fillText('❤️', hx, bossHpY);
-        } else {
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = 0.35;
-          ctx.fillText('🖤', hx, bossHpY);
-          ctx.globalAlpha = 1.0;
-        }
-      }
-      ctx.restore();
-    }
-
+    // Phase health belongs in the fixed HUD, leaving the rune queue unobstructed.
     // Retreat/re-entry announcements belong to the HUD; keep only enemy status and runes here.
     if (this.isRetreating) {
       ctx.restore();
@@ -2887,6 +2864,26 @@ export class Enemy extends Entity {
     const startX = -totalWidth / 2;
     const badgeY = this.isFinalBoss ? (-this.radius * 0.80) : (-this.radius - 32);
 
+    // A glyph and name identify the archetype independently of its colour.
+    const fullIdentity = enemyIdentity(this);
+    const identity = this.feedbackCompact && !this.feedbackUrgent && !this.isBoss ? fullIdentity.split(' ')[0] : fullIdentity;
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 0;
+    const labelWidth = Math.max(20, ctx.measureText(identity).width + 12);
+    ctx.fillStyle = '#100c22';
+    ctx.fillRect(-labelWidth / 2, this.radius + 5, labelWidth, 17);
+    ctx.fillStyle = '#f1eaff';
+    ctx.fillText(identity, 0, this.radius + 14);
+
+    // One stable urgent marker; routine ghosts keep their compact rune badge.
+    if (this.feedbackUrgent) {
+      ctx.fillStyle = '#fff1bd';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.fillText('!', startX - 12, badgeY + badgeHeight / 2);
+    }
+
     for (let i = 0; i < this.symbolQueue.length; i++) {
       const runeId = this.symbolQueue[i];
       const rune = this.symbolsHidden ? HIDDEN_RUNE : (RUNES[runeId] || { symbol: '?', color: '#ffffff', glow: '#ffffff' });
@@ -2902,7 +2899,7 @@ export class Enemy extends Entity {
       ctx.scale(scale, scale);
 
       if (isActive) {
-        const pulse = (Math.sin(this.time * 8) + 1) * 0.5;
+        const pulse = Enemy.reducedMotion ? 0.5 : (Math.sin(this.time * 8) + 1) * 0.5;
         // One blit of a cached halo (pulsing via alpha) instead of blurring the badge's fill, border AND glyph
         if (!drawBadgeGlow(ctx, badgeWidth, badgeHeight, rune.glow, 11, 0.85 + pulse * 0.15)) {
           ctx.shadowColor = rune.glow;
@@ -2937,18 +2934,32 @@ export class Enemy extends Entity {
         drawRunePattern(ctx, runeId, badgeWidth, badgeHeight, rune.color);
       }
 
+      ctx.globalAlpha = isActive ? 1 : 0.58;
       ctx.fillStyle = rune.color;
       ctx.font = `bold ${isActive ? (this.isFinalBoss ? 22 : 15) : (this.isFinalBoss ? 18 : 13)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(rune.symbol, 0, 1);
 
+      if (isActive) {
+        // The next required rune is pointed to by shape as well as size and border.
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(-4, -badgeHeight / 2 - 8);
+        ctx.lineTo(4, -badgeHeight / 2 - 8);
+        ctx.lineTo(0, -badgeHeight / 2 - 3);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
 
     ctx.restore();
   }
 }
+
+Enemy.reducedMotion = false;
 
 /** Colour-blind rune textures on/off (set from Settings by Game) */
 Enemy.colorBlind = false;
