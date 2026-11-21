@@ -67,6 +67,7 @@ export class ParticleSystem {
     this.activeLimit = maxParticles;
     this.glow = true;
     this.particleDensity = 1.0;
+    this.feedbackDensity = 1;
     // Common glowing particles reuse small raster sprites instead of running a blur for
     // every fill on every frame. The bounded cache belongs to this system, not each particle.
     this._sprites = new Map();
@@ -332,7 +333,7 @@ export class ParticleSystem {
     }
 
     // 2. Gravity-bound explosion sparks
-    const particleCount = isFinalBoss ? 55 : Math.max(20, Math.min(30, count));
+    const particleCount = Math.max(4, Math.round((isFinalBoss ? 55 : Math.max(20, Math.min(30, count))) * this.feedbackDensity));
     for (let i = 0; i < particleCount; i++) {
       const p = this._acquireParticle();
       if (!p) break;
@@ -391,6 +392,7 @@ export class ParticleSystem {
   }
 
   emitHitBurst(x, y, color = '#38bdf8', count = 16) {
+    count = Math.max(2, Math.round(count * this.feedbackDensity));
     for (let i = 0; i < count; i++) {
       const p = this._acquireParticle();
       if (!p) break;

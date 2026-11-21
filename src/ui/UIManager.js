@@ -13,6 +13,7 @@ import { renderWizardCard, downloadCardImage, copyCardImageToClipboard, getChall
 import { MetaUI, PAD_ORDER } from './MetaUI.js';
 import { describeAsDialog, isInteractiveTarget } from './FocusManager.js';
 import { buildDailyChallengeUrl } from '../core/Challenge.js';
+import { FeedbackChannel, GameplayHUD } from './GameplayFeedback.js';
 
 /**
  * Set a button's label to `text`, shown as plain text inside one <span>.
@@ -177,6 +178,9 @@ export class UIManager {
     this.btnMenuWizardCard = document.getElementById('btn-menu-wizard-card');
     this._lastCardData = null;
     this._toastTimeout = null;
+    this.gameplayHUD = new GameplayHUD(game);
+    this._noticeChannel = new FeedbackChannel();
+    this._castChannel = new FeedbackChannel();
 
     this._bindButtonEvents();
     this._bindKeyboardEvents();
@@ -765,6 +769,12 @@ export class UIManager {
 
   showScreen(stateName, payload = {}) {
     if (stateName !== GAME_STATES.PLAYING) this.clearGameplayNotice();
+    if (stateName !== GAME_STATES.PLAYING) {
+      this._castChannel?.clear();
+      clearTimeout(this._feedbackTimeout);
+      this.gestureFeedback?.classList.remove('show');
+      this._showHint(null);
+    }
     if (stateName === GAME_STATES.MENU || stateName === GAME_STATES.PRACTICE || stateName === GAME_STATES.STORY) {
       clearTimeout(this._ltbTimeout);
       clearTimeout(this._ltbDrawTimeout);
@@ -899,26 +909,52 @@ export class UIManager {
   }
 
   /** Show the latest gameplay announcement in the HUD, outside the monster arena. */
-  showGameplayNotice(text, color = '#fef08a') {
+  showGameplayNotice(text, color = '#fef08a', priority = 1) {
     const notice = this.gameplayNotice;
     if (!notice?.classList) return false;
 
     const message = String(text);
+    this._noticeChannel ||= new FeedbackChannel();
+    if (!this._noticeChannel.post(message, { color, priority, duration: priority >= 3 ? 2.4 : 1.8 })) return true;
     if (notice.textContent !== message) notice.textContent = message;
     notice.style?.setProperty?.('--notice-color', color);
     notice.classList.add('show');
-    clearTimeout(this._gameplayNoticeTimeout);
-    this._gameplayNoticeTimeout = setTimeout(() => this.clearGameplayNotice(), 2400);
-    this._gameplayNoticeTimeout?.unref?.();
     return true;
   }
 
   clearGameplayNotice() {
+    this._noticeChannel?.clear();
     clearTimeout(this._gameplayNoticeTimeout);
     this._gameplayNoticeTimeout = null;
     if (!this.gameplayNotice) return;
     this.gameplayNotice.classList?.remove('show');
     this.gameplayNotice.textContent = '';
+  }
+
+  /** Feedback lifetimes use simulation time, so a paused run never loses a countdown or cooldown. */
+  updateGameplayFeedback(dt) {
+    this.gameplayHUD?.update();
+    this._noticeChannel?.tick(dt);
+    this._castChannel?.tick(dt);
+    if (!this._noticeChannel?.current) this.gameplayNotice?.classList.remove('show');
+    if (!this._castChannel?.current) this.gestureFeedback?.classList.remove('show');
+    this._comboBreakTime = Math.max(0, (this._comboBreakTime || 0) - dt);
+  }
+
+  showCombatFeedback(text, kind = 'info', priority = 1, duration = 1.6) {
+    if (!this.gestureFeedback) return;
+    this._castChannel ||= new FeedbackChannel();
+    if (!this._castChannel.post(text, { kind, priority, duration })) return;
+    this.gestureFeedback.textContent = text;
+    this.gestureFeedback.className = `gesture-pill feedback-${kind} show`;
+    this.gestureFeedback.setAttribute?.('data-feedback-kind', kind);
+  }
+
+  showComboBreak(reason = 'ĐÃ NGẮT') {
+    this._comboBreakTime = 1.8;
+    this._comboBreakReason = reason;
+    // A separate persistent surface keeps an incorrect-gesture explanation visible.
+    this.updateCombo(0, 1, 0);
   }
 
   // =========================================================================
@@ -1432,11 +1468,14 @@ export class UIManager {
   updateHearts(currentHp, maxHp) {
     if (!this.heartsContainer) return;
     this.heartsContainer.setAttribute?.('aria-label', `Máu: ${currentHp}/${maxHp}`);
+    this.heartsContainer.setAttribute?.('role', 'status');
+    this.heartsContainer.setAttribute?.('aria-live', 'polite');
     this.heartsContainer.innerHTML = '';
 
     for (let i = 0; i < maxHp; i++) {
       const heartEl = document.createElement('span');
       heartEl.className = 'heart-icon';
+      heartEl.setAttribute?.('aria-hidden', 'true');
       if (i < currentHp) {
         heartEl.classList.add('filled');
         heartEl.textContent = '❤️';
@@ -1446,6 +1485,22 @@ export class UIManager {
       }
       this.heartsContainer.appendChild(heartEl);
     }
+    const health = document.createElement('span');
+    health.id = 'health-value';
+    health.className = 'health-value';
+    health.textContent = `HP ${currentHp}/${maxHp}`;
+    health.setAttribute?.('aria-hidden', 'true');
+    this.heartsContainer.appendChild(health);
+    // Keep the fast-changing shield timer outside the health live region.
+    let shield = document.getElementById('player-protection');
+    if (!shield) {
+      shield = document.createElement('span');
+      shield.id = 'player-protection';
+      shield.className = 'player-protection';
+      this.heartsContainer.parentElement?.appendChild(shield);
+    }
+    this.gameplayHUD?.nodes.delete('health-value');
+    this.gameplayHUD?.cache.delete('health-value');
   }
 
   updateScore(score) {
@@ -1467,6 +1522,16 @@ export class UIManager {
 
   updateCombo(count, multiplier, decayProgress) {
     if (!this.comboBadge) return;
+    const seconds = Math.max(0, this.game.comboTimer || 0);
+    const urgent = count > 0 && decayProgress <= (this.game.combat?.rules.combo.warningFraction ?? 0.25);
+    const status = count > 0 ? `${urgent ? '! ' : ''}${seconds.toFixed(1)}s${urgent ? ' · SẮP HẾT' : ''}`
+      : this._comboBreakTime > 0 ? this._comboBreakReason : 'SẴN SÀNG';
+    const time = document.getElementById('combo-time');
+    if (time && time.textContent !== status) time.textContent = status;
+    if (urgent !== this._comboUrgent) {
+      this.comboBadge.setAttribute?.('data-urgent', String(urgent));
+      this._comboUrgent = urgent;
+    }
 
     // Called every frame: only touch the DOM (and trigger style recalc) when something visible changed.
     if (count > 0) {
@@ -1474,7 +1539,7 @@ export class UIManager {
         this.comboBadge.classList.add('active');
         this._comboActive = true;
       }
-      const label = `x${multiplier} (${count} COMBO)`;
+      const label = `×${multiplier} · ${count} COMBO`;
       if (this.comboMult && label !== this._comboLabel) {
         this.comboMult.textContent = label;
         this._comboLabel = label;
@@ -1497,6 +1562,8 @@ export class UIManager {
         this.comboBar.style.width = '0%';
       }
       this._comboPct = 0;
+      if (this.comboMult) this.comboMult.textContent = '×1 · 0 COMBO';
+      this.comboBadge.setAttribute?.('aria-label', this._comboBreakTime > 0 ? `Combo ${this._comboBreakReason}` : 'Chưa có combo, hệ số điểm 1');
     }
   }
 
@@ -1506,28 +1573,27 @@ export class UIManager {
    * @param {boolean} isSuccess
    * @param {string|null} [hint] explains how to fix a missed stroke (shown under the pill)
    */
-  showGestureFeedback(gesture, score, isSuccess, hint = null, result = null) {
+  showGestureFeedback(gesture, score, isSuccess, hint = null, result = null, context = {}) {
     if (!this.gestureFeedback) return;
     this._showHint(hint);
 
+    let text;
+    let kind;
     if (gesture && RUNES[gesture]) {
       const rune = RUNES[gesture];
-      this.gestureFeedback.textContent = `✓ ${rune.symbol} ${rune.name.toUpperCase()} · Khớp ${(score * 100).toFixed(0)}%${isSuccess ? '' : ' · Chưa trúng'}`;
-      this.gestureFeedback.className = isSuccess ? 'feedback-success' : 'feedback-miss';
+      text = `${isSuccess ? context.perfect ? '✦ PERFECT CAST' : '✓ THI TRIỂN' : '○ CHƯA TRÚNG'} · ${rune.symbol}${context.targets > 1 ? ` · ${context.targets} MỤC TIÊU` : ''}${context.healed ? ' · +1 HP' : ''}${!isSuccess ? ' · Vẽ ấn ký đầu của đối thủ' : ''}`;
+      kind = isSuccess ? context.perfect ? 'perfect' : 'success' : 'miss';
     } else {
       const ambiguous = result?.reason === 'ambiguous';
       const candidate = result?.candidate && RUNES[result.candidate];
       const match = candidate && score >= 0.35 ? ` · ${candidate.symbol} Khớp ${Math.round(score * 100)}%` : '';
-      this.gestureFeedback.textContent = `${ambiguous ? '? CHƯA RÕ ẤN KÝ' : '× KHÔNG KHỚP'}${match}`;
-      this.gestureFeedback.className = 'feedback-fizzle';
+      text = `${ambiguous ? '? CHƯA RÕ ẤN KÝ' : '× KHÔNG KHỚP'}${match}`;
+      kind = 'fizzle';
     }
 
     this.gestureFeedback.setAttribute?.('data-verdict', gesture ? 'valid' : result?.reason === 'ambiguous' ? 'ambiguous' : 'rejected');
-    this.gestureFeedback.classList.add('show');
     clearTimeout(this._feedbackTimeout);
-    this._feedbackTimeout = setTimeout(() => {
-      this.gestureFeedback.classList.remove('show');
-    }, hint ? 2300 : 1200);
+    this.showCombatFeedback(text, kind, 1, hint ? 2.3 : 1.6);
   }
 
   _showHint(hint) {

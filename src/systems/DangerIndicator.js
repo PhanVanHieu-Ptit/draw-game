@@ -38,6 +38,7 @@ export class DangerIndicator {
    * @param {Object} game
    */
   update(dt, game) {
+    this.reducedMotion = !!game.settings?.get('reducedEffects');
     this.t += dt;
     this._beatAge += dt;
 
@@ -127,7 +128,7 @@ export class DangerIndicator {
 
     // Last heart: pulsing red edges
     if (this.critical) {
-      this._drawVignette(ctx, 'rgba(239, 68, 68, 0.9)', w, h, 0.22 + 0.5 * this.beat);
+      this._drawVignette(ctx, 'rgba(239, 68, 68, 0.9)', w, h, this.reducedMotion ? 0.25 : 0.22 + 0.3 * this.beat);
     }
 
     // Edge arrows
@@ -138,7 +139,7 @@ export class DangerIndicator {
   }
 
   _drawArrow(ctx, a) {
-    const pulse = 0.65 + 0.35 * Math.sin(this.t * (a.fast ? 14 : 8));
+    const pulse = this.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(this.t * (a.fast ? 6 : 4));
     ctx.save();
     ctx.translate(a.x, a.y);
     ctx.rotate(a.angle);

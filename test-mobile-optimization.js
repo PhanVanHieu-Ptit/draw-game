@@ -427,7 +427,7 @@ console.log('\n--- 6. Game integration (resize, tiers, background layer, auto-pa
   barWrites = 0; classOps = 0;
   for (let i = 0; i < 30; i++) ui.updateCombo(3, 2, 0.5);
   assert(barWrites === 1 && classOps === 1, 'Active combo with identical state writes the DOM once, not every frame');
-  assert(ui.comboMult.textContent === 'x2 (3 COMBO)', 'Combo label text is correct');
+  assert(ui.comboMult.textContent === '×2 · 3 COMBO', 'Combo label separates the score multiplier from the streak');
   ui.updateCombo(3, 2, 0.4);
   assert(barWrites === 2, 'Combo bar updates when the visible percentage changes');
   ui.updateCombo(0, 1, 0);

@@ -9,6 +9,8 @@
     "export": "vite build && node scripts/export-bundle.js",
     "preview": "vite preview",
     "test:combat": "node tests/combat.test.js",
+    "test:feedback": "node tests/gameplay-feedback.test.js",
+    "test:feedback:browser": "node scripts/validate-gameplay-feedback.mjs",
     "test": "node scripts/run-tests.mjs",
     "test:admin": "npm --prefix admin test && npm --prefix admin run test:ui",
     "test:all": "npm test && npm run test:admin",

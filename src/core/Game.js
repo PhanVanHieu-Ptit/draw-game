@@ -44,7 +44,7 @@ import { HighlightRecorder } from '../systems/HighlightRecorder.js';
 import { UIManager } from '../ui/UIManager.js';
 
 /** 3-2-1 shown after resuming from pause: seconds per number, and how many numbers */
-const COUNTDOWN_STEP = 0.8;
+const COUNTDOWN_STEP = 1;
 const COUNTDOWN_STEPS = 3;
 /** Combo counts that trigger a short slow-motion "wow" moment */
 const SLOWMO_COMBOS = [5, 10, 20, 35];
@@ -441,6 +441,12 @@ export class Game {
       case 'reducedEffects':
         this.inputHandler.setTrailOptions(this.settings.get('trailEffect'), this.settings.get('reducedEffects'));
         this.particleSystem.setShakeEnabled(this.settings.get('screenShake') && !this.settings.get('reducedEffects'));
+        Enemy.reducedMotion = !!this.settings.get('reducedEffects');
+        if (this.player) this.player.reducedMotion = Enemy.reducedMotion;
+        document.getElementById('game-wrapper')?.setAttribute?.('data-reduced-motion', String(Enemy.reducedMotion));
+        break;
+      case 'compactHud':
+        document.getElementById('game-wrapper')?.setAttribute?.('data-compact-hud', String(value));
         break;
       case 'quality':
         this.quality.setPreference(value);
@@ -475,7 +481,7 @@ export class Game {
    */
   triggerShake(intensity = 10, duration = 0.3) {
     if (this.particleSystem) {
-      this.particleSystem.triggerShake(intensity, duration);
+      this.particleSystem.triggerShake(Math.min(8, intensity), Math.min(0.25, duration));
     }
   }
 
@@ -1329,7 +1335,7 @@ export class Game {
   }
 
   update(dt) {
-    if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING) this._configurationTime = (this._configurationTime || 0) + dt;
+    if (this.stateMachine.getCurrentStateName() === GAME_STATES.PLAYING && !(this.resumeCountdown > 0)) this._configurationTime = (this._configurationTime || 0) + dt;
     if (this.backgroundRenderer) {
       this.backgroundRenderer.update(dt);
     }
@@ -1455,6 +1461,8 @@ export class Game {
    * @param {number} dt 
    */
   updatePlaying(dt) {
+    // Presentation budget only: keep hit silhouettes readable when many targets react together.
+    this.particleSystem.feedbackDensity = this.settings?.get('reducedEffects') ? 0.25 : this.enemies.length >= 8 ? 0.5 : 1;
     this.metrics.activeSeconds = (this.metrics.activeSeconds || 0) + dt;
     this.uiManager.updateRunTime?.(this.metrics.activeSeconds);
     // 1. Update Player with dynamic drawing stroke coordinates
@@ -1981,6 +1989,7 @@ export class Game {
     // 8. Update Combo UI
     const decayPercent = this.comboCount > 0 ? (this.comboTimer / this.comboDecayTime) : 0;
     this.uiManager.updateCombo(this.comboCount, this.comboMultiplier, decayPercent);
+    this.uiManager.updateGameplayFeedback?.(dt);
   }
 
   /**
@@ -2003,6 +2012,8 @@ export class Game {
 
     // 3. Floating announcements sit under the ghosts: a ghost must never be hidden by a message
     this.particleSystem.renderTexts(ctx);
+    // Bursts stay behind enemy silhouettes and rune badges, even during a multi-target hit.
+    this.particleSystem.renderParticles(ctx);
 
     // 4. Render Enemies
     for (let i = 0; i < this.enemies.length; i++) {
@@ -2013,9 +2024,6 @@ export class Game {
     for (let i = 0; i < this.projectiles.length; i++) {
       this.projectiles[i].render(ctx);
     }
-
-    // 6. Render Particles (hit bursts, sparks) over everything
-    this.particleSystem.renderParticles(ctx);
 
     // 7. Render On-Canvas Interactive Tutorial Guide if active
     this._renderTutorialGuide(ctx);
@@ -2287,7 +2295,7 @@ export class Game {
     }
 
     // 6. Lightning Electric Sky Flash Overlay
-    if (this.lightningFlashTimer > 0) {
+    if (this.lightningFlashTimer > 0 && !this.settings.get('reducedEffects')) {
       ctx.save();
       const flashAlpha = Math.min(0.65, this.lightningFlashTimer * 3.2);
       ctx.fillStyle = `rgba(224, 242, 254, ${flashAlpha})`;
@@ -2383,7 +2391,11 @@ export class Game {
 
     const cooldown = this.runConfiguration?.values.spells.cooldownSeconds || 0;
     const castTime = this._configurationTime || 0;
-    if ((this._spellReadyAt?.[gesture] || 0) > castTime) return;
+    if ((this._spellReadyAt?.[gesture] || 0) > castTime) {
+      const left = this._spellReadyAt[gesture] - castTime;
+      this.uiManager.showCombatFeedback?.(`◷ ${RUNES[gesture].symbol} HỒI CHIÊU · ${left.toFixed(1)}s`, 'cooldown');
+      return;
+    }
     this._spellReadyAt ||= {};
     this._spellReadyAt[gesture] = castTime + cooldown;
 
@@ -2408,7 +2420,7 @@ export class Game {
       this.metrics.spellsHit++;
       this.audioSystem.playSpell(gesture);
 
-      this.triggerShake(3.5, 0.15);
+      this.triggerShake(1.8, 0.1);
 
       // Tactile mobile haptic feedback on successful spell strike
       if (this.hapticSystem) {
@@ -2421,7 +2433,7 @@ export class Game {
           this.hapticSystem.lightning();
         }
         this.lightningFlashTimer = 0.22;
-        if (this.backgroundRenderer) {
+        if (this.backgroundRenderer && !this.settings.get('reducedEffects')) {
           this.backgroundRenderer.triggerLightning(0.25);
         }
         this.triggerShake(14, 0.45);
@@ -2484,7 +2496,6 @@ export class Game {
       // Combo milestone: a beat of slow motion, and "combo 5 without being hit" is tracked for an achievement
       if (SLOWMO_COMBOS.includes(this.comboCount)) {
         this.triggerSlowMo(0.75, 0.4);
-        this.particleSystem.emitFloatingText(`🔥 COMBO x${this.comboCount}!`, this.width / 2, this.height * 0.3, '#fbbf24', 30);
       }
       if (this.comboCount === 5 && this.metrics.damageTaken === this._levelStartDamage && !this.isAssisted()) {
         this.progress.addStat('cleanCombos');
@@ -2514,7 +2525,7 @@ export class Game {
       );
 
       if (cast.perfect) this.combat.emit('cast:perfect', { cast });
-      this.uiManager.showGestureFeedback(gesture, result.score, true);
+      this.uiManager.showGestureFeedback(gesture, result.score, true, null, result, { perfect: cast.perfect, targets: matchingEnemies.length });
     } else {
       if (gesture === 'heart') {
         // In Google Doodle, drawing heart always restores HP even without enemies having heart
@@ -2546,7 +2557,7 @@ export class Game {
         this.audioSystem.playSpell(gesture);
         this._combatFizzleDelay = 0.14;
       }
-      this.uiManager.showGestureFeedback(gesture, result.score, false);
+      this.uiManager.showGestureFeedback(gesture, result.score, gesture === 'heart', null, result, { healed: gesture === 'heart' && this.player.healPulseTimer > 0 });
       this._fizzleCombo();
     }
     this.combat.emit('cast:launched', { cast, targets: matchingEnemies.length });
@@ -2654,7 +2665,7 @@ export class Game {
       this.comboCount = 0;
       this.comboMultiplier = 1;
       this.comboTimer = 0;
-      this.particleSystem.emitFloatingText('COMBO VỠ!', this.player.x, this.player.y - 50, '#94a3b8', 18);
+      this.uiManager.showComboBreak?.();
     }
   }
 
@@ -3417,7 +3428,7 @@ export class Game {
   _castPhrase(phrase) {
     this._levelPhrases = (this._levelPhrases || 0) + 1;
     const rec = this.progress.recordPhrase(phrase.id);
-    this.particleSystem.emitFloatingText(`${phrase.icon} ${phrase.name.toUpperCase()}!`, this.width / 2, this.height * 0.32, '#fde047', 30);
+    this.uiManager.showGameplayNotice?.(`✦ BÍ PHÁP · ${phrase.name.toUpperCase()}`, '#fde047', 3);
     this.particleSystem.emitHitBurst(this.player.x, this.player.y, '#fde047', 30);
     if (this.audioSystem) this.audioSystem.playSpell('heart');
     if (this.hapticSystem) this.hapticSystem.pulse(24);
@@ -3588,20 +3599,24 @@ export class Game {
       if (this._combatFizzleDelay <= 0) this.audioSystem.playFizzle();
     }
     const urgent = this.comboCount > 0 && this.comboTimer / this.comboDecayTime <= this.combat.rules.combo.warningFraction;
-    if (urgent && !this._comboWarning) {
-      this.particleSystem.emitFloatingText('COMBO SẮP HẾT!', this.player.x, this.player.y - 95, '#fbbf24', 18);
-      this.audioSystem.playCombo(this.comboCount);
-    }
+    // The persistent HUD timer carries this warning without another sound or message.
     this._comboWarning = urgent;
   }
 
   _onCombatEvent(event) {
-    const labels = { 'cast:perfect': '✨ PERFECT!', 'hit:blocked': '🛡️ GIÁP!', 'element:reaction': '⚡ PHẢN ỨNG!', 'chain:reaction': '⚡ CHAIN!' };
+    const labels = { 'hit:blocked': '⬟ GIÁP CHẶN · VẼ LẠI ẤN KÝ', 'element:reaction': '⚡ PHẢN ỨNG!', 'chain:reaction': '⚡ CHAIN!' };
     if (event.type === 'chain:reaction') this._addScore(event.bonus);
+    if (event.type === 'combo:expired') this.uiManager.showComboBreak?.('HẾT GIỜ');
+    if (event.type === 'player:damaged') {
+      if (this.comboCount > 0) this.uiManager.showComboBreak?.();
+      this.uiManager.showCombatFeedback?.(`−${this.combat?.rules.damage.player ?? 1} HP · 🛡 BẢO VỆ TẠM THỜI`, 'damage', 3);
+    }
+    if (event.type === 'hit:resolved' && event.enemy.isBoss && event.result.isPhaseComplete) {
+      const boss = event.enemy;
+      this.uiManager.showGameplayNotice?.(`♛ CHUYỂN PHA · CÒN ${boss.bossLives}/${boss.maxBossLives} MẠNG · TRÙM ĐANG LÙI`, '#fda4af', 4);
+    }
     if (labels[event.type]) {
-      const target = event.enemy || this.player;
-      this.particleSystem.emitFloatingText(labels[event.type], target.x, target.y - 70, '#fde047', 22);
-      this.audioSystem.playHit(event.cast.gesture);
+      this.uiManager.showGameplayNotice?.(labels[event.type], '#fde047', 2);
     }
   }
 

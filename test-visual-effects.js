@@ -183,7 +183,7 @@ console.log('\n--- 9. Floating announcements vs ghosts ---');
   assert(bothCtx._log.includes('fillText') && (bothCtx._log.includes('arc') || bothCtx._log.includes('fill')),
     'render() still draws both layers for the other game states');
 
-  // Playing state draw order: player, texts, ghosts, particles
+  // Effects remain below enemy silhouettes and their actionable rune badges.
   const { Game } = await import('./src/core/Game.js');
   const order = [];
   const fake = {
@@ -203,8 +203,8 @@ console.log('\n--- 9. Floating announcements vs ghosts ---');
     events: null
   };
   Game.prototype.renderPlaying.call(fake, recCtx());
-  assert(order.join(',') === 'player,texts,ghost,ghost,projectile,particles,trail',
-    `Announcement texts are drawn under the ghosts, sparks over them (got ${order.join(',')})`);
+  assert(order.join(',') === 'player,texts,particles,ghost,ghost,projectile,trail',
+    `Announcement texts and sparks are drawn under the ghosts (got ${order.join(',')})`);
 
   // Banner / spawner timing: nothing arrives while the banner is still up
   const { INTRO_TIMING } = await import('./src/core/Constants.js');
